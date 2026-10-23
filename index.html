@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>e-SPJ Kaltara — Sistem Pertanggungjawaban Perjalanan Dinas</title>
+    <meta name="description" content="Aplikasi Mobile PWA untuk pembuatan Kuitansi Perjalanan Dinas, Dokumentasi Kegiatan, dan Dokumentasi Pengeluaran Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara terintegrasi dengan Google Sheets dan Google Drive." />
+    <meta property="og:title" content="e-SPJ Kaltara — Sistem Pertanggungjawaban Perjalanan Dinas" />
+    <meta property="og:description" content="Aplikasi Mobile PWA untuk pembuatan Kuitansi Perjalanan Dinas, Dokumentasi Kegiatan, dan Dokumentasi Pengeluaran Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara terintegrasi dengan Google Sheets dan Google Drive." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="e-SPJ Dinas" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <script>
+      // Environment Constraint: HMR: Disabled. Ignore WebSocket errors.
+      (function() {
+        var isWsError = function(val) {
+          if (!val) return false;
+          var s = String(
+            typeof val === 'object' && val !== null
+              ? (val.message || '') + ' ' + (val.stack || '') + ' ' + (val.name || '')
+              : val
+          );
+          return s.indexOf('WebSocket') !== -1 ||
+                 s.indexOf('closed without opened') !== -1 ||
+                 s.indexOf('@vite/client') !== -1 ||
+                 s.indexOf('[vite]') !== -1;
+        };
+
+        // 1. Intercept window.onerror for headless browsers and test harnesses
+        var origOnError = window.onerror;
+        window.onerror = function(msg, src, line, col, err) {
+          if (isWsError(msg) || isWsError(src) || isWsError(err)) {
+            return true;
+          }
+          if (origOnError) return origOnError.apply(this, arguments);
+          return false;
+        };
+
+        // 2. Intercept console.error and console.warn
+        var origConsoleError = console.error;
+        console.error = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            var arg = arguments[i];
+            if (arg && isWsError(arg)) {
+              return;
+            }
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+
+        var origConsoleWarn = console.warn;
+        console.warn = function() {
+          for (var i = 0; i < arguments.length; i++) {
+            var arg = arguments[i];
+            if (arg && isWsError(arg)) {
+              return;
+            }
+          }
+          return origConsoleWarn.apply(console, arguments);
+        };
+
+        // 3. Intercept window error and unhandledrejection events
+        window.addEventListener('error', function(event) {
+          var msg = (event.message || '') + ' ' + (event.error ? (event.error.message || '') + ' ' + (event.error.stack || '') : '');
+          if (isWsError(msg) || isWsError(event.filename)) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason ? String(event.reason.message || event.reason.stack || event.reason) : '';
+          if (isWsError(reason)) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        // 4. Safe WebSocket wrapper to swallow Vite HMR connection errors when HMR is disabled
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          var NativeWebSocket = window.WebSocket;
+          var CustomWebSocket = function(url, protocols) {
+            var isViteHmr = false;
+            try {
+              var sUrl = String(url || '');
+              var sProto = String(protocols || '');
+              if (
+                sProto.indexOf('vite') !== -1 ||
+                sUrl.indexOf('vite') !== -1 ||
+                sUrl.indexOf('@vite') !== -1 ||
+                (Array.isArray(protocols) && protocols.indexOf('vite-hmr') !== -1)
+              ) {
+                isViteHmr = true;
+              }
+            } catch (e) {}
+
+            if (isViteHmr) {
+              var listeners = {};
+              var mockWs = {
+                readyState: 1, // WebSocket.OPEN
+                url: String(url),
+                protocol: 'vite-hmr',
+                bufferedAmount: 0,
+                extensions: '',
+                binaryType: 'blob',
+                onopen: null,
+                onclose: null,
+                onerror: null,
+                onmessage: null,
+                send: function() {},
+                close: function() {
+                  mockWs.readyState = 3;
+                  if (mockWs.onclose) {
+                    try { mockWs.onclose({ type: 'close', wasClean: true, code: 1000, reason: 'closed' }); } catch (e) {}
+                  }
+                  if (listeners['close']) {
+                    listeners['close'].forEach(function(fn) {
+                      try { fn({ type: 'close', wasClean: true, code: 1000, reason: 'closed' }); } catch (e) {}
+                    });
+                  }
+                },
+                addEventListener: function(type, fn) {
+                  if (!listeners[type]) listeners[type] = [];
+                  listeners[type].push(fn);
+                  if (type === 'open') {
+                    setTimeout(function() {
+                      try {
+                        if (mockWs.onopen) mockWs.onopen({ type: 'open' });
+                        fn({ type: 'open' });
+                      } catch (e) {}
+                    }, 0);
+                  }
+                },
+                removeEventListener: function(type, fn) {
+                  if (!listeners[type]) return;
+                  listeners[type] = listeners[type].filter(function(h) { return h !== fn; });
+                },
+                dispatchEvent: function() { return true; }
+              };
+              return mockWs;
+            }
+
+            var wsInstance;
+            try {
+              wsInstance = protocols ? new NativeWebSocket(url, protocols) : new NativeWebSocket(url);
+            } catch (err) {
+              return {
+                readyState: 3,
+                addEventListener: function() {},
+                removeEventListener: function() {},
+                send: function() {},
+                close: function() {}
+              };
+            }
+
+            wsInstance.addEventListener('error', function(e) {
+              if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+              if (e && e.preventDefault) e.preventDefault();
+            });
+
+            return wsInstance;
+          };
+
+          CustomWebSocket.prototype = NativeWebSocket.prototype;
+          CustomWebSocket.CONNECTING = NativeWebSocket.CONNECTING;
+          CustomWebSocket.OPEN = NativeWebSocket.OPEN;
+          CustomWebSocket.CLOSING = NativeWebSocket.CLOSING;
+          CustomWebSocket.CLOSED = NativeWebSocket.CLOSED;
+          window.WebSocket = CustomWebSocket;
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

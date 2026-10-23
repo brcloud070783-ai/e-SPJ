@@ -1,0 +1,6 @@
+{
+  "name": "e-SPJ Kaltara — Sistem Pertanggungjawaban Perjalanan Dinas",
+  "description": "Aplikasi Mobile PWA untuk pembuatan Kuitansi Perjalanan Dinas, Dokumentasi Kegiatan, dan Dokumentasi Pengeluaran Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara terintegrasi dengan Google Sheets dan Google Drive.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
