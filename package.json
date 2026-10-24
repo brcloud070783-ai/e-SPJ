@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "tsx server.ts",
-    "build": "if [ ! -x ./node_modules/.bin/vite ]; then npm install --legacy-peer-deps --include=dev; fi && ./node_modules/.bin/vite build",
+    "build": "rm -rf dist public/dist && if [ ! -x ./node_modules/.bin/vite ]; then npm install --legacy-peer-deps --include=dev; fi && ./node_modules/.bin/vite build && if [ -n \"$INIT_CWD\" ] && [ \"$INIT_CWD\" != \"$(pwd)\" ]; then rm -rf \"$INIT_CWD/dist\" && cp -r dist \"$INIT_CWD/dist\"; elif [ -n \"$VERCEL\" ]; then cp -r dist public/dist; fi",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "rm -rf dist public/dist server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
