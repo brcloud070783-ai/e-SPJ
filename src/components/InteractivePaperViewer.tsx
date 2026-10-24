@@ -31,7 +31,13 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   const sheetRef = useRef<HTMLDivElement | null>(null);
 
   const [fitMode, setFitMode] = useState<'width' | 'page'>('width');
-  const [baseFitScale, setBaseFitScale] = useState<number>(1);
+  const [baseFitScale, setBaseFitScale] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const availW = Math.max(260, window.innerWidth - 48);
+      return Number(Math.min(1, availW / spec.widthPx).toFixed(4));
+    }
+    return 1;
+  });
   const [sheetNaturalHeight, setSheetNaturalHeight] = useState<number>(spec.minHeightPx);
   const [userZoom, setUserZoom] = useState<number>(1);
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -202,7 +208,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   const isGestureActive = isPinching || isPanning;
 
   return (
-    <div className="space-y-2 print-page-sheet">
+    <div className="space-y-2 print-page-sheet min-w-0 max-w-full">
       {/* Dynamic @page Print Rule for A4 (210x297mm) vs F4 Folio (215x330mm) */}
       <style>{`
         @media print {

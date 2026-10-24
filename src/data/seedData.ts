@@ -265,7 +265,7 @@ export const INITIAL_KUITANSI_LIST: KuitansiPerjalananDinas[] = [
     tahunAnggaran: '2026',
     noKuitansi: '',
     subKegiatan:
-      '1.01.02.1.01.0060 - 5.1.02.04.001.00001 - (Koordinasi, Perencanaan, Supervisi dan Evaluasi Layanan di Bidang Pendidikan )',
+      '1.01.02.1.01.0078 - 5.1.02.04.001.00001 - (Penyelenggaraan Proses Belajar bagi Peserta Didik)',
     sudahTerimaDari:
       'Bendahara Pengeluaran Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara',
     untukPengeluaran:
@@ -442,7 +442,7 @@ export const INITIAL_SURAT_TUGAS_LIST: SuratPerintahTugas[] = [
         id: 'st-p-1',
         nama: 'Bayu Ramadhan',
         pangkatGol: 'Penata, III/c',
-        nip: '19830072015031002',
+        nip: '198307072015031002',
         jabatan: 'Pranta KomputerAhli Pertama',
       },
       {

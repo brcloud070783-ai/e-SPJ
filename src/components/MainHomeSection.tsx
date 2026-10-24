@@ -52,15 +52,15 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
   const localDraftCount = kuitansiList.filter((k) => k.statusSync === 'Tersimpan Lokal').length;
 
   return (
-    <section aria-labelledby="hero-spj-title" className="space-y-5 py-2 sm:py-4">
+    <section aria-labelledby="hero-spj-title" className="space-y-5 py-2 sm:py-4 min-w-0 max-w-full overflow-x-hidden">
       {/* 1. ACTIONABLE HERO & RINGKASAN METRIK NYATA */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 space-y-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-7 space-y-6 min-w-0 max-w-full overflow-hidden">
         {/* Baris Identitas & Sapaan Dashboard */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 min-w-0">
           <div className="flex items-center gap-3.5 min-w-0">
             <KaltaraEmblem className="w-10 h-12 shrink-0" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
                   {settings.namaDinas}
                 </p>
@@ -73,42 +73,42 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               </div>
               <h1
                 id="hero-spj-title"
-                className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight"
+                className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words"
               >
                 Dashboard SPJ Perjalanan Dinas
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={onCreateNewKuitansi}
-              className="min-h-[42px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial justify-center min-h-[42px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-bold text-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5 text-sky-700" />
+              <Plus className="w-3.5 h-3.5 text-sky-700 shrink-0" />
               <span>SPJ Baru</span>
             </button>
             <button
               type="button"
               onClick={onEnterSpjPerjalananDinas}
-              className="min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial justify-center min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Briefcase className="w-3.5 h-3.5" />
+              <Briefcase className="w-3.5 h-3.5 shrink-0" />
               <span>Semua Berkas ({kuitansiList.length})</span>
             </button>
           </div>
         </div>
 
         {/* 3 Metrik Nyata (Actionable Metrics Grid) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 min-w-0">
           {/* Metrik 1: Draft SPJ Belum Selesai / Lokal */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Status Berkas SPJ</span>
-              <Clock className="w-3.5 h-3.5 text-sky-700" />
+              <Clock className="w-3.5 h-3.5 text-sky-700 shrink-0" />
             </div>
-            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums">
+            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums truncate">
               {localDraftCount > 0
                 ? `${localDraftCount} Draft Lokal`
                 : `${kuitansiList.length} Tersinkron`}
@@ -124,17 +124,17 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
           <button
             type="button"
             onClick={() => onOpenStudioModule('pengeluaran')}
-            className="text-left rounded-xl border border-slate-200 hover:border-amber-400 bg-slate-50/70 hover:bg-amber-50/30 p-4 space-y-1 transition-colors cursor-pointer"
+            className="text-left rounded-xl border border-slate-200 hover:border-amber-400 bg-slate-50/70 hover:bg-amber-50/30 p-4 space-y-1 transition-colors cursor-pointer min-w-0"
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Selisih Rekonsiliasi Bukti</span>
               {reconciliation.selisih === 0 ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               ) : (
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               )}
             </div>
-            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums">
+            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums truncate">
               {formatRupiah(reconciliation.selisih)}
             </p>
             <p className="text-[11px] text-slate-500">
@@ -147,13 +147,13 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
           <button
             type="button"
             onClick={() => onOpenStudioModule('dokumentasi')}
-            className="text-left rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 p-4 space-y-1 transition-colors cursor-pointer"
+            className="text-left rounded-xl border border-slate-200 hover:border-emerald-400 bg-slate-50/70 hover:bg-emerald-50/30 p-4 space-y-1 transition-colors cursor-pointer min-w-0"
           >
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Dokumentasi Kegiatan</span>
-              <Camera className="w-3.5 h-3.5 text-emerald-700" />
+              <Camera className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             </div>
-            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums">
+            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums truncate">
               {docPerjalananCount} Berkas
             </p>
             <p className="text-[11px] text-slate-500">
@@ -165,17 +165,17 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
         </div>
 
         {/* Kartu Akses 1-Klik ke SPJ Terakhir yang Diedit */}
-        <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-sky-800 font-bold">
-              <span>SPJ Terakhir Diedit</span>
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 min-w-0 overflow-hidden">
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-sky-800 font-bold min-w-0">
+              <span className="shrink-0">SPJ Terakhir Diedit</span>
               <span aria-hidden="true">·</span>
-              <span className="font-mono">{activeKuitansi.noSpt}</span>
+              <span className="font-mono break-all sm:break-normal min-w-0">{activeKuitansi.noSpt}</span>
             </div>
             <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate">
               {activeKuitansi.atasNama} — Tujuan {activeKuitansi.tujuan}
             </h2>
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-slate-600 break-words">
               Nilai Kuitansi:{' '}
               <strong className="font-mono text-slate-900">{formatRupiah(activeTotal)}</strong> (
               {activeKuitansi.rincian.length} rincian) · Tanggal: {activeKuitansi.tanggalPerjalanan}
@@ -186,11 +186,11 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
             <button
               type="button"
               onClick={() => onOpenStudioModule('kuitansi')}
-              className="min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer"
+              className="w-full sm:w-auto justify-center min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer"
             >
-              <FileText className="w-3.5 h-3.5" />
+              <FileText className="w-3.5 h-3.5 shrink-0" />
               <span>Lanjutkan Edit Kuitansi</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
         </div>

@@ -140,12 +140,12 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
   ];
 
   return (
-    <div className="space-y-5">
-      {/* SATU STICKY CONTEXT HEADER: Menampilkan Nomor SPT, Nama Pelaksana, NIP, dan Tujuan satu kali saja */}
-      <div className="sticky top-14 z-20 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700">
+    <div className="space-y-5 min-w-0 max-w-full overflow-x-hidden">
+      {/* SATU CONTEXT HEADER: Menampilkan Nomor SPT, Nama Pelaksana, NIP, dan Tujuan satu kali saja */}
+      <div className="sm:sticky sm:top-14 z-20 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 sm:gap-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700 truncate">
               Konteks Berkas SPJ Aktif
             </span>
             <InfoTooltip
@@ -156,7 +156,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
             <label htmlFor="subhome-kuitansi-select" className="sr-only">
               Pilih Berkas SPJ Aktif
             </label>
@@ -164,7 +164,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
               id="subhome-kuitansi-select"
               value={activeKuitansi.id}
               onChange={(e) => onSelectKuitansi(e.target.value)}
-              className="flex-1 sm:w-64 min-h-[38px] rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-900 focus:border-sky-600 focus:bg-white focus:outline-none"
+              className="w-full sm:w-64 min-w-0 max-w-full min-h-[38px] rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-900 truncate focus:border-sky-600 focus:bg-white focus:outline-none"
             >
               {kuitansiList.map((item, idx) => (
                 <option key={item.id} value={item.id}>
@@ -174,35 +174,37 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
               ))}
             </select>
 
-            <button
-              type="button"
-              onClick={onCreateNewKuitansi}
-              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>SPJ Baru</span>
-            </button>
-
-            {onDeleteKuitansi && (
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => onDeleteKuitansi(activeKuitansi)}
-                title="Hapus berkas SPJ yang sedang aktif"
-                aria-label="Hapus berkas SPJ aktif"
-                className="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                onClick={onCreateNewKuitansi}
+                className="flex-1 sm:flex-initial justify-center min-h-[38px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Hapus SPJ</span>
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>SPJ Baru</span>
               </button>
-            )}
+
+              {onDeleteKuitansi && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteKuitansi(activeKuitansi)}
+                  title="Hapus berkas SPJ yang sedang aktif"
+                  aria-label="Hapus berkas SPJ aktif"
+                  className="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Hapus SPJ</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Baris Ringkas Konteks Tunggal: Nama & NIP | Tujuan & Tanggal | Nomor SPT */}
-        <div className="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+        <div className="pt-2.5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <User className="w-4 h-4 text-sky-700 shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-bold text-slate-900 truncate">{activeKuitansi.atasNama}</p>
               <p className="text-[11px] font-mono text-slate-500 truncate">
                 NIP {activeKuitansi.nipPenerima}
@@ -212,18 +214,18 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
 
           <div className="flex items-center gap-2 min-w-0">
             <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="font-bold text-slate-900 truncate">Tujuan: {activeKuitansi.tujuan}</p>
-              <p className="text-[11px] text-slate-500 truncate inline-flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                <span>{activeKuitansi.tanggalPerjalanan}</span>
+              <p className="text-[11px] text-slate-500 truncate inline-flex items-center gap-1 max-w-full">
+                <Calendar className="w-3 h-3 shrink-0" />
+                <span className="truncate">{activeKuitansi.tanggalPerjalanan}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between sm:justify-end gap-2 bg-slate-50 rounded-xl px-3 py-1.5 border border-slate-200/80">
-            <span className="text-[11px] text-slate-500">No. SPT:</span>
-            <span className="font-mono font-bold text-red-700 truncate">
+          <div className="flex items-center justify-between sm:justify-end gap-2 bg-slate-50 rounded-xl px-3 py-1.5 border border-slate-200/80 min-w-0">
+            <span className="text-[11px] text-slate-500 shrink-0">No. SPT:</span>
+            <span className="font-mono font-bold text-red-700 truncate min-w-0">
               {activeKuitansi.noSpt}
             </span>
           </div>
@@ -234,7 +236,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       <div
         role="region"
         aria-label="Daftar Modul SPJ Perjalanan Dinas"
-        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-0 max-w-full"
       >
         {subModules.map((mod) => (
           <UnifiedMediaCard
@@ -249,7 +251,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
             description={mod.description}
             onClick={() => onOpenSubSection(mod.key)}
             footerLeft={
-              <span className="text-slate-500">Ketuk untuk membuka ruang kerja</span>
+              <span className="text-slate-500 truncate block">Ketuk untuk membuka ruang kerja</span>
             }
             footerRight={
               <span className="inline-flex items-center gap-1 font-bold text-sky-700 group-hover:translate-x-0.5 transition-transform">
@@ -262,11 +264,11 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       </div>
 
       {/* 5. TABEL KELOLA BERKAS SPJ: Memudahkan melihat seluruh SPJ, beralih berkas, duplikasi, dan hapus berkas SPJ */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-sky-700" />
+      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-3 min-w-0">
+          <div className="min-w-0">
+            <h3 className="text-sm font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-sky-700 shrink-0" />
               <span>Daftar Seluruh Berkas SPJ</span>
               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                 {kuitansiList.length} Berkas
@@ -276,29 +278,121 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
               Pilih berkas aktif, pratinjau kuitansi, gandakan data, atau hapus berkas SPJ yang pernah dibuat.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onDuplicateKuitansi && (
               <button
                 type="button"
                 onClick={onDuplicateKuitansi}
-                className="min-h-[34px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-initial justify-center min-h-[34px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-3.5 h-3.5 shrink-0" />
                 <span>Duplikat Aktif</span>
               </button>
             )}
             <button
               type="button"
               onClick={onCreateNewKuitansi}
-              className="min-h-[34px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial justify-center min-h-[34px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 shrink-0" />
               <span>+ SPJ Baru</span>
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Tampilan Mobile (< md): Daftar Kartu Ringkas Tanpa Scroll Kanan-Kiri */}
+        <div className="md:hidden space-y-2.5 min-w-0">
+          {kuitansiList.map((item, idx) => {
+            const isActive = item.id === activeKuitansi.id;
+            const totalItem = calculateKuitansiTotal(item.rincian);
+            return (
+              <div
+                key={item.id}
+                className={`rounded-xl border p-3 space-y-2 transition-colors min-w-0 ${
+                  isActive
+                    ? 'bg-sky-50/70 border-sky-200'
+                    : 'bg-slate-50/50 border-slate-200/80'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-mono font-bold text-slate-500">
+                        #{idx + 1}
+                      </span>
+                      <p className="text-xs font-bold text-slate-900 truncate">
+                        {item.atasNama || '(Nama belum diisi)'}
+                      </p>
+                    </div>
+                    <p className="text-[11px] font-mono text-slate-500 truncate">
+                      {item.nipPenerima ? `NIP ${item.nipPenerima}` : '-'}
+                    </p>
+                  </div>
+
+                  {isActive ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
+                      <CheckCircle2 className="w-3 h-3 shrink-0" />
+                      <span>Aktif</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-600 text-[10px] font-medium shrink-0">
+                      Tersimpan
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-[11px] space-y-0.5 min-w-0">
+                  <p className="font-mono text-red-700 font-bold truncate">
+                    {item.noSpt}
+                  </p>
+                  <p className="text-slate-600 truncate">
+                    {item.tujuan} · {item.tanggalPerjalanan}
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 min-w-0">
+                  <span className="text-xs font-mono font-extrabold text-slate-900 tabular-nums truncate">
+                    {formatRupiah(totalItem)}
+                  </span>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {!isActive ? (
+                      <button
+                        type="button"
+                        onClick={() => onSelectKuitansi(item.id)}
+                        className="px-3 py-1 rounded-lg bg-white border border-slate-300 hover:bg-sky-50 text-slate-700 hover:text-sky-800 text-[11px] font-bold transition-colors cursor-pointer"
+                      >
+                        Pilih
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onOpenSubSection('kuitansi')}
+                        className="px-3 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold transition-colors cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    {onDeleteKuitansi && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteKuitansi(item)}
+                        title={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                        aria-label={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Tampilan Desktop (md+): Tabel Lengkap */}
+        <div className="hidden md:block overflow-x-auto min-w-0 max-w-full">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/75">

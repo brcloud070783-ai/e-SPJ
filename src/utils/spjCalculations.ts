@@ -1025,6 +1025,40 @@ export function formatKuitansiTravelRange(startDateIso: string, endDateIso: stri
   }
 }
 
+/**
+ * Extracts or formats "Kode & Nama Sub Kegiatan" for Kuitansi from a SuratPerintahTugas (SPT).
+ * - If pembebananAnggaran matches "... Kegiatan <Nama>, Kode Kegiatan <Kode>", formats as "<Kode> - (<Nama>)"
+ * - Otherwise returns cleaned pembebananAnggaran or spdData.akunAnggaran.
+ */
+export function extractSubKegiatanFromSpt(spt?: {
+  pembebananAnggaran?: string;
+  spdData?: { akunAnggaran?: string };
+}): string {
+  if (!spt) return '';
+  const rawAnggaran = (spt.pembebananAnggaran || '').replace(/;+\s*$/, '').trim();
+  const rawAkun = (spt.spdData?.akunAnggaran || '').replace(/;+\s*$/, '').trim();
 
+  if (rawAnggaran) {
+    const kegKodeMatch = rawAnggaran.match(
+      /(?:Sub\s+)?Kegiatan\s+([^,;]+?)\s*,\s*Kode\s+(?:Sub\s+)?Kegiatan\s+([^;]+)/i
+    );
+    if (kegKodeMatch && kegKodeMatch[1] && kegKodeMatch[2]) {
+      const namaKeg = kegKodeMatch[1].trim();
+      const kodeKeg = kegKodeMatch[2].replace(/\s*[–—-]\s*/g, ' - ').trim();
+      return `${kodeKeg} - (${namaKeg})`;
+    }
 
+    const kodeKegMatch = rawAnggaran.match(
+      /Kode\s+(?:Sub\s+)?Kegiatan\s+([^,;]+?)\s*,\s*(?:Sub\s+)?Kegiatan\s+([^;]+)/i
+    );
+    if (kodeKegMatch && kodeKegMatch[1] && kodeKegMatch[2]) {
+      const kodeKeg = kodeKegMatch[1].replace(/\s*[–—-]\s*/g, ' - ').trim();
+      const namaKeg = kodeKegMatch[2].trim();
+      return `${kodeKeg} - (${namaKeg})`;
+    }
 
+    return rawAnggaran;
+  }
+
+  return rawAkun;
+}

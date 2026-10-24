@@ -44,6 +44,7 @@ import {
   applySettingsToKuitansi,
   calculateKuitansiTotal,
   formatRupiah,
+  extractSubKegiatanFromSpt,
 } from './utils/spjCalculations';
 import {
   initAuth,
@@ -420,6 +421,25 @@ export default function App() {
     setSptList((prev) =>
       prev.map((item) => (item.id === updated.id ? updated : item))
     );
+    const syncedSubKegiatan = extractSubKegiatanFromSpt(updated);
+    if (syncedSubKegiatan) {
+      setKuitansiList((prev) =>
+        prev.map((item) => {
+          const isLinked =
+            item.id === updated.kuitansiId ||
+            (item.noSpt &&
+              updated.noSpt &&
+              item.noSpt.trim().toLowerCase() === updated.noSpt.trim().toLowerCase()) ||
+            item.id === activeKuitansiId;
+          if (!isLinked) return item;
+          return {
+            ...item,
+            subKegiatan: syncedSubKegiatan,
+            updatedAt: new Date().toISOString(),
+          };
+        })
+      );
+    }
   };
 
   const handleCreateNewSpt = () => {
@@ -465,11 +485,18 @@ export default function App() {
 
   const handleCreateNewKuitansi = () => {
     const nextNumber = kuitansiList.length + 1;
+    const currentSpt =
+      sptList.find((s) => s.id === activeSptId) || sptList[0];
+    const sptSubKeg = extractSubKegiatanFromSpt(currentSpt);
     const newKuitansi: KuitansiPerjalananDinas = {
       ...applySettingsToKuitansi(activeKuitansi, appSettings),
       id: `kui-2026-00${nextNumber}-${Date.now().toString().slice(-3)}`,
       tahunAnggaran: appSettings.tahunAnggaranDefault || activeKuitansi.tahunAnggaran,
-      subKegiatan: appSettings.subKegiatanDefault || activeKuitansi.subKegiatan || '',
+      subKegiatan:
+        sptSubKeg ||
+        appSettings.subKegiatanDefault ||
+        activeKuitansi.subKegiatan ||
+        '',
       sudahTerimaDari:
         appSettings.sudahTerimaDariDefault || activeKuitansi.sudahTerimaDari,
       noKuitansi: '',
@@ -1137,12 +1164,12 @@ export default function App() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
       {/* 1. COMPACT STUDIO APP BAR (Tampil HANYA saat di dalam mode kerja/editor Studio — Tema Terang Bersih) */}
       {isInsideStudio ? (
-        <header className="no-print sticky top-0 z-30 bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
+        <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
           {/* Baris 1: Tombol Kembali + Pemilih Berkas SPJ Compact + Tombol "+ Duplikat" + Ikon Cloud Sync */}
-          <div className="max-w-7xl mx-auto px-2 sm:px-6 h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2 relative">
+          <div className="max-w-7xl mx-auto px-2 sm:px-6 h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2 relative min-w-0">
             <button
               type="button"
               onClick={() => {
@@ -1179,16 +1206,16 @@ export default function App() {
                 onClick={handleDuplicateActiveKuitansi}
                 data-testid="duplicate-kuitansi-button"
                 title="Gandakan (clone) kuitansi aktif menjadi draft baru untuk pelaksana lain"
-                className="min-h-[34px] px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                className="min-h-[34px] px-2 sm:px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                <span>+ Duplikat</span>
+                <span className="hidden sm:inline">+ Duplikat</span>
               </button>
 
               {isSpjSwitcherOpen && (
                 <div
                   role="menu"
-                  className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-72 sm:w-80 bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+                  className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1"
                 >
                   <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
                     <span>Pilih Berkas SPJ Aktif</span>
@@ -1350,7 +1377,7 @@ export default function App() {
         </header>
       ) : (
         /* 2. TOP NAVBAR UTAMA (Tampil saat di Beranda, Sub-Home SPJ, atau Pengaturan — Anti Overflow) */
-        <header className="no-print sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-8 h-14 flex items-center justify-between gap-2 sm:gap-6">
+        <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-8 h-14 flex items-center justify-between gap-2 sm:gap-6">
           {/* Zone 1: Brand Wordmark */}
           <a
             href="#beranda"
@@ -1366,7 +1393,7 @@ export default function App() {
           {/* Zone 2: Menu Utama (Beranda, SPJ Dinas, Pengaturan) */}
           <nav
             aria-label="Menu Utama"
-            className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
+            className="flex items-center gap-2.5 sm:gap-6 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
           >
             <a
               href="#beranda"
@@ -1448,7 +1475,7 @@ export default function App() {
       )}
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 min-w-0 overflow-x-hidden">
         {/* 1. HALAMAN UTAMA (BERANDA): Actionable Dashboard dengan Metrik Nyata & Akses 1-Klik */}
         {mainMenu === 'home' && (
           <MainHomeSection
@@ -1476,7 +1503,7 @@ export default function App() {
 
         {/* 2. SECTION PERJALANAN DINAS: Sub-Home & 4 Studio Modul */}
         {mainMenu === 'perjalanan-dinas' && (
-          <div className="space-y-3 sm:space-y-4">
+          <div className="space-y-3 sm:space-y-4 min-w-0 max-w-full">
             {spjView === 'sub-home' ? (
               <SpjPerjalananSubHome
                 kuitansiList={kuitansiList}
@@ -1492,7 +1519,7 @@ export default function App() {
                 onOpenSubSection={(sub) => setSpjView(sub)}
               />
             ) : (
-              <div>
+              <div className="min-w-0 max-w-full">
                 {spjView === 'kuitansi' && (
                   <KuitansiEditorSection
                     kuitansiList={kuitansiList}
@@ -1523,6 +1550,7 @@ export default function App() {
                     logoPemprovDataUrl={appSettings.logoPemprovDataUrl}
                     daftarPegawai={daftarPegawai}
                     sptList={sptList}
+                    activeSptId={activeSptId}
                   />
                 )}
 

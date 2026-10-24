@@ -1581,7 +1581,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
 
   return (
     <div
-      className={`space-y-3 pb-20 lg:pb-0 ${
+      className={`space-y-3 pb-20 lg:pb-0 min-w-0 max-w-full overflow-x-hidden ${
         isMobileSheetOpen ? 'max-lg:overflow-hidden' : ''
       }`}
     >
@@ -1706,11 +1706,11 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
       )}
 
       {/* CANVA WORKSPACE GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start print:block">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start print:block min-w-0 max-w-full">
         {/* DESKTOP LEFT INSPECTOR FORM */}
         <form
           onSubmit={handleExplicitValidateAndSave}
-          className="no-print hidden lg:block lg:col-span-5 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs"
+          className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs"
         >
           {/* Navigation Tabs Depending on Active Document */}
           {docType === 'spd' ? (
@@ -1981,7 +1981,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
         </form>
 
         {/* RIGHT LIVE PAPER CANVAS */}
-        <div className="lg:col-span-7 space-y-3">
+        <div className="lg:col-span-7 min-w-0 max-w-full space-y-3">
           {docType === 'spd-belakang' ? (
             <InteractivePaperViewer
               paperSize={paperSize}

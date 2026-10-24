@@ -14,6 +14,7 @@ import {
   X,
   Users,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -25,6 +26,7 @@ import {
   PaperSize,
   PegawaiItem,
   SuratPerintahTugas,
+  SuratTugasPegawai,
 } from '../types/spj';
 
 import {
@@ -37,6 +39,7 @@ import {
   formatRincianFormula,
   formatKuitansiTravelRange,
   formatIndonesianFormalDate,
+  extractSubKegiatanFromSpt,
 } from '../utils/spjCalculations';
 import {
   KuitansiDocumentPreview,
@@ -70,6 +73,7 @@ interface KuitansiEditorSectionProps {
   logoPemprovDataUrl?: string;
   daftarPegawai?: PegawaiItem[];
   sptList?: SuratPerintahTugas[];
+  activeSptId?: string;
 }
 
 export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
@@ -91,6 +95,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   logoPemprovDataUrl,
   daftarPegawai = [],
   sptList = [],
+  activeSptId,
 }) => {
   const currentKuitansi =
     kuitansiList.find((k) => k.id === activeKuitansiId) || kuitansiList[0];
@@ -100,8 +105,95 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   // Canva Mobile Bottom Sheet state: open when user taps a tool in the bottom dock or taps directly on the paper canvas
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState<boolean>(false);
   const [showAnggaranDetail, setShowAnggaranDetail] = useState(false);
+  const [isManualPelaksanaInput, setIsManualPelaksanaInput] = useState(false);
+  const [isPelaksanaDropdownOpen, setIsPelaksanaDropdownOpen] = useState(false);
+  const pelaksanaDropdownRef = React.useRef<HTMLDivElement>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isPelaksanaDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        pelaksanaDropdownRef.current &&
+        !pelaksanaDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsPelaksanaDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isPelaksanaDropdownOpen]);
+
+  const matchedSpt = React.useMemo(() => {
+    if (!sptList || sptList.length === 0) return undefined;
+    if (draft.noSpt) {
+      const byNoSpt = sptList.find(
+        (s) => s.noSpt.trim().toLowerCase() === draft.noSpt.trim().toLowerCase()
+      );
+      if (byNoSpt) return byNoSpt;
+    }
+    if (activeSptId) {
+      const byActiveId = sptList.find((s) => s.id === activeSptId);
+      if (byActiveId) return byActiveId;
+    }
+    const byKuitansiId = sptList.find((s) => s.kuitansiId === draft.id);
+    if (byKuitansiId) return byKuitansiId;
+    return sptList[0];
+  }, [sptList, draft.noSpt, draft.id, activeSptId]);
+
+  const sptPegawaiList: SuratTugasPegawai[] = React.useMemo(() => {
+    if (matchedSpt && matchedSpt.pegawaiList && matchedSpt.pegawaiList.length > 0) {
+      return matchedSpt.pegawaiList;
+    }
+    const allFromSpt: SuratTugasPegawai[] = [];
+    (sptList || []).forEach((s) => {
+      (s.pegawaiList || []).forEach((p) => {
+        if (
+          p.nama &&
+          !allFromSpt.some(
+            (existing) =>
+              existing.nama.trim().toLowerCase() === p.nama.trim().toLowerCase()
+          )
+        ) {
+          allFromSpt.push(p);
+        }
+      });
+    });
+    return allFromSpt;
+  }, [matchedSpt, sptList]);
+
+  const sptSubKegiatan = React.useMemo(
+    () => extractSubKegiatanFromSpt(matchedSpt),
+    [matchedSpt]
+  );
+
+  const prevSptSubKegiatanRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!sptSubKegiatan) return;
+    const currentSub = (draft.subKegiatan || '').trim();
+    const isLegacyDefault =
+      currentSub.includes('1.01.02.1.01.0060') &&
+      !sptSubKegiatan.includes('1.01.02.1.01.0060');
+    const sptChanged =
+      prevSptSubKegiatanRef.current !== null &&
+      prevSptSubKegiatanRef.current !== sptSubKegiatan;
+
+    prevSptSubKegiatanRef.current = sptSubKegiatan;
+
+    if (!currentSub || isLegacyDefault || sptChanged) {
+      if (currentSub !== sptSubKegiatan) {
+        const next: KuitansiPerjalananDinas = {
+          ...draft,
+          subKegiatan: sptSubKegiatan,
+          updatedAt: new Date().toISOString(),
+        };
+        setDraft(next);
+        onSaveKuitansi(next);
+      }
+    }
+  }, [sptSubKegiatan, draft.id]);
 
   // Custom Field Builder State
   const [showCustomFieldBuilder, setShowCustomFieldBuilder] = useState(false);
@@ -417,63 +509,219 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
+            <div className="min-w-0">
               <label
                 htmlFor="input-atas-nama"
                 className="block text-xs font-semibold text-slate-700 mb-1"
               >
                 Nama Pelaksana / Penerima (A.n) *
               </label>
-              <input
-                id="input-atas-nama"
-                type="text"
-                list="datalist-kuitansi-pegawai"
-                placeholder="Ketik nama lengkap & gelar pelaksana..."
-                value={draft.atasNama}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const activePeg = (daftarPegawai || []).filter((p) => p.statusActive !== false);
-                  const found = activePeg.find(
-                    (p) => p.nama.trim().toLowerCase() === val.trim().toLowerCase()
-                  );
-                  if (found) {
-                    const nextCustomFields = { ...(draft.customFieldValues || {}) };
-                    if (found.pangkatGolongan) {
-                      nextCustomFields['cf-pangkat-gol'] = found.pangkatGolongan;
-                    }
-                    if (found.jabatan) {
-                      nextCustomFields['cf-jabatan'] = found.jabatan;
-                    }
-                    const next: KuitansiPerjalananDinas = {
-                      ...draft,
-                      atasNama: found.nama,
-                      nipPenerima: found.nip,
-                      customFieldValues: nextCustomFields,
-                      updatedAt: new Date().toISOString(),
-                    };
-                    setDraft(next);
-                    onSaveKuitansi(next);
-                  } else {
-                    handleFieldChange('atasNama', val);
-                  }
-                }}
-                className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
-              />
-              <datalist id="datalist-kuitansi-pegawai">
-                {(daftarPegawai || [])
-                  .filter((p) => p.statusActive !== false)
-                  .sort((a, b) => {
-                    const aPrio = a.isPriority ? 1 : 0;
-                    const bPrio = b.isPriority ? 1 : 0;
-                    if (aPrio !== bPrio) return bPrio - aPrio;
-                    return (b.usageCount || 0) - (a.usageCount || 0);
-                  })
-                  .map((peg) => (
-                    <option key={peg.id} value={peg.nama}>
-                      {peg.isPriority ? '⭐ [Prioritas] ' : ''}NIP. {peg.nip} {peg.jabatan ? `— ${peg.jabatan}` : ''} {peg.pangkatGolongan ? `(${peg.pangkatGolongan})` : ''}
-                    </option>
-                  ))}
-              </datalist>
+
+              {!isManualPelaksanaInput && sptPegawaiList.length > 0 ? (
+                <div ref={pelaksanaDropdownRef} className="relative w-full max-w-full">
+                  <button
+                    id="input-atas-nama"
+                    type="button"
+                    aria-haspopup="listbox"
+                    aria-expanded={isPelaksanaDropdownOpen}
+                    onClick={() => setIsPelaksanaDropdownOpen((prev) => !prev)}
+                    className="w-full max-w-full min-h-[42px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer flex items-center justify-between gap-2 text-left"
+                  >
+                    <span className="truncate block flex-1">
+                      {(() => {
+                        if (!draft.atasNama) {
+                          return '-- Pilih Nama Pelaksana sesuai Surat Tugas --';
+                        }
+                        const matchedIdx = sptPegawaiList.findIndex(
+                          (p) =>
+                            p.nama.trim().toLowerCase() ===
+                            draft.atasNama.trim().toLowerCase()
+                        );
+                        if (matchedIdx !== -1) {
+                          const peg = sptPegawaiList[matchedIdx];
+                          return `${matchedIdx + 1}. ${peg.nama}${peg.nip ? ` — NIP. ${peg.nip}` : ''}`;
+                        }
+                        return draft.atasNama;
+                      })()}
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-slate-500 shrink-0 transition-transform ${
+                        isPelaksanaDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {isPelaksanaDropdownOpen && (
+                    <div
+                      role="listbox"
+                      aria-label="Daftar Pelaksana sesuai Surat Tugas"
+                      className="absolute left-0 right-0 top-full mt-1 z-50 w-full max-w-full rounded-xl border border-slate-200 bg-white shadow-xl max-h-60 overflow-y-auto overflow-x-hidden divide-y divide-slate-100"
+                    >
+                      {sptPegawaiList.map((peg, idx) => {
+                        const isSelected =
+                          draft.atasNama.trim().toLowerCase() ===
+                          peg.nama.trim().toLowerCase();
+                        return (
+                          <button
+                            key={peg.id || `${peg.nip}-${idx}`}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            onClick={() => {
+                              const nextCustomFields = {
+                                ...(draft.customFieldValues || {}),
+                              };
+                              if (peg.pangkatGol) {
+                                nextCustomFields['cf-pangkat-gol'] = peg.pangkatGol;
+                              }
+                              if (peg.jabatan) {
+                                nextCustomFields['cf-jabatan'] = peg.jabatan;
+                              }
+                              const next: KuitansiPerjalananDinas = {
+                                ...draft,
+                                atasNama: peg.nama,
+                                nipPenerima: peg.nip || draft.nipPenerima,
+                                customFieldValues: nextCustomFields,
+                                updatedAt: new Date().toISOString(),
+                              };
+                              setDraft(next);
+                              onSaveKuitansi(next);
+                              setIsPelaksanaDropdownOpen(false);
+                            }}
+                            className={`w-full max-w-full px-3 py-2.5 text-left transition-colors cursor-pointer flex items-start justify-between gap-2 ${
+                              isSelected
+                                ? 'bg-sky-50 text-sky-950'
+                                : 'hover:bg-slate-50 text-slate-800'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold leading-snug break-words">
+                                {idx + 1}. {peg.nama}
+                              </div>
+                              {(peg.nip || peg.jabatan) && (
+                                <div className="text-[11px] text-slate-500 font-normal leading-tight mt-0.5 break-words">
+                                  {peg.nip ? `NIP. ${peg.nip}` : ''}
+                                  {peg.nip && peg.jabatan ? ' • ' : ''}
+                                  {peg.jabatan || ''}
+                                </div>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0 mt-0.5" />
+                            )}
+                          </button>
+                        );
+                      })}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPelaksanaDropdownOpen(false);
+                          setIsManualPelaksanaInput(true);
+                        }}
+                        className="w-full max-w-full px-3 py-2.5 text-left text-xs font-bold text-sky-700 hover:bg-sky-50 transition-colors cursor-pointer block"
+                      >
+                        + Ketik Nama Manual...
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    id="input-atas-nama"
+                    type="text"
+                    list="datalist-kuitansi-pegawai"
+                    placeholder="Ketik atau pilih nama pelaksana sesuai Surat Tugas..."
+                    value={draft.atasNama}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const foundInSpt = sptPegawaiList.find(
+                        (p) => p.nama.trim().toLowerCase() === val.trim().toLowerCase()
+                      );
+                      if (foundInSpt) {
+                        const nextCustomFields = { ...(draft.customFieldValues || {}) };
+                        if (foundInSpt.pangkatGol) {
+                          nextCustomFields['cf-pangkat-gol'] = foundInSpt.pangkatGol;
+                        }
+                        if (foundInSpt.jabatan) {
+                          nextCustomFields['cf-jabatan'] = foundInSpt.jabatan;
+                        }
+                        const next: KuitansiPerjalananDinas = {
+                          ...draft,
+                          atasNama: foundInSpt.nama,
+                          nipPenerima: foundInSpt.nip || draft.nipPenerima,
+                          customFieldValues: nextCustomFields,
+                          updatedAt: new Date().toISOString(),
+                        };
+                        setDraft(next);
+                        onSaveKuitansi(next);
+                        return;
+                      }
+                      const activePeg = (daftarPegawai || []).filter(
+                        (p) => p.statusActive !== false
+                      );
+                      const found = activePeg.find(
+                        (p) => p.nama.trim().toLowerCase() === val.trim().toLowerCase()
+                      );
+                      if (found) {
+                        const nextCustomFields = { ...(draft.customFieldValues || {}) };
+                        if (found.pangkatGolongan) {
+                          nextCustomFields['cf-pangkat-gol'] = found.pangkatGolongan;
+                        }
+                        if (found.jabatan) {
+                          nextCustomFields['cf-jabatan'] = found.jabatan;
+                        }
+                        const next: KuitansiPerjalananDinas = {
+                          ...draft,
+                          atasNama: found.nama,
+                          nipPenerima: found.nip,
+                          customFieldValues: nextCustomFields,
+                          updatedAt: new Date().toISOString(),
+                        };
+                        setDraft(next);
+                        onSaveKuitansi(next);
+                      } else {
+                        handleFieldChange('atasNama', val);
+                      }
+                    }}
+                    className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                  <datalist id="datalist-kuitansi-pegawai">
+                    {sptPegawaiList.map((peg, idx) => (
+                      <option key={`spt-${peg.id || idx}`} value={peg.nama}>
+                        [Surat Tugas #{idx + 1}] NIP. {peg.nip}{' '}
+                        {peg.jabatan ? `— ${peg.jabatan}` : ''}{' '}
+                        {peg.pangkatGol ? `(${peg.pangkatGol})` : ''}
+                      </option>
+                    ))}
+                    {(daftarPegawai || [])
+                      .filter(
+                        (p) =>
+                          p.statusActive !== false &&
+                          !sptPegawaiList.some(
+                            (sp) =>
+                              sp.nama.trim().toLowerCase() ===
+                              p.nama.trim().toLowerCase()
+                          )
+                      )
+                      .map((peg) => (
+                        <option key={peg.id} value={peg.nama}>
+                          NIP. {peg.nip} {peg.jabatan ? `— ${peg.jabatan}` : ''}{' '}
+                          {peg.pangkatGolongan ? `(${peg.pangkatGolongan})` : ''}
+                        </option>
+                      ))}
+                  </datalist>
+                  {isManualPelaksanaInput && sptPegawaiList.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsManualPelaksanaInput(false)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-sky-700 hover:text-sky-900 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-md cursor-pointer"
+                    >
+                      Pilih SPT
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label
@@ -527,148 +775,105 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             />
           </div>
 
-          {/* INTEGRATED DATE PICKER FOR TANGGAL PERJALANAN KUITANSI */}
-          <div className="rounded-2xl border border-sky-200 bg-sky-50/60 p-3.5 space-y-3 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-sky-200/80 pb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-sky-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                  <Calendar className="w-3.5 h-3.5" />
+          {/* TANGGAL MULAI & SELESAI PERJALANAN KUITANSI */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {/* Tanggal Mulai Perjalanan */}
+            <div>
+              <label
+                htmlFor="input-kui-tgl-mulai"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Tanggal Mulai Perjalanan
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  id="input-kui-tgl-mulai"
+                  type="text"
+                  placeholder="Contoh: 10 April 2026"
+                  value={kuiIsoStart ? formatIndonesianFormalDate(kuiIsoStart, false) : ''}
+                  readOnly
+                  className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pr-10 pl-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
+                />
+                <div className="absolute right-2.5 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={handleOpenKuiStartPicker}
+                    className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer relative"
+                    title="Buka Kalender Pemilih Tanggal"
+                  >
+                    <Calendar className="w-4 h-4 text-sky-700" />
+                    <input
+                      ref={kuiStartPickerRef}
+                      type="date"
+                      value={kuiIsoStart}
+                      onChange={(e) => {
+                        const newStart = e.target.value;
+                        if (!newStart) return;
+                        const newEnd = newStart > kuiIsoEnd ? newStart : kuiIsoEnd;
+                        applyKuiDateSelection(newStart, newEnd);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                  </button>
                 </div>
-                <div>
-                  <h4 className="text-xs font-extrabold text-sky-950">
-                    Pilihan Tanggal Perjalanan Kuitansi
-                  </h4>
-                  <p className="text-[11px] text-sky-800">
-                    Pilih tanggal via kalender atau ketik langsung (contoh: 10 s.d 12 April 2026).
-                  </p>
-                </div>
-              </div>
-
-              {/* Presets */}
-              <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto">
-                <span className="text-[10px] font-bold text-sky-900">Preset:</span>
-                <button
-                  type="button"
-                  onClick={() => applyKuiDateSelection(getTodayIso(0), getTodayIso(2))}
-                  className="px-2 py-0.5 rounded bg-white border border-sky-300 hover:bg-sky-100 text-sky-900 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                >
-                  Hari Ini (+3 Hari)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyKuiDateSelection(getTodayIso(1), getTodayIso(3))}
-                  className="px-2 py-0.5 rounded bg-white border border-sky-300 hover:bg-sky-100 text-sky-900 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                >
-                  Besok (+3 Hari)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyKuiDateSelection(getTodayIso(0), getTodayIso(4))}
-                  className="px-2 py-0.5 rounded bg-white border border-sky-300 hover:bg-sky-100 text-sky-900 text-[11px] font-bold cursor-pointer transition-colors shadow-2xs"
-                >
-                  5 Hari Tugas
-                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Tanggal Mulai Perjalanan */}
-              <div>
-                <label
-                  htmlFor="input-kui-tgl-mulai"
-                  className="block text-xs font-bold text-slate-800 mb-1"
-                >
-                  Tanggal Mulai Perjalanan
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    id="input-kui-tgl-mulai"
-                    type="text"
-                    placeholder="Contoh: 10 April 2026"
-                    value={kuiIsoStart ? formatIndonesianFormalDate(kuiIsoStart, false) : ''}
-                    readOnly
-                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pr-10 pl-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
-                  />
-                  <div className="absolute right-2.5 flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={handleOpenKuiStartPicker}
-                      className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer relative"
-                      title="Buka Kalender Pemilih Tanggal"
-                    >
-                      <Calendar className="w-4 h-4 text-sky-700" />
-                      <input
-                        ref={kuiStartPickerRef}
-                        type="date"
-                        value={kuiIsoStart}
-                        onChange={(e) => {
-                          const newStart = e.target.value;
-                          if (!newStart) return;
-                          const newEnd = newStart > kuiIsoEnd ? newStart : kuiIsoEnd;
-                          applyKuiDateSelection(newStart, newEnd);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tanggal Selesai Perjalanan */}
-              <div>
-                <label
-                  htmlFor="input-kui-tgl-selesai"
-                  className="block text-xs font-bold text-slate-800 mb-1"
-                >
-                  Tanggal Selesai Perjalanan
-                </label>
-                <div className="relative flex items-center">
-                  <input
-                    id="input-kui-tgl-selesai"
-                    type="text"
-                    placeholder="Contoh: 12 April 2026"
-                    value={kuiIsoEnd ? formatIndonesianFormalDate(kuiIsoEnd, false) : ''}
-                    readOnly
-                    className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pr-10 pl-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
-                  />
-                  <div className="absolute right-2.5 flex items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={handleOpenKuiEndPicker}
-                      className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer relative"
-                      title="Buka Kalender Pemilih Tanggal"
-                    >
-                      <Calendar className="w-4 h-4 text-sky-700" />
-                      <input
-                        ref={kuiEndPickerRef}
-                        type="date"
-                        value={kuiIsoEnd}
-                        min={kuiIsoStart}
-                        onChange={(e) => {
-                          const newEnd = e.target.value;
-                          if (!newEnd) return;
-                          applyKuiDateSelection(kuiIsoStart, newEnd);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      />
-                    </button>
-                  </div>
+            {/* Tanggal Selesai Perjalanan */}
+            <div>
+              <label
+                htmlFor="input-kui-tgl-selesai"
+                className="block text-xs font-semibold text-slate-700 mb-1"
+              >
+                Tanggal Selesai Perjalanan
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  id="input-kui-tgl-selesai"
+                  type="text"
+                  placeholder="Contoh: 12 April 2026"
+                  value={kuiIsoEnd ? formatIndonesianFormalDate(kuiIsoEnd, false) : ''}
+                  readOnly
+                  className="w-full min-h-[42px] rounded-xl border border-slate-300 bg-white pr-10 pl-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
+                />
+                <div className="absolute right-2.5 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={handleOpenKuiEndPicker}
+                    className="p-1.5 rounded-lg text-sky-700 hover:bg-sky-100 transition-colors cursor-pointer relative"
+                    title="Buka Kalender Pemilih Tanggal"
+                  >
+                    <Calendar className="w-4 h-4 text-sky-700" />
+                    <input
+                      ref={kuiEndPickerRef}
+                      type="date"
+                      value={kuiIsoEnd}
+                      min={kuiIsoStart}
+                      onChange={(e) => {
+                        const newEnd = e.target.value;
+                        if (!newEnd) return;
+                        applyKuiDateSelection(kuiIsoStart, newEnd);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <div className="flex items-center justify-between gap-1 mb-1">
-                <div className="flex items-center gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-start">
+            <div className="min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1 min-h-[22px]">
+                <div className="flex items-center gap-1 min-w-0">
                   <label
                     htmlFor="input-no-spt"
-                    className="block text-xs font-bold text-slate-800"
+                    className="block text-xs font-semibold text-slate-700 truncate"
+                    title="Nomor SPT (Surat Perintah Tugas)"
                   >
-                    Nomor SPT (Surat Perintah Tugas) *
+                    Nomor SPT *
                   </label>
                   <InfoTooltip
                     variant="question"
@@ -678,76 +883,74 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   />
                 </div>
                 {sptList && sptList.length > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!draft.noSpt) {
-                          setValidationErrors(['Isi atau pilih No. SPT terlebih dahulu untuk sinkronisasi data dari Surat Tugas.']);
-                          return;
-                        }
-                        const foundSpt = sptList.find((s) => s.noSpt.trim().toLowerCase() === draft.noSpt.trim().toLowerCase()) || sptList[0];
-                        if (foundSpt) {
-                          const tujuanVal = foundSpt.tempatTujuan ? foundSpt.tempatTujuan.replace(/[;]/g, '').trim() : draft.tujuan;
-                          
-                          let kuitansiDateStr = draft.tanggalPerjalanan;
-                          try {
-                            const parseIndonesianDateStr = (str: string) => {
-                              if (!str) return null;
-                              const parts = str.replace(/[;,]/g, '').trim().split(/\s+/);
-                              const numParts = parts.filter(p => !isNaN(Number(p)));
-                              const wordParts = parts.filter(p => isNaN(Number(p)));
-                              const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-                              if (numParts.length >= 2 && wordParts.length >= 1) {
-                                const day = numParts[0];
-                                const year = numParts[numParts.length - 1];
-                                const month = wordParts.find(w => monthNames.includes(w)) || wordParts[0];
-                                return { day, month, year };
-                              }
-                              return null;
-                            };
-
-                            const startParsed = parseIndonesianDateStr(foundSpt.tanggalBerangkat);
-                            const endParsed = parseIndonesianDateStr(foundSpt.tanggalHarusKembali);
-
-                            if (startParsed && endParsed) {
-                              if (startParsed.year === endParsed.year && startParsed.month === endParsed.month) {
-                                kuitansiDateStr = `${startParsed.day} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
-                              } else if (startParsed.year === endParsed.year) {
-                                kuitansiDateStr = `${startParsed.day} ${startParsed.month} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
-                              } else {
-                                kuitansiDateStr = `${startParsed.day} ${startParsed.month} ${startParsed.year} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
-                              }
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!draft.noSpt) {
+                        setValidationErrors(['Isi atau pilih No. SPT terlebih dahulu untuk sinkronisasi data dari Surat Tugas.']);
+                        return;
+                      }
+                      const foundSpt = sptList.find((s) => s.noSpt.trim().toLowerCase() === draft.noSpt.trim().toLowerCase()) || sptList[0];
+                      if (foundSpt) {
+                        const tujuanVal = foundSpt.tempatTujuan ? foundSpt.tempatTujuan.replace(/[;]/g, '').trim() : draft.tujuan;
+                        
+                        let kuitansiDateStr = draft.tanggalPerjalanan;
+                        try {
+                          const parseIndonesianDateStr = (str: string) => {
+                            if (!str) return null;
+                            const parts = str.replace(/[;,]/g, '').trim().split(/\s+/);
+                            const numParts = parts.filter(p => !isNaN(Number(p)));
+                            const wordParts = parts.filter(p => isNaN(Number(p)));
+                            const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+                            if (numParts.length >= 2 && wordParts.length >= 1) {
+                              const day = numParts[0];
+                              const year = numParts[numParts.length - 1];
+                              const month = wordParts.find(w => monthNames.includes(w)) || wordParts[0];
+                              return { day, month, year };
                             }
-                          } catch {
-                            // fallback
-                          }
-
-                          const firstPeg = foundSpt.pegawaiList?.[0];
-                          const next: KuitansiPerjalananDinas = {
-                            ...draft,
-                            noSpt: foundSpt.noSpt,
-                            tujuan: tujuanVal,
-                            tanggalPerjalanan: kuitansiDateStr,
-                            untukPengeluaran: foundSpt.maksudPerjalanan || draft.untukPengeluaran,
-                            atasNama: firstPeg ? firstPeg.nama : draft.atasNama,
-                            nipPenerima: firstPeg ? firstPeg.nip : draft.nipPenerima,
-                            updatedAt: new Date().toISOString(),
+                            return null;
                           };
-                          setDraft(next);
-                          onSaveKuitansi(next);
-                          setValidationErrors([]);
+
+                          const startParsed = parseIndonesianDateStr(foundSpt.tanggalBerangkat);
+                          const endParsed = parseIndonesianDateStr(foundSpt.tanggalHarusKembali);
+
+                          if (startParsed && endParsed) {
+                            if (startParsed.year === endParsed.year && startParsed.month === endParsed.month) {
+                              kuitansiDateStr = `${startParsed.day} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
+                            } else if (startParsed.year === endParsed.year) {
+                              kuitansiDateStr = `${startParsed.day} ${startParsed.month} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
+                            } else {
+                              kuitansiDateStr = `${startParsed.day} ${startParsed.month} ${startParsed.year} s.d ${endParsed.day} ${endParsed.month} ${endParsed.year}`;
+                            }
+                          }
+                        } catch {
+                          // fallback
                         }
-                      }}
-                      className="px-2 py-0.5 rounded bg-sky-700 hover:bg-sky-800 text-white text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs"
-                      title="Ambil / Sinkronkan seluruh data dari Surat Tugas"
-                    >
-                      <span>🔄 Tarik Data SPT</span>
-                    </button>
-                    <span className="text-[10px] text-sky-800 font-bold bg-sky-100 px-1.5 py-0.5 rounded">
-                      {sptList.length} SPT
-                    </span>
-                  </div>
+
+                        const firstPeg = foundSpt.pegawaiList?.[0];
+                        const syncedSubKeg = extractSubKegiatanFromSpt(foundSpt);
+                        const next: KuitansiPerjalananDinas = {
+                          ...draft,
+                          noSpt: foundSpt.noSpt,
+                          subKegiatan: syncedSubKeg || draft.subKegiatan,
+                          tujuan: tujuanVal,
+                          tanggalPerjalanan: kuitansiDateStr,
+                          untukPengeluaran: foundSpt.maksudPerjalanan || draft.untukPengeluaran,
+                          atasNama: firstPeg ? firstPeg.nama : draft.atasNama,
+                          nipPenerima: firstPeg ? firstPeg.nip : draft.nipPenerima,
+                          updatedAt: new Date().toISOString(),
+                        };
+                        setDraft(next);
+                        onSaveKuitansi(next);
+                        setValidationErrors([]);
+                      }
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200/90 text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer whitespace-nowrap shrink-0 transition-colors"
+                    title="Ambil / Sinkronkan seluruh data dari Surat Tugas"
+                  >
+                    <RefreshCw className="w-3 h-3 shrink-0" />
+                    <span>Tarik Data SPT</span>
+                  </button>
                 )}
               </div>
 
@@ -800,9 +1003,11 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                       // fallback
                     }
 
+                    const syncedSubKeg = extractSubKegiatanFromSpt(foundSpt);
                     const next: KuitansiPerjalananDinas = {
                       ...draft,
                       noSpt: foundSpt.noSpt,
+                      subKegiatan: syncedSubKeg || draft.subKegiatan,
                       tujuan: tujuanVal,
                       tanggalPerjalanan: kuitansiDateStr,
                       untukPengeluaran: foundSpt.maksudPerjalanan || draft.untukPengeluaran,
@@ -824,11 +1029,11 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 ))}
               </datalist>
             </div>
-            <div>
-              <div className="flex items-center gap-1.5 mb-1">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 mb-1 min-h-[22px]">
                 <label
                   htmlFor="input-tempat-tgl-ttd"
-                  className="block text-xs font-semibold text-slate-700"
+                  className="block text-xs font-semibold text-slate-700 truncate"
                 >
                   Tempat &amp; Tanggal Tanda Tangan
                 </label>
@@ -1406,7 +1611,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
 
   return (
     <div
-      className={`space-y-3 pb-20 lg:pb-0 ${
+      className={`space-y-3 pb-20 lg:pb-0 min-w-0 max-w-full overflow-x-hidden ${
         isMobileSheetOpen ? 'max-lg:overflow-hidden' : ''
       }`}
     >
@@ -1450,11 +1655,11 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       {/* CANVA STUDIO WORKSPACE:
           - Desktop (lg+): Left Studio Inspector Panel + Right Interactive Paper Canvas
           - Mobile (<lg): Always-visible Interactive Paper Canvas + Slide-Up Bottom Sheet + Bottom Studio Tool Dock */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start print:block">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start print:block min-w-0 max-w-full">
         {/* DESKTOP LEFT INSPECTOR PANEL (Hidden on Mobile because Mobile uses Canva Slide-Up Bottom Sheet) */}
         <form
           onSubmit={handleExplicitValidateAndSave}
-          className="no-print hidden lg:block lg:col-span-5 bg-white border border-slate-200 rounded-2xl overflow-hidden"
+          className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden"
         >
           {/* Step / Category Navigation Tabs Inside Form */}
           <div
@@ -1561,7 +1766,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
         </form>
 
         {/* ALWAYS-VISIBLE INTERACTIVE PAPER CANVAS (Mobile & Desktop) */}
-        <div className="lg:col-span-7 lg:sticky lg:top-20 print:block print:w-full">
+        <div className="lg:col-span-7 min-w-0 max-w-full lg:sticky lg:top-20 print:block print:w-full">
           <InteractivePaperViewer
             paperSize={paperSize}
             onChangePaperSize={onChangePaperSize}

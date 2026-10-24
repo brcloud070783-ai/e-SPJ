@@ -352,11 +352,11 @@ export const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({
   return (
     <article
       onClick={onClick}
-      className={`bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between transition-all ${
+      className={`min-w-0 max-w-full bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col justify-between transition-all ${
         onClick ? 'hover:border-sky-400 hover:shadow-xs cursor-pointer group' : ''
       }`}
     >
-      <div>
+      <div className="min-w-0">
         {/* Media Slot: Image Thumbnail with Resilient Fallback */}
         {mediaImageUrl && !imgError ? (
           <div
@@ -374,10 +374,10 @@ export const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({
           </div>
         ) : null}
 
-        <div className="p-5 space-y-3">
+        <div className="p-4 sm:p-5 space-y-3 min-w-0">
           {/* Unboxed Microcopy Metadata Row (Zero-Pill Discipline) */}
           {metadataItems.length > 0 && (
-            <div className="flex items-center justify-between gap-2 text-xs text-slate-500">
+            <div className="flex items-center justify-between gap-2 text-xs text-slate-500 min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                 {metadataItems.map((meta, index) => (
                   <React.Fragment key={index}>
@@ -393,39 +393,39 @@ export const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({
           )}
 
           {/* Symbol + Primary Text Header */}
-          <div className="flex items-start gap-3.5">
+          <div className="flex items-start gap-3.5 min-w-0">
             {SymbolIcon && (
               <div
-                className={`w-12 h-12 rounded-2xl ${symbolBgClass} flex items-center justify-center shrink-0`}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl ${symbolBgClass} flex items-center justify-center shrink-0`}
               >
-                <SymbolIcon className="w-6 h-6" />
+                <SymbolIcon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             )}
             <div className="min-w-0 flex-1 space-y-0.5">
-              <h2 className="text-base font-bold text-slate-900 group-hover:text-sky-700 transition-colors leading-snug">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-sky-700 transition-colors leading-snug break-words">
                 {title}
               </h2>
               {subtitle && (
-                <p className="text-xs font-medium text-slate-500">{subtitle}</p>
+                <p className="text-xs font-medium text-slate-500 break-words">{subtitle}</p>
               )}
             </div>
           </div>
 
-          {/* Highlight Numeric Value (e.g., Rupiah Nominal) */}
+          {/* Highlight Numeric Value (e.g., Rupiah Nominal or SPT Number) */}
           {highlightValue && (
-            <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums">
+            <p className="text-base sm:text-lg font-extrabold font-mono text-slate-900 tabular-nums break-all sm:break-words min-w-0">
               {highlightValue}
             </p>
           )}
 
           {/* Main Explanatory Microcopy */}
           {description && (
-            <p className="text-xs text-slate-600 leading-relaxed">{description}</p>
+            <p className="text-xs text-slate-600 leading-relaxed break-words">{description}</p>
           )}
 
           {/* Structured Supporting Metadata Rows */}
           {detailRows && detailRows.length > 0 && (
-            <div className="pt-2.5 space-y-1.5 text-xs text-slate-500 border-t border-slate-100">
+            <div className="pt-2.5 space-y-1.5 text-xs text-slate-500 border-t border-slate-100 min-w-0">
               {detailRows.map((row, idx) => {
                 const RowIcon = row.icon;
                 return (
@@ -442,8 +442,8 @@ export const UnifiedMediaCard: React.FC<UnifiedMediaCardProps> = ({
 
       {/* Unified Card Footer */}
       {(footerLeft || footerRight) && (
-        <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-          <div className="min-w-0">{footerLeft}</div>
+        <div className="px-4 sm:px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2 text-xs min-w-0">
+          <div className="min-w-0 flex-1 truncate">{footerLeft}</div>
           <div className="shrink-0">{footerRight}</div>
         </div>
       )}
