@@ -55,15 +55,15 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
 
   return (
     <div
-      className={`spt-doc mx-auto bg-white text-slate-900 shadow-xl print:shadow-none print:m-0 print:p-0 print:w-full font-sans ${
-        isPrintMode ? '' : 'p-8 sm:p-12 border border-slate-200'
+      className={`spt-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
+        isPrintMode ? '' : 'p-10 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
         boxSizing: 'border-box',
-        fontFamily: 'Arial, Helvetica, sans-serif',
-        lineHeight: 1.125,
+        fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Helvetica, sans-serif",
+        lineHeight: 1.15,
       }}
     >
       <style>{`
@@ -81,35 +81,35 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
         className={getZoneClass('header')}
       >
         {renderZoneBadge('Kop & Nomor')}
-        <div className="flex items-start gap-4 pb-2 border-b-4 border-double border-slate-900">
+        <div className="flex items-start gap-4 pb-2 border-b-4 border-double border-black">
           <div className="w-16 h-20 shrink-0 flex items-center justify-center pt-1">
             <KaltaraEmblem
               className="w-14 h-18"
               logoDataUrl={appSettings.logoPemprovDataUrl}
             />
           </div>
-          <div className="flex-1 text-center pr-12 font-sans">
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-slate-800 mb-[1.5pt]">
+          <div className="flex-1 text-center pr-12">
+            <h2 className="text-[14px] font-bold uppercase tracking-wide text-black leading-[1.2] mb-[1.5pt]">
               {appSettings.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
             </h2>
-            <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-tight text-slate-900 mb-[1.5pt]">
+            <h1 className="text-[16px] font-extrabold uppercase tracking-tight text-black leading-[1.2] mb-[1.5pt]">
               {appSettings.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </h1>
-            <p className="text-[10px] text-slate-700 mb-[1.5pt]">
+            <p className="text-[10.5px] text-black leading-[1.2] mb-[1.5pt]">
               {appSettings.alamatDinasBaris1}
             </p>
-            <p className="text-[10px] text-slate-700 mb-[1.5pt]">
+            <p className="text-[10.5px] text-black leading-[1.2] mb-[1.5pt]">
               {appSettings.alamatDinasBaris2} | {appSettings.kontakDinas}
             </p>
           </div>
         </div>
 
         {/* JUDUL SURAT & NOMOR */}
-        <div className="text-center pt-4 pb-2">
-          <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider underline text-slate-900 mb-[1.5pt]">
+        <div className="text-center pt-3.5 pb-2">
+          <h2 className="text-[15px] font-bold uppercase tracking-wider underline text-black leading-[1.2] mb-[1.5pt]">
             SURAT PERINTAH TUGAS
           </h2>
-          <p className="text-xs font-sans font-medium text-slate-800 mb-[1.5pt]">
+          <p className="text-[12px] font-medium text-black leading-[1.2] mb-[1.5pt]">
             Nomor:{' '}
             <span
               contentEditable={!isPrintMode}
@@ -131,7 +131,7 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
         className={`mt-2 ${getZoneClass('dasar')}`}
       >
         {renderZoneBadge('Dasar Hukum')}
-        <div className="flex items-start text-xs sm:text-xs">
+        <div className="flex items-start text-[12px]">
           <span className="w-16 shrink-0 font-medium">Dasar</span>
           <span className="w-4 shrink-0 font-medium">:</span>
           <div className="flex-1">
@@ -161,14 +161,14 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
       {/* 3. MEMERINTAHKAN & KEPADA (DAFTAR PEGAWAI) */}
       <div
         onClick={() => onSelectZone?.('pegawai')}
-        className={`mt-3 ${getZoneClass('pegawai')}`}
+        className={`mt-2.5 ${getZoneClass('pegawai')}`}
       >
         {renderZoneBadge('Daftar Pegawai')}
-        <div className="text-center font-bold uppercase text-xs tracking-widest my-2">
+        <div className="text-center font-bold uppercase text-[12px] tracking-widest my-1.5">
           MEMERINTAHKAN
         </div>
 
-        <div className="flex items-start text-xs">
+        <div className="flex items-start text-[12px]">
           <span className="w-16 shrink-0 font-medium">Kepada</span>
           <span className="w-4 shrink-0 font-medium">:</span>
           <div className="flex-1">
@@ -176,27 +176,27 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
               spt.pegawaiList.map((peg, idx) => (
                 <div key={peg.id || idx} className="space-y-0.5 mb-[3pt] spt-para">
                   {/* Row 1: Nama */}
-                  <div className="flex items-baseline text-xs mb-[1.5pt]">
+                  <div className="flex items-baseline text-[12px] mb-[1.5pt]">
                     <span className="w-6 shrink-0 font-medium">{idx + 1}.</span>
-                    <span className="w-28 shrink-0 font-medium text-slate-800">Nama</span>
-                    <span className="w-4 shrink-0 font-medium text-slate-800">:</span>
+                    <span className="w-28 shrink-0 font-medium text-black">Nama</span>
+                    <span className="w-4 shrink-0 font-medium text-black">:</span>
                     <span
                       contentEditable={!isPrintMode}
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onUpdatePegawai?.(peg.id, 'nama', e.currentTarget.innerText.trim())
                       }
-                      className={`flex-1 font-bold text-slate-900 ${editableClass}`}
+                      className={`flex-1 font-bold text-black ${editableClass}`}
                     >
                       {peg.nama}
                     </span>
                   </div>
 
                   {/* Row 2: Pangkat/Gol. */}
-                  <div className="flex items-baseline text-xs mb-[1.5pt]">
+                  <div className="flex items-baseline text-[12px] mb-[1.5pt]">
                     <span className="w-6 shrink-0"></span>
-                    <span className="w-28 shrink-0 text-slate-700">Pangkat/Gol.</span>
-                    <span className="w-4 shrink-0 font-medium text-slate-800">:</span>
+                    <span className="w-28 shrink-0 text-black">Pangkat/Gol.</span>
+                    <span className="w-4 shrink-0 font-medium text-black">:</span>
                     <span
                       contentEditable={!isPrintMode}
                       suppressContentEditableWarning
@@ -210,27 +210,27 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
                   </div>
 
                   {/* Row 3: NIP */}
-                  <div className="flex items-baseline text-xs mb-[1.5pt]">
+                  <div className="flex items-baseline text-[12px] mb-[1.5pt]">
                     <span className="w-6 shrink-0"></span>
-                    <span className="w-28 shrink-0 text-slate-700 font-sans font-medium">NIP</span>
-                    <span className="w-4 shrink-0 font-medium text-slate-800">:</span>
+                    <span className="w-28 shrink-0 text-black font-medium">NIP</span>
+                    <span className="w-4 shrink-0 font-medium text-black">:</span>
                     <span
                       contentEditable={!isPrintMode}
                       suppressContentEditableWarning
                       onBlur={(e) =>
                         onUpdatePegawai?.(peg.id, 'nip', e.currentTarget.innerText.trim())
                       }
-                      className={`flex-1 font-sans font-medium ${editableClass}`}
+                      className={`flex-1 font-medium tabular-nums ${editableClass}`}
                     >
                       {peg.nip || '-'}
                     </span>
                   </div>
 
                   {/* Row 4: Jabatan */}
-                  <div className="flex items-baseline text-xs mb-[1.5pt]">
+                  <div className="flex items-baseline text-[12px] mb-[1.5pt]">
                     <span className="w-6 shrink-0"></span>
-                    <span className="w-28 shrink-0 text-slate-700">Jabatan</span>
-                    <span className="w-4 shrink-0 font-medium text-slate-800">:</span>
+                    <span className="w-28 shrink-0 text-black">Jabatan</span>
+                    <span className="w-4 shrink-0 font-medium text-black">:</span>
                     <span
                       contentEditable={!isPrintMode}
                       suppressContentEditableWarning
@@ -254,7 +254,7 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
       {/* 4. DETAIL TUGAS & RINCIAN PERJALANAN */}
       <div
         onClick={() => onSelectZone?.('detail')}
-        className={`mt-4 text-xs ${getZoneClass('detail')}`}
+        className={`mt-3.5 text-[12px] text-black ${getZoneClass('detail')}`}
       >
         {renderZoneBadge('Detail Perjalanan')}
 
@@ -367,16 +367,16 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
       {/* 5. PARAGRAF PENUTUP & TANDA TANGAN */}
       <div
         onClick={() => onSelectZone?.('ttd')}
-        className={`mt-6 ${getZoneClass('ttd')}`}
+        className={`mt-5 text-black ${getZoneClass('ttd')}`}
       >
         {renderZoneBadge('Penandatangan')}
 
-        <p className="text-xs text-justify mb-[1.5pt] spt-para">
+        <p className="text-[12px] text-justify mb-[1.5pt] spt-para">
           Demikian Surat Perintah Tugas ini diberikan agar dapat dipergunakan sebagaimana mestinya dan segera membuat laporan setelah melaksanakan tugas.
         </p>
 
         {/* PENANDATANGAN (RIGHT ALIGNED) */}
-        <div className="mt-6 flex justify-end text-xs">
+        <div className="mt-5 flex justify-end text-[12px]">
           <div className="w-72">
             <div className="flex items-center mb-[1.5pt] spt-para">
               <span className="w-28 shrink-0">Ditetapkan di</span>
@@ -421,7 +421,7 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
             </div>
 
             {/* Signature Gap */}
-            <div className="h-16" />
+            <div className={spt.pegawaiList && spt.pegawaiList.length > 2 ? 'h-12' : 'h-14'} />
 
             <div>
               <p
@@ -430,11 +430,11 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
                 onBlur={(e) =>
                   onUpdateField?.('namaPenandatangan', e.currentTarget.innerText.trim())
                 }
-                className={`font-bold underline text-slate-900 mb-[1.5pt] ${editableClass}`}
+                className={`font-bold underline text-black mb-[1.5pt] ${editableClass}`}
               >
                 {spt.namaPenandatangan || 'Hasanuddin, S.Pd., M.Si.'}
               </p>
-              <p className="font-sans font-medium text-slate-800 mb-[1.5pt] spt-para">
+              <p className="font-medium text-black tabular-nums mb-[1.5pt] spt-para">
                 NIP{' '}
                 <span
                   contentEditable={!isPrintMode}
@@ -453,7 +453,7 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
                 onBlur={(e) =>
                   onUpdateField?.('pangkatPenandatangan', e.currentTarget.innerText.trim())
                 }
-                className={`text-slate-700 font-medium mb-[1.5pt] ${editableClass}`}
+                className={`text-black font-medium mb-[1.5pt] ${editableClass}`}
               >
                 {spt.pangkatPenandatangan || 'Pembina Tingkat I, IV/b'}
               </p>

@@ -50,6 +50,10 @@ import {
   formatIndonesianFormalDate,
   calculateTravelDuration,
 } from '../utils/spjCalculations';
+import {
+  buildCleanPdfTitle,
+  triggerIsolatedSpjPrint,
+} from '../utils/printPdf';
 
 export type ActiveDocType = 'spd' | 'spd-belakang' | 'spt';
 
@@ -2058,23 +2062,57 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onCreateNewSpt}
-              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
+              className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Data Baru</span>
             </button>
 
-            <button
-              type="submit"
-              className="min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer shadow-xs"
-            >
-              <Save className="w-4 h-4" />
-              <span>Simpan Perubahan</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const prefix =
+                    docType === 'spd-belakang'
+                      ? 'SPD_Visum_Belakang'
+                      : docType === 'spd'
+                      ? 'SPD_Depan'
+                      : 'Surat_Perintah_Tugas';
+                  void triggerIsolatedSpjPrint({
+                    paperSize,
+                    documentTitle: buildCleanPdfTitle({
+                      prefix,
+                      atasNama: activeSpdPelaksana.nama,
+                      noSpt: draft.noSpt,
+                      paperSize,
+                    }),
+                    sheetSelector: '.print-only-sheet',
+                  });
+                }}
+                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>
+                  {docType === 'spd-belakang'
+                    ? `Cetak Visum (${paperSize})`
+                    : docType === 'spd'
+                    ? `Cetak SPD (${paperSize})`
+                    : `Cetak SPT (${paperSize})`}
+                </span>
+              </button>
+
+              <button
+                type="submit"
+                className="min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Save className="w-4 h-4" />
+                <span>Simpan Perubahan</span>
+              </button>
+            </div>
           </div>
         </form>
 
@@ -2456,7 +2494,24 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
 
         <button
           type="button"
-          onClick={() => window.print()}
+          onClick={() => {
+            const prefix =
+              docType === 'spd-belakang'
+                ? 'SPD_Visum_Belakang'
+                : docType === 'spd'
+                ? 'SPD_Depan'
+                : 'Surat_Perintah_Tugas';
+            void triggerIsolatedSpjPrint({
+              paperSize,
+              documentTitle: buildCleanPdfTitle({
+                prefix,
+                atasNama: activeSpdPelaksana.nama,
+                noSpt: draft.noSpt,
+                paperSize,
+              }),
+              sheetSelector: '.print-only-sheet',
+            });
+          }}
           aria-label={
             docType === 'spd-belakang'
               ? 'Cetak SPD Lembar 2 Visum'

@@ -50,6 +50,10 @@ import {
   calculateDocumentationGridDimensions,
   DocumentationPrintGridMode,
 } from '../utils/spjCalculations';
+import {
+  buildCleanPdfTitle,
+  triggerIsolatedSpjPrint,
+} from '../utils/printPdf';
 
 interface StagedDocFile {
   id: string;
@@ -2166,7 +2170,19 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
 
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() => {
+                  void triggerIsolatedSpjPrint({
+                    paperSize,
+                    documentTitle: buildCleanPdfTitle({
+                      prefix: 'Dokumentasi_Perjalanan_Dinas',
+                      atasNama: activeKuitansi.atasNama,
+                      noSpt: activeKuitansi.noSpt,
+                      paperSize,
+                    }),
+                    sheetSelector: '.print-only-sheet',
+                    zeroPageMargin: true,
+                  });
+                }}
                 className="min-h-[36px] px-4 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -2177,10 +2193,16 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
             <div className="space-y-6">
               {paginatedPages.map((pageItems, pageIdx) => {
                 const gridDim = calculateDocumentationGridDimensions(paperSize, optimalGridMode);
+                const isLastDocPage = pageIdx === paginatedPages.length - 1;
 
                 return (
-                  <div key={`page-${pageIdx}`} className="documentation-print-sheet">
-                    {/* Dynamic Precise @media print styles enforcing 90% physical printable area */}
+                  <div
+                    key={`page-${pageIdx}`}
+                    className={`documentation-print-sheet ${
+                      isLastDocPage ? 'spj-last-printable-wrapper' : 'spj-page-break-after'
+                    }`}
+                  >
+                    {/* Dynamic Precise @media print styles enforcing 90% physical printable area without trailing blank page */}
                     <style>{`
                       @media print {
                         @page {
@@ -2189,18 +2211,16 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                         }
                         .documentation-print-sheet {
                           width: ${paperSize === 'F4' ? '215mm' : '210mm'} !important;
-                          height: ${paperSize === 'F4' ? '330mm' : '297mm'} !important;
-                          min-height: ${paperSize === 'F4' ? '330mm' : '297mm'} !important;
-                          max-height: ${paperSize === 'F4' ? '330mm' : '297mm'} !important;
-                          margin: 0 !important;
+                          height: auto !important;
+                          min-height: 0 !important;
+                          max-height: ${paperSize === 'F4' ? '328.5mm' : '295.5mm'} !important;
+                          margin: 0 auto !important;
                           padding: 0 !important;
                           box-sizing: border-box !important;
                           display: flex !important;
                           flex-direction: column !important;
                           justify-content: center !important;
                           align-items: center !important;
-                          page-break-after: always !important;
-                          break-after: page !important;
                         }
                         .documentation-print-area {
                           width: ${gridDim.printAreaWidthMm}mm !important;
@@ -2225,7 +2245,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                     >
                       {/* Area Cetak: Maksimal 90% Panjang & Lebar Kertas (Margin aman 5% di setiap sisi) */}
                       <div
-                        className="documentation-print-area mx-auto my-auto flex flex-col justify-between py-2.5 box-border overflow-hidden"
+                        className="documentation-print-area spj-font-calibri mx-auto my-auto flex flex-col justify-between py-2.5 box-border overflow-hidden"
                         style={{
                           width: `${gridDim.printAreaWidthPx}px`,
                           height: `${gridDim.printAreaHeightPx}px`,
@@ -2234,7 +2254,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                       >
                         {pageIdx === 0 && (
                           <div className="text-center pb-2 border-b border-slate-950 space-y-0.5 shrink-0">
-                            <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase">
+                            <h3 className="text-[13.5px] font-bold text-slate-900 uppercase">
                               {activeKuitansi.untukPengeluaran || activeKuitansi.tujuan || 'Perjalanan Dinas'}
                             </h3>
                           </div>

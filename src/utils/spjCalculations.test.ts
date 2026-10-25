@@ -24,6 +24,10 @@ import {
   getReconciliationSemanticFeedback,
   calculateSpjStepProgress,
 } from './spjCalculations.ts';
+import {
+  computePrintableDossierPages,
+  buildCleanPdfTitle,
+} from './printPdf.ts';
 
 test('terbilangRupiah matches Gambar 1 exact string for Rp2.860.000', () => {
   assert.equal(
@@ -368,6 +372,56 @@ test('calculateSpjStepProgress evaluates 6 steps accurately for draft vs 100% re
   assert.equal(fullProgress.progressPercent, 100);
   assert.equal(fullProgress.isReadyToPrint, true);
   assert.equal(fullProgress.statusLabel, 'Siap Cetak 100%');
+});
+
+test('computePrintableDossierPages excludes empty Dokumentasi and Bukti Bayar from PDF export so there are zero blank pages', () => {
+  const bothEmpty = computePrintableDossierPages({
+    docPerjalananCount: 0,
+    docItemsPerPage: 4,
+    docPengeluaranCount: 0,
+    expenseItemsPerPage: 2,
+  });
+  assert.equal(bothEmpty.totalScreenPages, 6);
+  assert.equal(bothEmpty.totalPrintablePages, 4);
+  assert.equal(bothEmpty.hasPrintableDokumentasi, false);
+  assert.equal(bothEmpty.hasPrintablePengeluaran, false);
+  assert.deepEqual(bothEmpty.excludedEmptySections, [
+    '5. Dokumentasi (0)',
+    '6. Bukti Bayar (0)',
+  ]);
+
+  const onlyDocPresent = computePrintableDossierPages({
+    docPerjalananCount: 3,
+    docItemsPerPage: 4,
+    docPengeluaranCount: 0,
+    expenseItemsPerPage: 2,
+  });
+  assert.equal(onlyDocPresent.totalScreenPages, 6);
+  assert.equal(onlyDocPresent.totalPrintablePages, 5);
+  assert.equal(onlyDocPresent.hasPrintableDokumentasi, true);
+  assert.equal(onlyDocPresent.hasPrintablePengeluaran, false);
+  assert.deepEqual(onlyDocPresent.excludedEmptySections, ['6. Bukti Bayar (0)']);
+
+  const allPresent = computePrintableDossierPages({
+    docPerjalananCount: 5,
+    docItemsPerPage: 4,
+    docPengeluaranCount: 3,
+    expenseItemsPerPage: 2,
+  });
+  assert.equal(allPresent.totalScreenPages, 8);
+  assert.equal(allPresent.totalPrintablePages, 8);
+  assert.deepEqual(allPresent.excludedEmptySections, []);
+});
+
+test('buildCleanPdfTitle creates safe mobile & desktop PDF filenames', () => {
+  const title = buildCleanPdfTitle({
+    prefix: 'Berkas_SPJ_Utuh',
+    atasNama: 'Bayu Ramadhan, S.Kom.',
+    noSpt: '800.1.11.1/ 11898/SPT/Disdikbud/KU/X/2026',
+    paperSize: 'F4',
+  });
+  assert.equal(title.startsWith('Berkas_SPJ_Utuh_Bayu_Ramadhan_SKom_800_1_11_1_11898'), true);
+  assert.equal(title.endsWith('_F4'), true);
 });
 
 

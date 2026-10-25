@@ -44,7 +44,33 @@
 }
 
 .kuitansi-official-font {
-  font-family: Calibri, 'Carlito', 'Inter', Arial, sans-serif;
+  font-family: Arial, 'Arimo', Calibri, 'Carlito', sans-serif;
+  font-weight: 400;
+  font-feature-settings: normal;
+  font-kerning: normal;
+  font-variant-ligatures: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+.kuitansi-official-font .font-normal {
+  font-weight: 400;
+}
+
+.spj-font-calibri {
+  font-family: Calibri, 'Carlito', 'Arimo', Arial, sans-serif;
+  font-weight: 400;
+  font-feature-settings: normal;
+  font-kerning: normal;
+  font-variant-ligatures: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+}
+
+.spj-font-calibri .font-normal {
+  font-weight: 400;
 }
 
 .no-scrollbar {
@@ -56,18 +82,70 @@
   display: none;
 }
 
+#spj-isolated-print-root {
+  display: none;
+}
+
 @media print {
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
   }
-  .no-print {
+
+  /* Isolated Print Portal Mode: hides entire SPA shell so zero wrapper margins/heights leak into PDF */
+  body.spj-is-printing > #root {
     display: none !important;
   }
+
+  body.spj-is-printing > #spj-isolated-print-root {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .spj-isolated-print-page {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 4mm 6mm !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .spj-isolated-print-page-break {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .spj-isolated-print-page-last {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  .no-print,
+  .spj-empty-printable-page {
+    display: none !important;
+  }
+
   .paper-zoom-viewport {
     background: transparent !important;
     border: none !important;
@@ -77,48 +155,55 @@
     height: auto !important;
     min-height: 0 !important;
   }
+
   .paper-zoom-stage {
     transform: none !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
     margin: 0 !important;
   }
+
   .print-only-sheet {
     transform: none !important;
     box-shadow: none !important;
     border: none !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     width: 100% !important;
     max-width: 100% !important;
+    height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
   }
+
   .print-page-sheet {
-    break-after: page !important;
-    page-break-after: always !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
   }
-  .print-page-sheet:last-child {
-    break-after: auto !important;
-    page-break-after: auto !important;
-  }
+
   table {
     border-collapse: collapse !important;
-    width: 100% !important;
   }
+
   thead {
     display: table-header-group !important;
   }
+
   tfoot {
     display: table-footer-group !important;
   }
+
   tr, td, th, .break-inside-avoid {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 }
+
 
 

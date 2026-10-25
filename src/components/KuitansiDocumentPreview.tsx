@@ -66,10 +66,10 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
     <div
       data-testid="kuitansi-official-sheet"
       data-paper-format={paperSize}
-      className={`kuitansi-official-font bg-white text-black w-full leading-tight select-text ${
+      className={`kuitansi-official-font kuitansi-sheet-container bg-white text-black w-full leading-tight select-text ${
         isF4
-          ? 'px-0 pt-6 pb-6 min-h-[1247px] print:px-0 print:pt-2 print:pb-2 print:min-h-0'
-          : 'px-0 pt-5 pb-5 min-h-[1123px] print:px-0 print:pt-1.5 print:pb-2 print:min-h-0'
+          ? 'px-0 pt-6 pb-6 min-h-[1247px] print:px-0 print:pt-2 print:pb-2 print:min-h-0 print:h-auto'
+          : 'px-0 pt-5 pb-5 min-h-[1123px] print:px-0 print:pt-1.5 print:pb-2 print:min-h-0 print:h-auto'
       }`}
     >
       {/* Pembatas lebar isi 85% dari lebar kertas & tinggi maksimal 85% tinggi kertas */}
@@ -80,7 +80,7 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
           maxWidth: '85%',
           maxHeight: `${maxContentHeightPx}px`,
         }}
-        className="w-[85%] max-w-[85%] mx-auto print:w-[85%] print:max-w-[85%] print:mx-auto print:max-h-[85vh]"
+        className="w-[85%] max-w-[85%] mx-auto print:w-[85%] print:max-w-[85%] print:mx-auto print:max-h-none"
       >
         {/* KOP SURAT PEMPROV KALIMANTAN UTARA - DISDIKBUD (Rapat secara vertikal) */}
         <div className="flex items-center gap-3.5 pb-1.5 border-b-[2.5px] border-black relative">

@@ -140,14 +140,14 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
 
   return (
     <div
-      className={`spd-doc mx-auto bg-white text-slate-900 shadow-xl print:shadow-none print:m-0 print:p-0 print:w-full font-sans ${
-        isPrintMode ? '' : 'py-6 sm:py-8 px-0 border border-slate-200'
+      className={`spd-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
+        isPrintMode ? '' : 'py-5 px-0 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
         boxSizing: 'border-box',
-        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Helvetica, sans-serif",
         lineHeight: 1.15,
       }}
     >
@@ -164,7 +164,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         }
         .spd-doc td, .spd-doc th {
           border: 1px solid #000;
-          padding: 3px 5px;
+          padding: 2.5px 5px;
           vertical-align: top;
           font-size: 11px;
         }
@@ -177,7 +177,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           border: none !important;
           padding: 1px 0 !important;
           font-size: 11px;
-          line-height: 1.35;
+          line-height: 1.3;
         }
         .spd-doc .spd-meta-table .spd-meta-label {
           padding-right: 6px !important;
@@ -203,7 +203,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           }
           .spd-doc td, .spd-doc th {
             font-size: 10.5px;
-            padding: 2.5px 4px;
+            padding: 2px 4px;
           }
           .spd-doc .spd-meta-table td {
             font-size: 10.5px;
@@ -222,32 +222,32 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         className="spd-depan-content w-[86%] max-w-[86%] mx-auto print:w-[86%] print:max-w-[86%] print:mx-auto"
       >
       {/* OUTER BOX CONTAINER MATCHING image_3363546e.png */}
-      <div className="border border-black p-3 sm:p-4 bg-white w-full box-border">
+      <div className="border border-black p-3.5 bg-white w-full box-border">
         {/* KOP SURAT DINAS */}
         <div
           onClick={() => onSelectZone?.('header')}
           className={`flex items-center gap-3 pb-2 border-b-2 border-black ${getZoneClass('header')}`}
         >
-          <div className="w-16 h-20 shrink-0 flex items-center justify-center">
+          <div className="w-15 h-19 shrink-0 flex items-center justify-center">
             <KaltaraEmblem
               className="w-14 h-18"
               logoDataUrl={appSettings.logoPemprovDataUrl}
             />
           </div>
-          <div className="flex-1 text-center font-sans">
-            <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-black leading-tight">
+          <div className="flex-1 text-center">
+            <h2 className="text-[13.5px] font-bold uppercase tracking-wide text-black leading-[1.18]">
               {appSettings.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
             </h2>
-            <h1 className="text-sm sm:text-base font-extrabold uppercase tracking-tight text-black leading-tight">
+            <h1 className="text-[15.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18]">
               {appSettings.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </h1>
-            <p className="text-[10px] text-black leading-tight mt-0.5">
+            <p className="text-[10px] text-black leading-[1.18] mt-0.5">
               {appSettings.alamatDinasBaris1 || 'Jalan Kol. Soetadji Nomor 009 RT. 095 (Gedung Gabungan Dinas 2, Lantai 1), Tanjung Selor,'}
             </p>
-            <p className="text-[10px] text-black leading-tight">
+            <p className="text-[10px] text-black leading-[1.18]">
               {appSettings.alamatDinasBaris2 || 'Bulungan, Kalimantan Utara 77212 Telepon Seluler 082352465546'}
             </p>
-            <p className="text-[9.5px] text-black leading-tight">
+            <p className="text-[9.5px] text-black leading-[1.18]">
               Laman <span className="text-blue-700 underline">http://disdikbud.kaltaraprov.go.id</span>, Pos-el <span className="text-black">kaltara.pendidikan@gmail.com</span>
             </p>
           </div>
@@ -256,7 +256,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         {/* METADATA POJOK KANAN ATAS (Lembar Ke, Kode No, Nomor) */}
         <div
           onClick={() => onSelectZone?.('header')}
-          className={`flex justify-end pt-2 pb-1 text-[11px] ${getZoneClass('header')}`}
+          className={`flex justify-end pt-1.5 pb-1 text-[11px] ${getZoneClass('header')}`}
         >
           <table className="spd-meta-table text-[11px]">
             <tbody>
@@ -585,7 +585,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         </table>
 
         {/* FOOTER CATATAN & TANDA TANGAN (INSIDE OUTER BOX) */}
-        <div className="mt-2 flex items-start justify-between text-[11px] text-black pt-1">
+        <div className="mt-1.5 flex items-start justify-between text-[11px] text-black pt-1">
           <div className="text-[10px] italic pt-1">
             * Coret yang tidak perlu
           </div>
@@ -596,10 +596,10 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           >
             <div>Dikeluarkan di {spt.tempatDitetapkan || 'Tanjung Selor'}</div>
             <div>Pada Tanggal {spt.tanggalDitetapkan || '15 Oktober 2026'}</div>
-            <div className="mt-1 font-medium">{spt.jabatanPenandatangan || 'Plt. Kepala Dinas,'}</div>
+            <div className="mt-0.5 font-medium">{spt.jabatanPenandatangan || 'Plt. Kepala Dinas,'}</div>
 
             {/* Ruang TTD */}
-            <div className="h-16 flex items-center justify-center">
+            <div className="h-12 flex items-center justify-center">
               {/* Optional space for signature / stempel */}
             </div>
 
@@ -616,10 +616,10 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
       {/* PENGGUNA ANGGARAN (BELOW THE OUTER BOX MATCHING image_3363546e.png) */}
       <div
         onClick={() => onSelectZone?.('ttd')}
-        className={`mt-4 text-center mx-auto w-72 text-[11px] text-black ${getZoneClass('ttd')}`}
+        className={`mt-2.5 text-center mx-auto w-72 text-[11px] text-black ${getZoneClass('ttd')}`}
       >
         <div className="font-medium">Pengguna Anggaran</div>
-        <div className="h-16 flex items-center justify-center">
+        <div className="h-12 flex items-center justify-center">
           {/* Space for Signature */}
         </div>
         <div className="font-bold underline">

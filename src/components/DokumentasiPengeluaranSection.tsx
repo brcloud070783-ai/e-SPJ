@@ -51,6 +51,10 @@ import {
   LabeledIcon,
   EmptyStateCard,
 } from './UiPatterns';
+import {
+  buildCleanPdfTitle,
+  triggerIsolatedSpjPrint,
+} from '../utils/printPdf';
 
 interface DokumentasiPengeluaranSectionProps {
   items: DokumentasiPengeluaranItem[];
@@ -2335,8 +2339,24 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
             </div>
             <button
               type="button"
-              onClick={() => window.print()}
-              className="min-h-[38px] px-4 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+              disabled={items.length === 0}
+              onClick={() => {
+                void triggerIsolatedSpjPrint({
+                  paperSize,
+                  documentTitle: buildCleanPdfTitle({
+                    prefix: 'Bukti_Pengeluaran_SPJ',
+                    atasNama: activeKuitansi.atasNama,
+                    noSpt: activeKuitansi.noSpt,
+                    paperSize,
+                  }),
+                  sheetSelector: '.print-only-sheet',
+                });
+              }}
+              className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors ${
+                items.length === 0
+                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+              }`}
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak Bukti ({paperSize})</span>
@@ -2349,15 +2369,18 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
             documentTitle="Lampiran Bukti Pengeluaran"
           >
             <div
+              data-empty-page={items.length === 0 ? 'true' : undefined}
               className={`print-only-sheet kuitansi-official-font bg-white text-black w-full ${
+                items.length === 0 ? 'spj-empty-printable-page' : ''
+              } ${
                 paperSize === 'F4'
-                  ? 'px-0 py-7 min-h-[1247px] print:px-0 print:py-2 print:min-h-0'
-                  : 'px-0 py-6 min-h-[1123px] print:px-0 print:py-2 print:min-h-0'
+                  ? 'px-0 py-7 min-h-[1247px] print:px-0 print:py-2 print:min-h-0 print:h-auto'
+                  : 'px-0 py-6 min-h-[1123px] print:px-0 print:py-2 print:min-h-0 print:h-auto'
               }`}
             >
-              <div className="w-[85%] max-w-[85%] mx-auto print:w-[85%] print:max-w-[85%] print:mx-auto">
+              <div className="w-[86%] max-w-[86%] mx-auto print:w-[86%] print:max-w-[86%] print:mx-auto">
                 {items.length === 0 ? (
-                  <div className="h-[420px] flex items-center justify-center text-xs text-slate-400 italic">
+                  <div className="no-print h-[420px] flex items-center justify-center text-xs text-slate-400 italic">
                     Belum ada hasil scan nota/tiket untuk dicetak.
                   </div>
                 ) : (

@@ -174,12 +174,12 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
-        fontFamily: 'Arial, Calibri, Liberation Sans, sans-serif',
+        fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Liberation Sans, sans-serif",
       }}
-      className={`mx-auto bg-white text-black leading-tight box-border text-[11px] ${
+      className={`spj-font-calibri mx-auto bg-white text-black leading-tight box-border text-[11px] print:min-h-0 print:h-auto print:border-none print:shadow-none print:p-0 print:m-0 ${
         isPrintMode
           ? 'print-only-sheet p-0 m-0'
-          : 'shadow-lg border border-slate-300 p-8 sm:p-10 select-text'
+          : 'shadow-lg border border-slate-300 p-9 select-text'
       }`}
     >
       {/* TABEL PENGESAHAN / VISUM SPD */}

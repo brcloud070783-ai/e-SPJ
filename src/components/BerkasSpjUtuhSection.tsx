@@ -31,6 +31,11 @@ import {
   calculateDocumentationGridDimensions,
   DocumentationPrintGridMode,
 } from '../utils/spjCalculations';
+import {
+  computePrintableDossierPages,
+  buildCleanPdfTitle,
+  triggerIsolatedSpjPrint,
+} from '../utils/printPdf';
 import { SuratTugasDocumentPreview } from './SuratTugasDocumentPreview';
 import { SuratPerjalananDinasDocumentPreview } from './SuratPerjalananDinasDocumentPreview';
 import {
@@ -181,9 +186,19 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     return chunks;
   }, [docPengeluaran]);
 
+  const pagePlan = useMemo(
+    () =>
+      computePrintableDossierPages({
+        docPerjalananCount: docPerjalanan.length,
+        docItemsPerPage,
+        docPengeluaranCount: docPengeluaran.length,
+        expenseItemsPerPage: 2,
+      }),
+    [docPerjalanan.length, docItemsPerPage, docPengeluaran.length]
+  );
+
   const totalKuitansi = calculateKuitansiTotal(activeKuitansi.rincian);
-  const totalPagesCount =
-    4 + paginatedDocPages.length + paginatedExpensePages.length;
+  const totalPagesCount = pagePlan.totalPrintablePages;
 
   // Per-Page Completeness Evaluation
   const isSptComplete = Boolean(
@@ -228,7 +243,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
       {
         id: 'all',
         num: '1–6',
-        label: `Semua Halaman (${totalPagesCount} Hal)`,
+        label: `Semua Halaman (${totalPagesCount} Hal Cetak)`,
         icon: Layers,
         isIncomplete: incompleteCount > 0,
         warningBadgeText:
@@ -413,40 +428,71 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
 
   const triggerPrintWithTitle = (scope: DossierSectionId, customLabel?: string) => {
     const prevScope = printScope;
-    const prevTitle = document.title;
-    const cleanName = (activeKuitansi.atasNama || 'Pelaksana')
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .trim()
-      .replace(/\s+/g, '_');
-    const cleanSpt = (activeKuitansi.noSpt || 'SPT')
-      .replace(/[^a-zA-Z0-9]/g, '_')
-      .replace(/_+/g, '_')
-      .slice(0, 28);
-
     const filePrefix =
       scope === 'all'
         ? 'Berkas_SPJ_Utuh'
         : `SPJ_${(customLabel || scope).replace(/\s+/g, '_')}`;
 
-    document.title = `${filePrefix}_${cleanName}_${cleanSpt}`;
+    const docTitle = buildCleanPdfTitle({
+      prefix: filePrefix,
+      atasNama: activeKuitansi.atasNama,
+      noSpt: activeKuitansi.noSpt,
+      paperSize,
+    });
+
+    // If printing a single section that is already rendered in the DOM, print its wrapper directly
+    if (scope !== 'all' && (prevScope === 'all' || prevScope === scope)) {
+      const sectionEl = sectionDomRefs.current[scope];
+      if (sectionEl) {
+        void triggerIsolatedSpjPrint({
+          paperSize,
+          documentTitle: docTitle,
+          rootElement: sectionEl,
+          sheetSelector: '.spj-dossier-sheet',
+          allowEmptyPlaceholderIfSingle: false,
+        });
+        return;
+      }
+    }
 
     if (scope !== prevScope) {
       setPrintScope(scope);
       window.setTimeout(() => {
-        window.print();
-        document.title = prevTitle;
-        setPrintScope(prevScope);
-      }, 120);
+        const targetRoot =
+          scope === 'all'
+            ? containerRef.current
+            : sectionDomRefs.current[scope] || containerRef.current;
+        void triggerIsolatedSpjPrint({
+          paperSize,
+          documentTitle: docTitle,
+          rootElement: targetRoot,
+          sheetSelector: '.spj-dossier-sheet',
+          allowEmptyPlaceholderIfSingle: false,
+        }).finally(() => {
+          setPrintScope(prevScope);
+        });
+      }, 90);
     } else {
-      window.print();
-      window.setTimeout(() => {
-        document.title = prevTitle;
-      }, 300);
+      void triggerIsolatedSpjPrint({
+        paperSize,
+        documentTitle: docTitle,
+        rootElement: containerRef.current,
+        sheetSelector: '.spj-dossier-sheet',
+        allowEmptyPlaceholderIfSingle: false,
+      });
     }
   };
 
   const isSectionVisible = (sec: Exclude<DossierSectionId, 'all'>) =>
     printScope === 'all' || printScope === sec;
+
+  // Determine which visible non-empty section is last so fallback @media print never adds a trailing blank page
+  const lastPrintableSectionId = useMemo<Exclude<DossierSectionId, 'all'>>(() => {
+    if (printScope !== 'all') return printScope;
+    if (docPengeluaran.length > 0) return 'pengeluaran';
+    if (docPerjalanan.length > 0) return 'dokumentasi';
+    return 'kuitansi';
+  }, [printScope, docPengeluaran.length, docPerjalanan.length]);
 
   const renderPageWrapper = (params: {
     key: string;
@@ -458,6 +504,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     editKey: SpjSubSectionKey;
     isIncomplete?: boolean;
     incompleteReason?: string;
+    isEmptyAttachmentPage?: boolean;
+    isLastPrintablePage?: boolean;
     children: React.ReactNode;
   }) => {
     const scaledW = Math.round(spec.widthPx * previewScale);
@@ -467,13 +515,16 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
       <div
         key={params.key}
         id={params.anchorId}
+        data-empty-page={params.isEmptyAttachmentPage ? 'true' : undefined}
         ref={(el) => {
           if (params.registerRefSection) {
             sectionDomRefs.current[params.registerRefSection] = el;
           }
         }}
         style={{ scrollMarginTop: `${stickyTopOffset + 68}px` }}
-        className="spj-dossier-page-wrapper space-y-2 min-w-0 max-w-full"
+        className={`spj-dossier-page-wrapper space-y-2 min-w-0 max-w-full ${
+          params.isEmptyAttachmentPage ? 'spj-empty-printable-page' : ''
+        } ${params.isLastPrintablePage ? 'spj-last-printable-wrapper' : ''}`}
       >
         {/* Top Action Bar for Each Page on Screen (Hidden in Print) */}
         <div
@@ -493,7 +544,10 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             {params.isIncomplete && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold shrink-0">
                 <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
-                <span>{params.incompleteReason || 'Masih Kosong (0)'}</span>
+                <span>
+                  {params.incompleteReason || 'Masih Kosong (0)'}
+                  {params.isEmptyAttachmentPage ? ' · Dilewati Saat Ekspor PDF' : ''}
+                </span>
               </span>
             )}
           </div>
@@ -511,15 +565,17 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               <Pencil className="w-3 h-3 text-sky-700" />
               <span>{params.isIncomplete ? 'Lengkapi Bagian Ini' : 'Edit Bagian Ini'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => triggerPrintWithTitle(params.sectionId, params.title)}
-              className="min-h-[30px] px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-              title={`Cetak atau simpan PDF khusus ${params.title}`}
-            >
-              <Printer className="w-3 h-3 text-emerald-700" />
-              <span>Cetak Halaman Ini</span>
-            </button>
+            {!params.isEmptyAttachmentPage && (
+              <button
+                type="button"
+                onClick={() => triggerPrintWithTitle(params.sectionId, params.title)}
+                className="min-h-[30px] px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                title={`Cetak atau simpan PDF khusus ${params.title}`}
+              >
+                <Printer className="w-3 h-3 text-emerald-700" />
+                <span>Cetak Halaman Ini</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -533,6 +589,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             }}
           >
             <div
+              data-empty-page={params.isEmptyAttachmentPage ? 'true' : undefined}
               style={{
                 width: `${spec.widthPx}px`,
                 minHeight: `${spec.minHeightPx}px`,
@@ -553,12 +610,15 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
 
   return (
     <div ref={containerRef} className="space-y-3 min-w-0 max-w-full overflow-x-clip">
-      {/* Print CSS Rules for Multi-Page Unified PDF Output */}
+      {/* Print CSS Rules for Multi-Page Unified PDF Output (Zero Blank Pages) */}
       <style>{`
         @media print {
           @page {
             size: ${spec.cssPageSize};
-            margin: 0;
+            margin: 0mm;
+          }
+          .spj-empty-printable-page {
+            display: none !important;
           }
           .spj-dossier-page-wrapper {
             margin: 0 !important;
@@ -568,7 +628,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
-          .spj-dossier-page-wrapper:last-child {
+          .spj-dossier-page-wrapper:last-child,
+          .spj-last-printable-wrapper {
             break-after: auto !important;
             page-break-after: auto !important;
           }
@@ -582,19 +643,22 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
           .spj-dossier-stage {
             width: 100% !important;
             height: auto !important;
+            min-height: 0 !important;
             margin: 0 !important;
             padding: 0 !important;
           }
           .spj-dossier-sheet {
             transform: none !important;
             width: ${paperSize === 'F4' ? '215mm' : '210mm'} !important;
-            min-height: ${paperSize === 'F4' ? '330mm' : '297mm'} !important;
-            max-height: ${paperSize === 'F4' ? '330mm' : '297mm'} !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: ${paperSize === 'F4' ? '328.5mm' : '295.5mm'} !important;
             margin: 0 auto !important;
-            padding: 6mm 8mm !important;
+            padding: 5mm 7mm !important;
             border: none !important;
             box-shadow: none !important;
             box-sizing: border-box !important;
+            overflow: hidden !important;
           }
         }
       `}</style>
@@ -611,7 +675,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               {activeKuitansi.atasNama || 'Pelaksana'} — {activeKuitansi.tujuan} ({formatRupiah(totalKuitansi)})
             </h2>
             <p className="text-xs text-slate-500">
-              Menyatukan <strong className="text-slate-700">SPT, SPD Depan, Visum, Kuitansi, Dokumentasi, dan Bukti Pembayaran</strong> dalam 1 file cetak / PDF multi-halaman utuh ({totalPagesCount} halaman {paperSize}).
+              Menyatukan <strong className="text-slate-700">SPT, SPD Depan, Visum, Kuitansi, Dokumentasi, dan Bukti Pembayaran</strong> dalam 1 file cetak / PDF multi-halaman utuh ({totalPagesCount} halaman siap cetak {paperSize} tanpa halaman kosong).
             </p>
           </div>
 
@@ -667,7 +731,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                 <span className="font-extrabold">Perhatian Sebelum Cetak PDF Utuh: </span>
                 <span>
                   Terdapat {incompleteSections.length} bagian yang masih kosong/belum lengkap (
-                  {incompleteSections.map((s) => `${s.num}. ${s.label}`).join(', ')}).
+                  {incompleteSections.map((s) => `${s.num}. ${s.label}`).join(', ')}). Lampiran dengan 0 berkas otomatis dilewati saat ekspor PDF agar tidak menimbulkan halaman kosong.
                 </span>
               </div>
             </div>
@@ -857,8 +921,9 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             editKey: 'spt',
             isIncomplete: !isSptComplete,
             incompleteReason: 'Data SPT Belum Lengkap',
+            isLastPrintablePage: lastPrintableSectionId === 'spt',
             children: (
-              <div className="p-6 sm:p-10 print:p-2">
+              <div className="p-8 print:p-2">
                 <SuratTugasDocumentPreview
                   spt={activeSpt}
                   appSettings={appSettings}
@@ -881,8 +946,9 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             editKey: 'spd',
             isIncomplete: !isSpdComplete,
             incompleteReason: 'Data SPD Belum Lengkap',
+            isLastPrintablePage: lastPrintableSectionId === 'spd',
             children: (
-              <div className="py-5 px-0 print:py-1">
+              <div className="py-4 px-0 print:py-1">
                 <SuratPerjalananDinasDocumentPreview
                   spt={activeSpt}
                   appSettings={appSettings}
@@ -905,8 +971,9 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             editKey: 'visum',
             isIncomplete: !isVisumComplete,
             incompleteReason: 'Tujuan Visum Kosong',
+            isLastPrintablePage: lastPrintableSectionId === 'visum',
             children: (
-              <div className="p-6 sm:p-8 print:p-2">
+              <div className="p-7 print:p-2">
                 <SuratPerjalananDinasBelakangDocumentPreview
                   spt={activeSpt}
                   paperSize={paperSize}
@@ -929,6 +996,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             editKey: 'kuitansi',
             isIncomplete: !isKuitansiComplete,
             incompleteReason: 'Nominal Kuitansi Rp 0',
+            isLastPrintablePage: lastPrintableSectionId === 'kuitansi',
             children: (
               <KuitansiDocumentPreview
                 kuitansi={activeKuitansi}
@@ -955,20 +1023,24 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               editKey: 'dokumentasi',
               isIncomplete: !isDokumentasiComplete,
               incompleteReason: '0 Foto Dokumentasi',
+              isEmptyAttachmentPage: pageItems.length === 0,
+              isLastPrintablePage:
+                lastPrintableSectionId === 'dokumentasi' &&
+                pageIdx === paginatedDocPages.length - 1,
               children: (
                 <div
-                  className="mx-auto my-auto flex flex-col justify-between py-4 box-border overflow-hidden"
+                  className="spj-font-calibri mx-auto my-auto flex flex-col justify-between py-4 box-border overflow-hidden"
                   style={{
                     width: `${gridDim.printAreaWidthPx}px`,
                     height: `${gridDim.printAreaHeightPx}px`,
                     maxHeight: `${gridDim.printAreaHeightPx}px`,
                   }}
                 >
-                  <div className="text-center pb-2 border-b border-slate-950 space-y-0.5 shrink-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                  <div className="text-center pb-2 border-b border-black space-y-0.5 shrink-0">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-black">
                       DOKUMENTASI PERJALANAN DINAS · SPT: {activeKuitansi.noSpt}
                     </p>
-                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase">
+                    <h3 className="text-[13px] font-extrabold text-black uppercase leading-snug">
                       {activeKuitansi.untukPengeluaran ||
                         activeKuitansi.tujuan ||
                         'Perjalanan Dinas'}
@@ -976,22 +1048,25 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                   </div>
 
                   {pageItems.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl my-4">
-                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2 no-print" />
-                      <p className="text-xs text-slate-600 font-medium italic">
+                    <div className="no-print flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl my-4">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2" />
+                      <p className="text-xs text-slate-700 font-semibold">
                         Belum ada foto dokumentasi kegiatan pada berkas SPJ ini (0 lampiran).
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Halaman ini otomatis dilewati saat mencetak / mengunduh PDF agar dokumen bebas halaman kosong.
                       </p>
                       <button
                         type="button"
                         onClick={() => onEditSection('dokumentasi')}
-                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
+                        className="mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
                       >
                         + Unggah Foto Dokumentasi
                       </button>
                     </div>
                   ) : (
                     <div
-                      className={`grid gap-2.5 sm:gap-3 w-full flex-1 h-full min-h-0 items-center justify-items-center overflow-hidden pt-2 ${
+                      className={`grid gap-3 w-full flex-1 h-full min-h-0 items-center justify-items-center overflow-hidden pt-2 ${
                         docGridMode === '1x1'
                           ? 'grid-cols-1 grid-rows-1'
                           : docGridMode === '1x2'
@@ -1055,43 +1130,50 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               editKey: 'pengeluaran',
               isIncomplete: !isPengeluaranComplete,
               incompleteReason: '0 Bukti Bayar',
+              isEmptyAttachmentPage: expensePageItems.length === 0,
+              isLastPrintablePage:
+                lastPrintableSectionId === 'pengeluaran' &&
+                pageIdx === paginatedExpensePages.length - 1,
               children: (
-                <div className="w-[86%] max-w-[86%] mx-auto py-6 space-y-4">
-                  <div className="text-center pb-2 border-b border-slate-950 space-y-0.5">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
+                <div className="spj-font-calibri w-[86%] max-w-[86%] mx-auto py-5 space-y-4">
+                  <div className="text-center pb-2 border-b border-black space-y-0.5">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-black">
                       LAMPIRAN BUKTI PEMBAYARAN / PENGELUARAN · SPT: {activeKuitansi.noSpt}
                     </p>
-                    <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 uppercase">
+                    <h3 className="text-[13px] font-extrabold text-black uppercase leading-snug">
                       Pelaksana: {activeKuitansi.atasNama} — Tujuan: {activeKuitansi.tujuan}
                     </h3>
                   </div>
 
                   {expensePageItems.length === 0 ? (
-                    <div className="h-[420px] flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl">
-                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2 no-print" />
-                      <p className="text-xs text-slate-600 font-medium italic">
+                    <div className="no-print h-[420px] flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2" />
+                      <p className="text-xs text-slate-700 font-semibold">
                         Belum ada scan nota / tiket / bukti pembayaran pada berkas SPJ ini (0 lampiran).
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Halaman ini otomatis dilewati saat mencetak / mengunduh PDF agar dokumen bebas halaman kosong.
                       </p>
                       <button
                         type="button"
                         onClick={() => onEditSection('pengeluaran')}
-                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
+                        className="mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
                       >
                         + Unggah / Scan Bukti Pembayaran
                       </button>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-5 w-full">
+                    <div className="grid grid-cols-1 gap-4 w-full">
                       {expensePageItems.map((exp) => (
                         <div
                           key={exp.id}
                           className="w-full border border-slate-300 rounded-lg p-2.5 bg-white break-inside-avoid space-y-1.5"
                         >
                           <div className="flex items-center justify-between text-[11px] border-b border-slate-200 pb-1">
-                            <span className="font-bold text-slate-900">
+                            <span className="font-bold text-black">
                               {exp.kategori}: {exp.namaPengeluaran}
                             </span>
-                            <span className="font-mono font-extrabold text-slate-900">
+                            <span className="font-extrabold tabular-nums text-black">
                               {formatRupiah(exp.nominal)}
                             </span>
                           </div>
@@ -1103,11 +1185,11 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                               className={`w-full h-auto object-contain mx-auto ${
                                 expensePageItems.length === 1
                                   ? paperSize === 'F4'
-                                    ? 'max-h-[960px]'
-                                    : 'max-h-[840px]'
+                                    ? 'max-h-[930px]'
+                                    : 'max-h-[810px]'
                                   : paperSize === 'F4'
-                                    ? 'max-h-[450px]'
-                                    : 'max-h-[395px]'
+                                    ? 'max-h-[430px]'
+                                    : 'max-h-[380px]'
                               }`}
                             />
                           </div>

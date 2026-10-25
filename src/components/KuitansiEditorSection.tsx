@@ -49,6 +49,10 @@ import {
 } from './KuitansiDocumentPreview';
 import { InteractivePaperViewer } from './InteractivePaperViewer';
 import { LabeledIcon, InfoTooltip, EmptyStateCard } from './UiPatterns';
+import {
+  buildCleanPdfTitle,
+  triggerIsolatedSpjPrint,
+} from '../utils/printPdf';
 
 interface KuitansiEditorSectionProps {
   kuitansiList: KuitansiPerjalananDinas[];
@@ -1750,7 +1754,18 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    void triggerIsolatedSpjPrint({
+                      paperSize,
+                      documentTitle: buildCleanPdfTitle({
+                        prefix: 'Kuitansi_Perjalanan_Dinas',
+                        atasNama: draft.atasNama,
+                        noSpt: draft.noSpt,
+                        paperSize,
+                      }),
+                      sheetSelector: '.print-only-sheet',
+                    });
+                  }}
                   className="min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -1966,7 +1981,18 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
 
         <button
           type="button"
-          onClick={() => window.print()}
+          onClick={() => {
+            void triggerIsolatedSpjPrint({
+              paperSize,
+              documentTitle: buildCleanPdfTitle({
+                prefix: 'Kuitansi_Perjalanan_Dinas',
+                atasNama: draft.atasNama,
+                noSpt: draft.noSpt,
+                paperSize,
+              }),
+              sheetSelector: '.print-only-sheet',
+            });
+          }}
           aria-label={paperSize === 'F4' ? 'Cetak Kuitansi F4' : 'Cetak Kuitansi A4'}
           className="min-h-[48px] px-3.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
         >
