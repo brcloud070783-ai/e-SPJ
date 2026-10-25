@@ -2210,10 +2210,11 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                           margin: 0;
                         }
                         .documentation-print-sheet {
-                          width: ${paperSize === 'F4' ? '215mm' : '210mm'} !important;
+                          width: 100% !important;
+                          max-width: 100% !important;
                           height: auto !important;
                           min-height: 0 !important;
-                          max-height: ${paperSize === 'F4' ? '328.5mm' : '295.5mm'} !important;
+                          max-height: none !important;
                           margin: 0 auto !important;
                           padding: 0 !important;
                           box-sizing: border-box !important;
@@ -2223,16 +2224,17 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                           align-items: center !important;
                         }
                         .documentation-print-area {
-                          width: ${gridDim.printAreaWidthMm}mm !important;
-                          height: ${gridDim.printAreaHeightMm}mm !important;
-                          max-height: ${gridDim.printAreaHeightMm}mm !important;
-                          margin: auto !important;
+                          width: 86% !important;
+                          max-width: 86% !important;
+                          height: auto !important;
+                          max-height: none !important;
+                          margin: 0 auto !important;
                           padding: 0 !important;
                           box-sizing: border-box !important;
                           display: flex !important;
                           flex-direction: column !important;
                           justify-content: space-between !important;
-                          overflow: hidden !important;
+                          overflow: visible !important;
                         }
                       }
                     `}</style>

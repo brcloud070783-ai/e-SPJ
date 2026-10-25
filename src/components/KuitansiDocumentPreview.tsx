@@ -72,13 +72,12 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
           : 'px-0 pt-5 pb-5 min-h-[1123px] print:px-0 print:pt-1.5 print:pb-2 print:min-h-0 print:h-auto'
       }`}
     >
-      {/* Pembatas lebar isi 85% dari lebar kertas & tinggi maksimal 85% tinggi kertas */}
+      {/* Pembatas lebar isi 85% dari lebar kertas */}
       <div
         data-testid="kuitansi-content-area"
         style={{
           width: '85%',
           maxWidth: '85%',
-          maxHeight: `${maxContentHeightPx}px`,
         }}
         className="w-[85%] max-w-[85%] mx-auto print:w-[85%] print:max-w-[85%] print:mx-auto print:max-h-none"
       >
@@ -285,10 +284,10 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
                     return (
                       <div
                         key={item.id}
-                        className="grid grid-cols-[20px_1fr_165px_100px] gap-x-2 items-baseline text-[12.5px] leading-tight"
+                        className="grid grid-cols-[18px_1fr_145px_95px] gap-x-1.5 items-baseline text-[12px] leading-tight"
                       >
                         <span className="tabular-nums">{idx + 1}</span>
-                        <div className="pr-1">
+                        <div className="pr-1 min-w-0 break-words">
                           <span>{item.uraian}</span>
                         </div>
                         <span className="tabular-nums whitespace-nowrap text-left">

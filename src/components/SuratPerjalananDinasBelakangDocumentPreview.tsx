@@ -147,17 +147,11 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
   activeZone,
   onSelectZone,
   visumData: propVisumData,
-  onUpdateVisumData,
+  onUpdateVisumData: _onUpdateVisumData,
   isPrintMode = false,
 }) => {
   const spec = getPaperDimensions(paperSize);
   const data = propVisumData || getEffectiveVisumData(spt);
-
-  const handleUpdate = (next: SpdVisumBelakangData) => {
-    if (onUpdateVisumData) {
-      onUpdateVisumData(next);
-    }
-  };
 
   const getZoneClass = (zone: SpdBelakangEditableZone) => {
     if (isPrintMode || !onSelectZone) return '';
@@ -176,265 +170,278 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
         fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Liberation Sans, sans-serif",
       }}
-      className={`spj-font-calibri mx-auto bg-white text-black leading-tight box-border text-[11px] print:min-h-0 print:h-auto print:border-none print:shadow-none print:p-0 print:m-0 ${
+      className={`visum-doc spj-font-calibri mx-auto bg-white text-black leading-tight box-border text-[10.5px] print:min-h-0 print:h-auto print:border-none print:shadow-none print:p-0 print:m-0 ${
         isPrintMode
-          ? 'print-only-sheet p-0 m-0'
-          : 'shadow-lg border border-slate-300 p-9 select-text'
+          ? 'print-only-sheet py-2 px-0 m-0'
+          : 'shadow-lg border border-slate-300 py-6 px-0 select-text'
       }`}
     >
-      {/* TABEL PENGESAHAN / VISUM SPD */}
-      <table
-        className="w-full border-collapse border border-black table-fixed text-[11.5px]"
-        style={{ borderColor: '#000000' }}
+      <style>{`
+        .visum-doc .visum-content-area {
+          width: 86%;
+          max-width: 86%;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .visum-doc table {
+          border-collapse: collapse;
+          width: 100%;
+          table-layout: fixed;
+        }
+        .visum-doc td {
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        @media print {
+          .visum-doc .visum-content-area {
+            width: 86% !important;
+            max-width: 86% !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
+        }
+      `}</style>
+
+      {/* PEMBATAS LEBAR TOTAL VISUM SPD BELAKANG: 86% DARI LEBAR KERTAS (IDENTIK DENGAN SPD DEPAN) */}
+      <div
+        data-testid="visum-content-area"
+        style={{
+          width: '86%',
+          maxWidth: '86%',
+        }}
+        className="visum-content-area w-[86%] max-w-[86%] mx-auto print:w-[86%] print:max-w-[86%] print:mx-auto"
       >
-        <colgroup>
-          <col style={{ width: '50%' }} />
-          <col style={{ width: '50%' }} />
-        </colgroup>
-        <tbody>
-          {/* BARIS I: KEBERANGKATAN AWAL */}
-          <tr className="border-b border-black">
-            {/* Kolom Kiri: Kosong sesuai format resmi */}
-            <td className="border-r border-black p-3 align-top min-h-[145px]"></td>
+        {/* TABEL PENGESAHAN / VISUM SPD */}
+        <table
+          className="w-full border-collapse border border-black table-fixed text-[10.5px]"
+          style={{ borderColor: '#000000' }}
+        >
+          <colgroup>
+            <col style={{ width: '50%' }} />
+            <col style={{ width: '50%' }} />
+          </colgroup>
+          <tbody>
+            {/* BARIS I: KEBERANGKATAN AWAL */}
+            <tr className="border-b border-black">
+              {/* Kolom Kiri: Kosong sesuai format resmi */}
+              <td className="border-r border-black p-2.5 align-top"></td>
 
-            {/* Kolom Kanan: I. Berangkat dari (tempat kedudukan) */}
-            <td
-              onClick={() => onSelectZone?.('bagian-1')}
-              className={`p-3 align-top min-h-[145px] ${getZoneClass('bagian-1')}`}
-            >
-              <div className="flex items-start">
-                <span className="font-normal w-7 shrink-0 text-left">I.</span>
-                <div className="flex-1 space-y-0.5">
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span>Berangkat dari</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.berangkatDariAwal}</span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span className="text-[10px] text-slate-700 leading-none">(tempat kedudukan)</span>
-                    <span className="text-center"></span>
-                    <span></span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span>Ke</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.berangkatKeAwal}</span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span>Pada tanggal</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.berangkatTglAwal}</span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline pt-0.5">
-                    <span>Kepala</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.berangkatKepalaAwal}</span>
-                  </div>
-
-                  {/* Ruang Tanda Tangan & Cap */}
-                  <div
-                    className="pt-8 text-center ml-auto w-56"
-                    style={{
-                      textAlign: 'justify',
-                      marginLeft: '87.5px',
-                      paddingLeft: '30px',
-                    }}
-                  >
-                    <p className="font-semibold underline">{data.pejabatNamaAwal}</p>
-                    <p className="text-[10.5px]">{data.pejabatPangkatAwal}</p>
-                    <p className="text-[10.5px]">NIP {data.pejabatNipAwal}</p>
-                  </div>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          {/* BARIS II SAMPAI V: TEMPAT PERSINGGAHAN / TRANSIT */}
-          {data.persinggahanList &&
-            data.persinggahanList.map((row, idx) => (
-              <tr
-                key={row.id || idx}
-                onClick={() => onSelectZone?.('bagian-transit')}
-                className={`border-b border-black ${getZoneClass('bagian-transit')}`}
+              {/* Kolom Kanan: I. Berangkat dari (tempat kedudukan) */}
+              <td
+                onClick={() => onSelectZone?.('bagian-1')}
+                className={`p-2.5 align-top ${getZoneClass('bagian-1')}`}
               >
-                {/* Kolom Kiri: Tiba di */}
-                <td className="border-r border-black p-3 align-top">
-                  <div className="flex items-start">
-                    <span className="font-normal w-7 shrink-0 text-left">
-                      {row.labelRomawi}.
+                <div className="flex items-start">
+                  <span className="font-normal w-5 shrink-0 text-left">I.</span>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span>Berangkat dari</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.berangkatDariAwal}</span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span className="text-[9.5px] text-slate-700 leading-none">(tempat kedudukan)</span>
+                      <span className="text-center"></span>
+                      <span></span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span>Ke</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.berangkatKeAwal}</span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span>Pada tanggal</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.berangkatTglAwal}</span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline pt-0.5">
+                      <span>Kepala</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.berangkatKepalaAwal}</span>
+                    </div>
+
+                    {/* Ruang Tanda Tangan & Cap (Tanpa margin kiri berlebih agar tidak mendorong kolom kanan keluar kertas) */}
+                    <div className="pt-6 pl-[100px] text-left w-full break-words">
+                      <p className="font-semibold underline">{data.pejabatNamaAwal}</p>
+                      <p className="text-[10px]">{data.pejabatPangkatAwal}</p>
+                      <p className="text-[10px]">NIP {data.pejabatNipAwal}</p>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            {/* BARIS II SAMPAI V: TEMPAT PERSINGGAHAN / TRANSIT */}
+            {data.persinggahanList &&
+              data.persinggahanList.map((row, idx) => (
+                <tr
+                  key={row.id || idx}
+                  onClick={() => onSelectZone?.('bagian-transit')}
+                  className={`border-b border-black ${getZoneClass('bagian-transit')}`}
+                >
+                  {/* Kolom Kiri: Tiba di */}
+                  <td className="border-r border-black p-2.5 align-top">
+                    <div className="flex items-start">
+                      <span className="font-normal w-5 shrink-0 text-left">
+                        {row.labelRomawi}.
+                      </span>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between min-h-[96px]">
+                        <div className="space-y-0.5 min-h-[54px]">
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Tiba di</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.tibaDi}</span>
+                          </div>
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Pada tanggal</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.tibaTgl}</span>
+                          </div>
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Kepala</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.tibaKepala}</span>
+                          </div>
+                        </div>
+
+                        {/* Ruang cap stempel & tanda tangan + NIP */}
+                        <div className="pt-4">
+                          <p className="break-words">NIP {row.tibaNip}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Kolom Kanan: Berangkat dari */}
+                  <td className="p-2.5 align-top">
+                    <div className="flex items-start">
+                      <span className="w-5 shrink-0" aria-hidden="true"></span>
+                      <div className="flex-1 min-w-0 flex flex-col justify-between min-h-[96px]">
+                        <div className="space-y-0.5 min-h-[54px]">
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Berangkat dari</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.berangkatDari}</span>
+                          </div>
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Ke</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.berangkatKe}</span>
+                          </div>
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Pada tanggal</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.berangkatTgl}</span>
+                          </div>
+                          <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                            <span>Kepala</span>
+                            <span className="text-center">:</span>
+                            <span className="break-words">{row.berangkatKepala}</span>
+                          </div>
+                        </div>
+
+                        {/* Ruang cap stempel & tanda tangan + NIP */}
+                        <div className="pt-4">
+                          <p className="break-words">NIP {row.berangkatNip}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+
+            {/* BARIS VI: TIBA KEMBALI DI TEMPAT KEDUDUKAN & KETERANGAN PEMERIKSA */}
+            <tr className="border-b border-black">
+              {/* Kolom Kiri: VI. Tiba di (tempat kedudukan) */}
+              <td
+                onClick={() => onSelectZone?.('bagian-6')}
+                className={`border-r border-black p-2.5 align-top ${getZoneClass(
+                  'bagian-6'
+                )}`}
+              >
+                <div className="flex items-start">
+                  <span className="font-normal w-5 shrink-0 text-left">VI.</span>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span>Tiba di</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.tibaDiAkhir}</span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span className="text-[9.5px] text-slate-700 leading-none">(tempat kedudukan)</span>
+                      <span className="text-center"></span>
+                      <span></span>
+                    </div>
+                    <div className="grid grid-cols-[90px_10px_1fr] items-baseline">
+                      <span>Pada tanggal</span>
+                      <span className="text-center">:</span>
+                      <span className="font-normal break-words">{data.tibaTglAkhir}</span>
+                    </div>
+                    <div className="pt-0.5">
+                      <p className="font-normal break-words">{data.tibaKepalaAkhir}</p>
+                    </div>
+
+                    {/* Ruang Tanda Tangan */}
+                    <div className="pt-6 text-left w-full break-words">
+                      <p className="font-semibold underline">{data.pejabatNamaAkhir}</p>
+                      <p className="text-[10px]">{data.pejabatPangkatAkhir}</p>
+                      <p className="text-[10px]">NIP {data.pejabatNipAkhir}</p>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              {/* Kolom Kanan: Keterangan Pemeriksa Perjalanan Dinas */}
+              <td
+                onClick={() => onSelectZone?.('bagian-6')}
+                className={`p-2.5 align-top ${getZoneClass('bagian-6')}`}
+              >
+                <p className="text-justify leading-snug break-words">
+                  {data.keteranganPemeriksa}
+                </p>
+              </td>
+            </tr>
+
+            {/* BARIS VII: CATATAN LAIN-LAIN */}
+            <tr
+              onClick={() => onSelectZone?.('bagian-catatan')}
+              className={`border-b border-black ${getZoneClass('bagian-catatan')}`}
+            >
+              <td colSpan={2} className="p-2.5 align-top">
+                <div className="flex items-start">
+                  <span className="font-normal w-6 shrink-0 text-left">VII.</span>
+                  <div className="flex-1 min-w-0">
+                    <span>Catatan lain-lain</span>
+                    {data.catatanLainLain ? (
+                      <p className="mt-1 text-[10.5px] break-words">{data.catatanLainLain}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            {/* BARIS VIII: PERHATIAN */}
+            <tr
+              onClick={() => onSelectZone?.('bagian-catatan')}
+              className={`border-b border-black ${getZoneClass('bagian-catatan')}`}
+            >
+              <td colSpan={2} className="p-2.5 align-top">
+                <div className="flex items-start">
+                  <span className="font-bold w-6 shrink-0 text-left">VIII.</span>
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <span className="font-bold uppercase tracking-wide">
+                      PERHATIAN:
                     </span>
-                    <div className="flex-1 flex flex-col justify-between min-h-[120px]">
-                      <div className="space-y-0.5 min-h-[68px]">
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Tiba di</span>
-                          <span className="text-center">:</span>
-                          <span>{row.tibaDi}</span>
-                        </div>
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Pada tanggal</span>
-                          <span className="text-center">:</span>
-                          <span>{row.tibaTgl}</span>
-                        </div>
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Kepala</span>
-                          <span className="text-center">:</span>
-                          <span>{row.tibaKepala}</span>
-                        </div>
-                      </div>
-
-                      {/* Ruang cap stempel & tanda tangan + NIP */}
-                      <div className="pt-6">
-                        <p>NIP {row.tibaNip}</p>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Kolom Kanan: Berangkat dari */}
-                <td className="p-3 align-top">
-                  <div className="flex items-start">
-                    <span className="w-7 shrink-0" aria-hidden="true"></span>
-                    <div className="flex-1 flex flex-col justify-between min-h-[120px]">
-                      <div className="space-y-0.5 min-h-[68px]">
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Berangkat dari</span>
-                          <span className="text-center">:</span>
-                          <span>{row.berangkatDari}</span>
-                        </div>
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Ke</span>
-                          <span className="text-center">:</span>
-                          <span>{row.berangkatKe}</span>
-                        </div>
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Pada tanggal</span>
-                          <span className="text-center">:</span>
-                          <span>{row.berangkatTgl}</span>
-                        </div>
-                        <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                          <span>Kepala</span>
-                          <span className="text-center">:</span>
-                          <span>{row.berangkatKepala}</span>
-                        </div>
-                      </div>
-
-                      {/* Ruang cap stempel & tanda tangan + NIP */}
-                      <div className="pt-6">
-                        <p>NIP {row.berangkatNip}</p>
-                      </div>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
-
-          {/* BARIS VI: TIBA KEMBALI DI TEMPAT KEDUDUKAN & KETERANGAN PEMERIKSA */}
-          <tr className="border-b border-black">
-            {/* Kolom Kiri: VI. Tiba di (tempat kedudukan) */}
-            <td
-              onClick={() => onSelectZone?.('bagian-6')}
-              className={`border-r border-black p-3 align-top min-h-[145px] ${getZoneClass(
-                'bagian-6'
-              )}`}
-            >
-              <div className="flex items-start">
-                <span className="font-normal w-7 shrink-0 text-left">VI.</span>
-                <div className="flex-1 space-y-0.5">
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span>Tiba di</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.tibaDiAkhir}</span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span className="text-[10px] text-slate-700 leading-none">(tempat kedudukan)</span>
-                    <span className="text-center"></span>
-                    <span></span>
-                  </div>
-                  <div className="grid grid-cols-[105px_12px_1fr] items-baseline">
-                    <span>Pada tanggal</span>
-                    <span className="text-center">:</span>
-                    <span className="font-normal">{data.tibaTglAkhir}</span>
-                  </div>
-                  <div className="pt-1">
-                    <p className="font-normal">{data.tibaKepalaAkhir}</p>
-                  </div>
-
-                  {/* Ruang Tanda Tangan */}
-                  <div
-                    className="pt-8 text-center ml-auto w-56"
-                    style={{
-                      textAlign: 'justify',
-                      paddingLeft: '4px',
-                      marginLeft: '-3.5px',
-                      marginTop: '1px',
-                    }}
-                  >
-                    <p className="font-semibold underline">{data.pejabatNamaAkhir}</p>
-                    <p className="text-[10.5px]">{data.pejabatPangkatAkhir}</p>
-                    <p className="text-[10.5px]">NIP {data.pejabatNipAkhir}</p>
+                    <p className="text-justify leading-snug text-[10px] break-words">
+                      {data.teksPerhatian}
+                    </p>
                   </div>
                 </div>
-              </div>
-            </td>
-
-            {/* Kolom Kanan: Keterangan Pemeriksa Perjalanan Dinas */}
-            <td
-              onClick={() => onSelectZone?.('bagian-6')}
-              className={`p-3 align-top min-h-[145px] ${getZoneClass('bagian-6')}`}
-            >
-              <div className="flex items-start">
-                <span className="w-7 shrink-0" aria-hidden="true"></span>
-                <div className="flex-1 space-y-2">
-                  <p
-                    className="text-justify leading-snug"
-                    style={{ marginLeft: '-27px', marginRight: '-5px' }}
-                  >
-                    {data.keteranganPemeriksa}
-                  </p>
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          {/* BARIS VII: CATATAN LAIN-LAIN */}
-          <tr
-            onClick={() => onSelectZone?.('bagian-catatan')}
-            className={`border-b border-black ${getZoneClass('bagian-catatan')}`}
-          >
-            <td colSpan={2} className="p-3 align-top min-h-[35px]">
-              <div className="flex items-start">
-                <span className="font-normal w-7 shrink-0 text-left">VII.</span>
-                <div className="flex-1">
-                  <span>Catatan lain-lain</span>
-                  {data.catatanLainLain ? (
-                    <p className="mt-1 text-[11px]">{data.catatanLainLain}</p>
-                  ) : null}
-                </div>
-              </div>
-            </td>
-          </tr>
-
-          {/* BARIS VIII: PERHATIAN */}
-          <tr
-            onClick={() => onSelectZone?.('bagian-catatan')}
-            className={`border-b border-black ${getZoneClass('bagian-catatan')}`}
-          >
-            <td colSpan={2} className="p-3 align-top">
-              <div className="flex items-start">
-                <span className="font-bold w-7 shrink-0 text-left">VIII.</span>
-                <div className="flex-1 space-y-1">
-                  <span className="font-bold uppercase tracking-wide">
-                    PERHATIAN:
-                  </span>
-                  <p className="text-justify leading-snug text-[11px]">
-                    {data.teksPerhatian}
-                  </p>
-                </div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };

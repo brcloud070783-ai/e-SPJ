@@ -121,12 +121,14 @@ function syncFormValuesToClone(sourceRoot: Element, cloneRoot: Element) {
 }
 
 function cleanClonedSheetForPrint(clonedSheet: HTMLElement) {
-  // Remove all screen-only elements so they cannot occupy space or cause blank pages
+  // 1. Remove all screen-only elements and empty placeholder sections so they never appear in PDF
   clonedSheet
-    .querySelectorAll('.no-print, .spj-empty-printable-page, [data-no-print="true"]')
+    .querySelectorAll(
+      '.no-print, .spj-empty-printable-page, [data-empty-page="true"], [data-no-print="true"]'
+    )
     .forEach((el) => el.remove());
 
-  // Reset inline scaling and fixed pixel heights on the root sheet
+  // 2. Reset inline scaling and fixed pixel dimensions on the root sheet so it adapts 100% to any PDF paper width
   clonedSheet.style.transform = 'none';
   clonedSheet.style.transformOrigin = 'top left';
   clonedSheet.style.width = '100%';
@@ -138,21 +140,58 @@ function cleanClonedSheetForPrint(clonedSheet: HTMLElement) {
   clonedSheet.style.boxShadow = 'none';
   clonedSheet.style.border = 'none';
   clonedSheet.style.margin = '0 auto';
+  clonedSheet.style.overflow = 'visible';
 
-  // Also strip fixed min-h-[1123px] / min-h-[1247px] classes or inline heights on inner wrappers
+  // 3. Strip fixed pixel widths/heights on inner sheet containers so nothing is ever clipped horizontally or vertically
   clonedSheet
     .querySelectorAll<HTMLElement>(
-      '.print-only-sheet, .spj-dossier-sheet, .kuitansi-sheet-container'
+      '.print-only-sheet, .spj-dossier-sheet, .kuitansi-sheet-container, .spt-doc, .spd-doc, .documentation-print-area'
     )
     .forEach((inner) => {
       inner.style.transform = 'none';
+      inner.style.width = '100%';
+      inner.style.maxWidth = '100%';
       inner.style.height = 'auto';
       inner.style.minHeight = '0';
       inner.style.maxHeight = 'none';
       inner.style.aspectRatio = 'auto';
       inner.style.boxShadow = 'none';
       inner.style.border = 'none';
+      inner.style.overflow = 'visible';
     });
+
+  // 4. Also sanitize any descendant with large hardcoded pixel widths (> 450px) or heights (> 600px)
+  clonedSheet.querySelectorAll<HTMLElement>('[style]').forEach((el) => {
+    const w = el.style.width;
+    if (w && w.endsWith('px')) {
+      const pxVal = parseFloat(w);
+      if (!Number.isNaN(pxVal) && pxVal >= 450) {
+        el.style.width = '100%';
+        el.style.maxWidth = '100%';
+      }
+    }
+    const minH = el.style.minHeight;
+    if (minH && minH.endsWith('px')) {
+      const pxVal = parseFloat(minH);
+      if (!Number.isNaN(pxVal) && pxVal >= 400) {
+        el.style.minHeight = '0';
+      }
+    }
+    const h = el.style.height;
+    if (h && h.endsWith('px')) {
+      const pxVal = parseFloat(h);
+      if (!Number.isNaN(pxVal) && pxVal >= 600) {
+        el.style.height = 'auto';
+      }
+    }
+    const maxH = el.style.maxHeight;
+    if (maxH && maxH.endsWith('px')) {
+      const pxVal = parseFloat(maxH);
+      if (!Number.isNaN(pxVal) && pxVal >= 700) {
+        el.style.maxHeight = 'none';
+      }
+    }
+  });
 }
 
 async function waitForFontsAndImages(portalEl: HTMLElement): Promise<void> {
@@ -193,18 +232,28 @@ async function waitForFontsAndImages(portalEl: HTMLElement): Promise<void> {
   await Promise.race([workPromise, timeoutPromise]);
 }
 
+let activeCleanupFn: (() => void) | null = null;
+
 /**
  * Mobile & Desktop Isolated Print / PDF Export Engine.
  * - Isolates only the active printable paper sheets into a direct body child (`#spj-isolated-print-root`)
  *   and hides `#root` during `@media print` so mobile scroll positions, sticky headers, and scaled stages
- *   never cause blank pages or shrunk mobile fonts.
- * - Automatically strips empty attachment placeholder pages (`data-empty-page="true"`).
- * - Guarantees only pages `0 .. N-2` have `break-after: page`, while the final page `N-1` has `break-after: auto`.
+ *   never cause blank pages or right-edge clipping.
+ * - Uses 100% fluid page width (`width: 100% !important`) inside `@media print` so Android Print Spooler
+ *   (`ISO A4`, `ISO A4s`, `Letter`, `F4`) never clips the right side of any page.
+ * - Keeps the print portal alive while the mobile print spooler is open (since `window.print()` is
+ *   non-blocking on Android Chrome and the user may take 10-60s to change paper size and tap Save PDF).
  */
 export async function triggerIsolatedSpjPrint(
   options: TriggerIsolatedSpjPrintOptions
 ): Promise<void> {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  // Clean up any previous print session first
+  if (activeCleanupFn) {
+    activeCleanupFn();
+    activeCleanupFn = null;
+  }
 
   const {
     paperSize,
@@ -220,7 +269,7 @@ export async function triggerIsolatedSpjPrint(
     searchRoot.querySelectorAll<HTMLElement>(sheetSelector)
   );
 
-  // Deduplicate nested matches (e.g., if a .print-only-sheet contains another .print-only-sheet, keep outermost)
+  // Deduplicate nested matches (keep outermost sheet)
   const outermostSheets = rawCandidates.filter(
     (el) => !rawCandidates.some((other) => other !== el && other.contains(el))
   );
@@ -255,9 +304,7 @@ export async function triggerIsolatedSpjPrint(
 
   const pageWidthMm = paperSize === 'F4' ? '215mm' : '210mm';
   const pageHeightMm = paperSize === 'F4' ? '330mm' : '297mm';
-  // 1mm safety buffer below physical paper height prevents browser subpixel overflow from creating blank pages
-  const safeMaxHeightMm = paperSize === 'F4' ? '328.5mm' : '295.5mm';
-  const pagePadding = zeroPageMargin ? '2mm 3mm' : '5mm 7mm';
+  const pagePadding = zeroPageMargin ? '3mm 0mm' : '4mm 0mm';
 
   const styleEl = document.createElement('style');
   styleEl.textContent = `
@@ -268,24 +315,28 @@ export async function triggerIsolatedSpjPrint(
       }
       #${ISOLATED_PORTAL_ID} {
         display: block !important;
-        width: ${pageWidthMm} !important;
+        width: 100% !important;
+        max-width: 100% !important;
         margin: 0 auto !important;
         padding: 0 !important;
         background: #ffffff !important;
+        overflow: visible !important;
       }
       #${ISOLATED_PORTAL_ID} .spj-isolated-print-page {
         display: block !important;
-        width: ${pageWidthMm} !important;
-        max-width: ${pageWidthMm} !important;
+        width: 100% !important;
+        max-width: 100% !important;
         height: auto !important;
         min-height: 0 !important;
-        max-height: ${safeMaxHeightMm} !important;
+        max-height: none !important;
         padding: ${pagePadding} !important;
         margin: 0 auto !important;
         box-sizing: border-box !important;
-        overflow: hidden !important;
+        overflow: visible !important;
         background: #ffffff !important;
         color: #000000 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
       }
       #${ISOLATED_PORTAL_ID} .spj-isolated-print-page-break {
         break-after: page !important;
@@ -319,9 +370,6 @@ export async function triggerIsolatedSpjPrint(
     document.title = documentTitle;
   }
 
-  const prevScrollX = window.scrollX;
-  const prevScrollY = window.scrollY;
-
   document.body.classList.add('spj-is-printing');
 
   await waitForFontsAndImages(portal);
@@ -337,20 +385,24 @@ export async function triggerIsolatedSpjPrint(
     if (documentTitle) {
       document.title = prevTitle;
     }
-    window.scrollTo(prevScrollX, prevScrollY);
-    window.removeEventListener('afterprint', cleanup);
+    window.removeEventListener('pointerdown', handleUserReturnInteraction);
+    window.removeEventListener('keydown', handleUserReturnInteraction);
   };
 
-  window.addEventListener('afterprint', cleanup, { once: true });
+  // On Android Chrome, window.print() is non-blocking and afterprint can fire immediately while the
+  // Android Print Spooler ("Simpan sebagai PDF") is still open for 10-60 seconds!
+  // Because #spj-isolated-print-root is display:none in @media screen, keeping it in the DOM until
+  // the user actually touches/clicks the app again guarantees the print spooler never loses its content.
+  const handleUserReturnInteraction = () => {
+    window.setTimeout(cleanup, 300);
+  };
 
-  // Scroll to top before calling window.print() so mobile browsers (iOS Safari / Android Chrome)
-  // do not insert leading blank space above the first printed page
-  window.scrollTo(0, 0);
+  activeCleanupFn = cleanup;
 
-  try {
-    window.print();
-  } finally {
-    // Fallback cleanup for mobile browsers that return focus after closing print preview
-    window.setTimeout(cleanup, 1200);
-  }
+  window.setTimeout(() => {
+    window.addEventListener('pointerdown', handleUserReturnInteraction, { once: true });
+    window.addEventListener('keydown', handleUserReturnInteraction, { once: true });
+  }, 1500);
+
+  window.print();
 }

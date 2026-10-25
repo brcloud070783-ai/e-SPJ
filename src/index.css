@@ -83,13 +83,15 @@
 }
 
 #spj-isolated-print-root {
-  display: none;
+  display: none !important;
 }
 
 @media print {
   html, body {
     background: #ffffff !important;
     color: #000000 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     height: auto !important;
@@ -109,6 +111,7 @@
   body.spj-is-printing > #spj-isolated-print-root {
     display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #ffffff !important;
@@ -117,32 +120,37 @@
   .spj-isolated-print-page {
     display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
+    max-height: none !important;
     margin: 0 auto !important;
-    padding: 4mm 6mm !important;
+    padding: 4mm 0mm !important;
     box-sizing: border-box !important;
     background: #ffffff !important;
     color: #000000 !important;
     border: none !important;
     box-shadow: none !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .spj-isolated-print-page-break {
+  .spj-isolated-print-page-break,
+  .spj-page-break-after {
     break-after: page !important;
     page-break-after: always !important;
   }
 
-  .spj-isolated-print-page-last {
+  .spj-isolated-print-page-last,
+  .spj-last-printable-wrapper {
     break-after: auto !important;
     page-break-after: auto !important;
   }
 
   .no-print,
-  .spj-empty-printable-page {
+  .spj-empty-printable-page,
+  [data-empty-page="true"] {
     display: none !important;
   }
 
@@ -152,6 +160,7 @@
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
+    width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
   }
@@ -175,6 +184,7 @@
     min-height: 0 !important;
     max-height: none !important;
     aspect-ratio: auto !important;
+    overflow: visible !important;
   }
 
   .print-page-sheet {
@@ -183,6 +193,7 @@
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
+    width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
   }
@@ -204,6 +215,3 @@
     page-break-inside: avoid !important;
   }
 }
-
-
-

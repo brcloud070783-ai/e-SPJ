@@ -28,7 +28,6 @@ import {
   calculateKuitansiTotal,
   formatRupiah,
   getPaperDimensions,
-  calculateDocumentationGridDimensions,
   DocumentationPrintGridMode,
 } from '../utils/spjCalculations';
 import {
@@ -606,8 +605,6 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     );
   };
 
-  const gridDim = calculateDocumentationGridDimensions(paperSize, docGridMode);
-
   return (
     <div ref={containerRef} className="space-y-3 min-w-0 max-w-full overflow-x-clip">
       {/* Print CSS Rules for Multi-Page Unified PDF Output (Zero Blank Pages) */}
@@ -617,10 +614,13 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             size: ${spec.cssPageSize};
             margin: 0mm;
           }
-          .spj-empty-printable-page {
+          .spj-empty-printable-page,
+          [data-empty-page="true"] {
             display: none !important;
           }
           .spj-dossier-page-wrapper {
+            width: 100% !important;
+            max-width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             break-after: page !important;
@@ -638,10 +638,13 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             border: none !important;
             padding: 0 !important;
             margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
             overflow: visible !important;
           }
           .spj-dossier-stage {
             width: 100% !important;
+            max-width: 100% !important;
             height: auto !important;
             min-height: 0 !important;
             margin: 0 !important;
@@ -649,16 +652,17 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
           }
           .spj-dossier-sheet {
             transform: none !important;
-            width: ${paperSize === 'F4' ? '215mm' : '210mm'} !important;
+            width: 100% !important;
+            max-width: 100% !important;
             height: auto !important;
             min-height: 0 !important;
-            max-height: ${paperSize === 'F4' ? '328.5mm' : '295.5mm'} !important;
+            max-height: none !important;
             margin: 0 auto !important;
-            padding: 5mm 7mm !important;
+            padding: 3mm 0mm !important;
             border: none !important;
             box-shadow: none !important;
             box-sizing: border-box !important;
-            overflow: hidden !important;
+            overflow: visible !important;
           }
         }
       `}</style>
@@ -923,7 +927,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             incompleteReason: 'Data SPT Belum Lengkap',
             isLastPrintablePage: lastPrintableSectionId === 'spt',
             children: (
-              <div className="p-8 print:p-2">
+              <div className="py-5 px-0 print:py-1">
                 <SuratTugasDocumentPreview
                   spt={activeSpt}
                   appSettings={appSettings}
@@ -959,7 +963,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             ),
           })}
 
-        {/* HALAMAN 3: VISUM PERJALANAN DINAS (SPD BELAKANG) */}
+        {/* HALAMAN 3: VISUM PERJALANAN DINAS (SPD BELAKANG - 86% LEBAR KERTAS) */}
         {isSectionVisible('visum') &&
           renderPageWrapper({
             key: 'dossier-page-visum',
@@ -973,7 +977,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
             incompleteReason: 'Tujuan Visum Kosong',
             isLastPrintablePage: lastPrintableSectionId === 'visum',
             children: (
-              <div className="p-7 print:p-2">
+              <div className="py-5 px-0 print:py-1">
                 <SuratPerjalananDinasBelakangDocumentPreview
                   spt={activeSpt}
                   paperSize={paperSize}
@@ -1029,18 +1033,13 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                 pageIdx === paginatedDocPages.length - 1,
               children: (
                 <div
-                  className="spj-font-calibri mx-auto my-auto flex flex-col justify-between py-4 box-border overflow-hidden"
-                  style={{
-                    width: `${gridDim.printAreaWidthPx}px`,
-                    height: `${gridDim.printAreaHeightPx}px`,
-                    maxHeight: `${gridDim.printAreaHeightPx}px`,
-                  }}
+                  className="spj-font-calibri w-[86%] max-w-[86%] print:w-[86%] print:max-w-[86%] mx-auto py-4 flex flex-col justify-between box-border"
                 >
                   <div className="text-center pb-2 border-b border-black space-y-0.5 shrink-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-black">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-black break-words">
                       DOKUMENTASI PERJALANAN DINAS · SPT: {activeKuitansi.noSpt}
                     </p>
-                    <h3 className="text-[13px] font-extrabold text-black uppercase leading-snug">
+                    <h3 className="text-[12.5px] font-extrabold text-black uppercase leading-snug break-words">
                       {activeKuitansi.untukPengeluaran ||
                         activeKuitansi.tujuan ||
                         'Perjalanan Dinas'}
@@ -1066,35 +1065,35 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                     </div>
                   ) : (
                     <div
-                      className={`grid gap-3 w-full flex-1 h-full min-h-0 items-center justify-items-center overflow-hidden pt-2 ${
+                      className={`grid gap-3 w-full flex-1 items-center justify-items-center pt-3 ${
                         docGridMode === '1x1'
-                          ? 'grid-cols-1 grid-rows-1'
+                          ? 'grid-cols-1'
                           : docGridMode === '1x2'
-                            ? 'grid-cols-1 grid-rows-2'
+                            ? 'grid-cols-1'
                             : docGridMode === '1x3'
-                              ? 'grid-cols-1 grid-rows-3'
+                              ? 'grid-cols-1'
                               : docGridMode === '1x4'
-                                ? 'grid-cols-1 grid-rows-4'
-                                : docGridMode === '2x2'
-                                  ? 'grid-cols-2 grid-rows-2'
-                                  : docGridMode === '2x3'
-                                    ? 'grid-cols-2 grid-rows-3'
-                                    : 'grid-cols-2 grid-rows-4'
+                                ? 'grid-cols-1'
+                                : 'grid-cols-2'
                       }`}
                     >
                       {pageItems.map((item) => (
                         <div
                           key={item.id}
-                          className="w-full h-full min-h-0 min-w-0 flex items-center justify-center p-0.5"
+                          className="w-full flex items-center justify-center p-0.5 break-inside-avoid"
                         >
                           <div
-                            className="relative border border-slate-300 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center"
+                            className="relative w-full border border-slate-300 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center"
                             style={{
                               aspectRatio: '16 / 9',
-                              width: `${gridDim.boxWidthPx}px`,
-                              height: `${gridDim.boxHeightPx}px`,
-                              maxWidth: '100%',
-                              maxHeight: '100%',
+                              maxHeight:
+                                docGridMode === '1x1'
+                                  ? '420px'
+                                  : docGridMode === '1x2'
+                                    ? '320px'
+                                    : docGridMode === '1x3'
+                                      ? '240px'
+                                      : '210px',
                             }}
                           >
                             <img
