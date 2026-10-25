@@ -1,8 +1,9 @@
 import React from 'react';
 import {
-  Briefcase,
+  FolderOpen,
   ArrowRight,
-  FileText,
+  Banknote,
+  FileEdit,
   Camera,
   Receipt,
   Plus,
@@ -94,7 +95,7 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               onClick={onEnterSpjPerjalananDinas}
               className="flex-1 sm:flex-initial justify-center min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Briefcase className="w-3.5 h-3.5 shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 shrink-0" />
               <span>Semua Berkas ({kuitansiList.length})</span>
             </button>
           </div>
@@ -102,7 +103,7 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
 
         {/* 3 Metrik Nyata (Actionable Metrics Grid) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 min-w-0">
-          {/* Metrik 1: Draft SPJ Belum Selesai / Lokal */}
+          {/* Metrik 1: Jumlah Berkas SPJ */}
           <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 space-y-1 min-w-0">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Status Berkas SPJ</span>
@@ -110,13 +111,11 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
             </div>
             <p className="text-lg font-extrabold font-mono text-slate-900 tabular-nums truncate">
               {localDraftCount > 0
-                ? `${localDraftCount} Draft Lokal`
-                : `${kuitansiList.length} Tersinkron`}
+                ? `${localDraftCount} Berkas SPJ`
+                : `${kuitansiList.length} Berkas SPJ`}
             </p>
             <p className="text-[11px] text-slate-500">
-              {isCloudSynced
-                ? 'Terhubung ke Google Sheets & Drive'
-                : 'Belum disinkronkan ke Google Cloud'}
+              Tersimpan di perangkat &amp; siap dicetak
             </p>
           </div>
 
@@ -185,29 +184,37 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => onOpenStudioModule('kuitansi')}
+              onClick={() => onOpenStudioModule('berkas-utuh')}
+              className="w-full sm:w-auto justify-center min-h-[42px] px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer"
+            >
+              <span>1 File SPJ Utuh (PDF)</span>
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenStudioModule('spt')}
               className="w-full sm:w-auto justify-center min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-2 transition-colors cursor-pointer"
             >
-              <FileText className="w-3.5 h-3.5 shrink-0" />
-              <span>Lanjutkan Edit Kuitansi</span>
+              <FileEdit className="w-3.5 h-3.5 shrink-0" />
+              <span>Edit Berkas SPJ (1–6)</span>
               <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
         </div>
 
-        {/* 3 Labeled Icons + Microcopy (Pintasan 1-Klik ke 3 Tahapan Studio SPJ) */}
+        {/* 3 Labeled Icons + Microcopy (Pintasan 1-Klik ke Tahapan Studio SPJ Terpadu) */}
         <div className="pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             type="button"
-            onClick={() => onOpenStudioModule('kuitansi')}
+            onClick={() => onOpenStudioModule('spt')}
             className="text-left p-2.5 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
           >
             <LabeledIcon
               size="sm"
-              icon={FileText}
+              icon={Banknote}
               iconBgClass="bg-sky-50 text-sky-700 border border-sky-200/70"
-              label="1. Kuitansi SPPD"
-              microcopy="Edit kanvas A4/F4 interaktif & rincian biaya."
+              label="1–4. SPT, SPD, Visum & Kuitansi"
+              microcopy="Edit naskah SPT, SPD Depan, Visum & Kuitansi SPPD."
             />
           </button>
           <button
@@ -219,8 +226,8 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               size="sm"
               icon={Camera}
               iconBgClass="bg-emerald-50 text-emerald-700 border border-emerald-200/70"
-              label="2. Dokumentasi"
-              microcopy="Unggah foto kegiatan & dokumen SPT."
+              label="5. Dokumentasi Kegiatan"
+              microcopy="Unggah foto kegiatan lapangan dalam berkas SPJ."
             />
           </button>
           <button
@@ -232,8 +239,8 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               size="sm"
               icon={Receipt}
               iconBgClass="bg-amber-50 text-amber-700 border border-amber-200/70"
-              label="3. Bukti Pengeluaran"
-              microcopy="Rekonsiliasi nota, tiket & invoice hotel."
+              label="6. Bukti Pembayaran"
+              microcopy="Scan nota, tiket & invoice terintegrasi 1 berkas."
             />
           </button>
         </div>

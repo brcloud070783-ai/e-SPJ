@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for redesigning the Documentation section and A4/F4 print layout into a clean minimalist table format with photo and description side-by-side.",
-  "updatedAt":  "2026-10-23T05:37:28.648878753Z",
+  "summary":  "Rencana implementasi penyatuan 6 dokumen perjalanan dinas (SPT, SPD Depan, Visum SPD Belakang, Kuitansi, Dokumentasi Kegiatan, dan Bukti Pembayaran) menjadi 1 kesatuan Berkas SPJ Utuh dengan ruang kerja berurutan dan fitur cetak/unduh 1 file PDF multi-halaman utuh maupun cetak per halaman.",
+  "updatedAt":  "2026-10-25T12:01:54.630504699Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

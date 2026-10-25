@@ -1,15 +1,12 @@
 import React from 'react';
 import {
-  MapPin,
-  Calendar,
-  User,
   RotateCcw,
   Sparkles,
-  FileText,
   AlertCircle,
-  Building2,
-  Layers,
-  ChevronDown,
+  Stamp,
+  PlaneTakeoff,
+  Route,
+  NotebookPen,
 } from 'lucide-react';
 import {
   SuratPerintahTugas,
@@ -135,7 +132,7 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
       {/* Quick Action Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-sky-50/70 border border-sky-200/80 rounded-xl">
         <div className="flex items-center gap-1.5 text-xs font-bold text-sky-950">
-          <FileText className="w-4 h-4 text-sky-700" />
+          <Stamp className="w-4 h-4 text-sky-700" />
           <span>Formulir SPD Lembar 2 (Belakang / Visum)</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -162,14 +159,15 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           role="tab"
           aria-selected={activeZone === 'bagian-1'}
           onClick={() => onSelectZone('bagian-1')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
             activeZone === 'bagian-1'
               ? 'bg-white text-sky-800 shadow-2xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
           title="I. Keberangkatan Awal"
         >
-          1. Berangkat (I)
+          <PlaneTakeoff className="w-3 h-3 shrink-0" />
+          <span className="truncate">1. Berangkat (I)</span>
         </button>
 
         <button
@@ -177,14 +175,15 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           role="tab"
           aria-selected={activeZone === 'bagian-transit'}
           onClick={() => onSelectZone('bagian-transit')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
             activeZone === 'bagian-transit'
               ? 'bg-white text-sky-800 shadow-2xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
           title="II - V. Tempat Persinggahan"
         >
-          2. Transit (II-V)
+          <Route className="w-3 h-3 shrink-0" />
+          <span className="truncate">2. Transit (II-V)</span>
         </button>
 
         <button
@@ -192,14 +191,15 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           role="tab"
           aria-selected={activeZone === 'bagian-6'}
           onClick={() => onSelectZone('bagian-6')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
             activeZone === 'bagian-6'
               ? 'bg-white text-sky-800 shadow-2xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
           title="VI. Tiba Kembali & Pemeriksaan"
         >
-          3. Tiba &amp; Cek (VI)
+          <Stamp className="w-3 h-3 shrink-0" />
+          <span className="truncate">3. Tiba &amp; Cek (VI)</span>
         </button>
 
         <button
@@ -207,14 +207,15 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           role="tab"
           aria-selected={activeZone === 'bagian-catatan'}
           onClick={() => onSelectZone('bagian-catatan')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
             activeZone === 'bagian-catatan'
               ? 'bg-white text-sky-800 shadow-2xs font-bold'
               : 'text-slate-600 hover:text-slate-900'
           }`}
           title="VII & VIII. Catatan & Perhatian"
         >
-          4. Catatan &amp; Info
+          <NotebookPen className="w-3 h-3 shrink-0" />
+          <span className="truncate">4. Catatan &amp; Info</span>
         </button>
       </div>
 
@@ -390,9 +391,10 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
             <button
               type="button"
               onClick={handleClearPersinggahan}
-              className="text-[11px] font-semibold text-rose-700 hover:text-rose-800 hover:underline cursor-pointer"
+              className="text-[11px] font-semibold text-rose-700 hover:text-rose-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              Kosongkan Semua (Cap Manual)
+              <RotateCcw className="w-3 h-3 shrink-0" />
+              <span>Kosongkan Semua (Cap Manual)</span>
             </button>
           </div>
 

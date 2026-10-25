@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   RotateCcw,
   Save,
-  Cloud,
   Upload,
   Download,
   FileSpreadsheet,
@@ -22,6 +21,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Star,
+  Ban,
+  ShieldCheck,
+  Wallet,
 } from 'lucide-react';
 import { AppSettings, PaperSize, PegawaiItem } from '../types/spj';
 import { INITIAL_APP_SETTINGS, INITIAL_DAFTAR_PEGAWAI } from '../data/seedData';
@@ -968,13 +971,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
               <button
                 type="button"
                 onClick={() => setPegawaiFilterStatus('prioritas')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer ${
                   pegawaiFilterStatus === 'prioritas'
                     ? 'bg-amber-600 text-white font-bold'
                     : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
                 }`}
               >
-                ⭐ Prioritas ({daftarPegawai.filter((p) => p.isPriority).length})
+                <Star className="w-3.5 h-3.5 fill-current shrink-0" />
+                <span>Prioritas ({daftarPegawai.filter((p) => p.isPriority).length})</span>
               </button>
               <button
                 type="button"
@@ -1050,8 +1054,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   className="px-2.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs transition-colors"
                   title="Menonaktifkan semua pegawai yang dicentang dari pilihan SPJ"
                 >
-                  <X className="w-3.5 h-3.5" />
-                  <span>🚫 Non-Aktifkan Terpilih</span>
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>Non-Aktifkan Terpilih</span>
                 </button>
                 <button
                   type="button"
@@ -1059,22 +1063,24 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold inline-flex items-center gap-1 cursor-pointer shadow-2xs transition-colors"
                   title="Mengaktifkan kembali pegawai terpilih"
                 >
-                  <Check className="w-3.5 h-3.5" />
-                  <span>✅ Aktifkan Terpilih</span>
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Aktifkan Terpilih</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleBulkSetPriority(true)}
                   className="px-2.5 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>⭐ Set Prioritas</span>
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-600" />
+                  <span>Set Prioritas</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleBulkSetPriority(false)}
                   className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  <span>☆ Off Prioritas</span>
+                  <Star className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Off Prioritas</span>
                 </button>
                 <button
                   type="button"
@@ -1105,8 +1111,8 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   onClick={() => handleBulkSetStatus(false, true)}
                   className="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <X className="w-3.5 h-3.5 text-amber-400" />
-                  <span>🚫 Non-Aktifkan Semua ({filteredPegawai.filter((p) => p.statusActive !== false).length}) Hasil Filter</span>
+                  <Ban className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Non-Aktifkan Semua ({filteredPegawai.filter((p) => p.statusActive !== false).length}) Hasil Filter</span>
                 </button>
               </div>
             )
@@ -1365,8 +1371,9 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span>{peg.nama}</span>
                             {isPrio && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                ⭐ Prioritas
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-0.5">
+                                <Star className="w-2.5 h-2.5 fill-amber-500 text-amber-600 shrink-0" />
+                                <span>Prioritas</span>
                               </span>
                             )}
                             {!isActive && (
@@ -1378,13 +1385,15 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                           {(isPa || isBendahara) && (
                             <div className="flex gap-1 mt-0.5">
                               {isPa && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                  Pengguna Anggaran
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200 inline-flex items-center gap-0.5">
+                                  <ShieldCheck className="w-2.5 h-2.5 shrink-0" />
+                                  <span>Pengguna Anggaran</span>
                                 </span>
                               )}
                               {isBendahara && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
-                                  Bendahara
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-sky-100 text-sky-800 border border-sky-200 inline-flex items-center gap-0.5">
+                                  <Wallet className="w-2.5 h-2.5 shrink-0" />
+                                  <span>Bendahara</span>
                                 </span>
                               )}
                             </div>
@@ -1416,7 +1425,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                               </>
                             ) : (
                               <>
-                                <X className="w-3 h-3 text-slate-500 shrink-0" />
+                                <Ban className="w-3 h-3 text-slate-500 shrink-0" />
                                 <span>Non-Aktif</span>
                               </>
                             )}
@@ -1439,9 +1448,11 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                                 : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
                             }`}
                           >
-                            <span className={isPrio ? 'text-amber-600 font-bold' : 'text-slate-400'}>
-                              {isPrio ? '⭐' : '☆'}
-                            </span>
+                            <Star
+                              className={`w-3 h-3 shrink-0 ${
+                                isPrio ? 'fill-amber-500 text-amber-600' : 'text-slate-400'
+                              }`}
+                            />
                             <span>{isPrio ? 'Prioritas' : 'Biasa'}</span>
                           </button>
                         </td>
@@ -1453,9 +1464,10 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                                 type="button"
                                 title="Tetapkan pegawai ini sebagai Pengguna Anggaran"
                                 onClick={() => handleAssignPegawaiAsRole(peg, 'pa')}
-                                className="px-2 py-1 rounded-md border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold cursor-pointer"
+                                className="px-2 py-1 rounded-md border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
                               >
-                                Set PA
+                                <ShieldCheck className="w-3 h-3 text-amber-700 shrink-0" />
+                                <span>Set PA</span>
                               </button>
                             )}
                             {!isBendahara && (
@@ -1463,9 +1475,10 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                                 type="button"
                                 title="Tetapkan pegawai ini sebagai Bendahara Pengeluaran"
                                 onClick={() => handleAssignPegawaiAsRole(peg, 'bendahara')}
-                                className="px-2 py-1 rounded-md border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-900 text-[10px] font-bold cursor-pointer"
+                                className="px-2 py-1 rounded-md border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-900 text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
                               >
-                                Set Bendahara
+                                <Wallet className="w-3 h-3 text-sky-700 shrink-0" />
+                                <span>Set Bendahara</span>
                               </button>
                             )}
 
@@ -1647,15 +1660,15 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           </div>
         </div>
 
-        {/* SECTION 4: PREFERENSI CETAK & GOOGLE WORKSPACE */}
+        {/* SECTION 4: PREFERENSI CETAK */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
           <div className="border-b border-slate-100 pb-3">
             <LabeledIcon
               size="sm"
               icon={Printer}
               iconBgClass="bg-amber-50 text-amber-700 border border-amber-200/70"
-              label="4. Preferensi Kertas Cetak & Google Workspace"
-              microcopy="Atur ukuran kertas default (A4 atau F4 Folio) dan integrasi penyimpanan cloud."
+              label="4. Preferensi Kertas Cetak"
+              microcopy="Atur ukuran kertas default (A4 atau F4 Folio) untuk pratinjau dan pencetakan dokumen."
               tooltipVariant="info"
               tooltipTitle="Ukuran Kertas A4 vs F4 Folio"
               tooltipContent="A4 berukuran 210 × 297 mm, sedangkan F4 (Folio) berukuran 215 × 330 mm yang umum digunakan untuk berkas SPJ pemerintahan."
@@ -1699,23 +1712,6 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
                   F4 Folio (215 × 330 mm)
                 </button>
               </div>
-            </div>
-
-            <div className="flex flex-col sm:items-end justify-center gap-1.5">
-              <span className="text-xs text-slate-500">
-                Status Cloud:{' '}
-                <strong className="text-slate-800">
-                  {isGoogleConnected ? 'Terhubung' : 'Belum Terhubung'}
-                </strong>
-              </span>
-              <button
-                type="button"
-                onClick={onOpenWorkspaceModal}
-                className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-800 inline-flex items-center gap-2 cursor-pointer"
-              >
-                <Cloud className="w-4 h-4 text-sky-700" />
-                <span>Konfigurasi Google Sheets &amp; Drive</span>
-              </button>
             </div>
           </div>
         </div>

@@ -5,18 +5,25 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  FileText,
   Camera,
   Receipt,
-  Cloud,
   ArrowLeft,
+  ArrowRight,
   ChevronDown,
   Plus,
   CheckCircle2,
-  ChevronRight,
   Copy,
   Trash2,
   AlertTriangle,
+  Home,
+  Briefcase,
+  Settings,
+  Banknote,
+  FileCheck,
+  ClipboardList,
+  Stamp,
+  Layers,
+  Printer,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -48,11 +55,6 @@ import {
 } from './utils/spjCalculations';
 import {
   initAuth,
-  googleSignIn,
-  logout,
-  provisionWorkspaceStorage,
-  connectExistingSpreadsheet,
-  listUserSpreadsheetsInDrive,
   uploadFileToDriveFolder,
   deleteFileFromDrive,
   syncAllRecordsToSheets,
@@ -67,7 +69,7 @@ import { KuitansiEditorSection } from './components/KuitansiEditorSection';
 import { SuratTugasEditorSection } from './components/SuratTugasEditorSection';
 import { DokumentasiPerjalananSection } from './components/DokumentasiPerjalananSection';
 import { DokumentasiPengeluaranSection } from './components/DokumentasiPengeluaranSection';
-import { WorkspaceSyncModal } from './components/WorkspaceSyncModal';
+import { BerkasSpjUtuhSection } from './components/BerkasSpjUtuhSection';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
@@ -218,12 +220,7 @@ export default function App() {
   // Google Auth State (Access token is cached in memory inside googleWorkspace.ts)
   const [user, setUser] = useState<User | null>(null);
   const [hasValidToken, setHasValidToken] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
-  const [syncSuccessMessage, setSyncSuccessMessage] = useState<string | null>(null);
 
   // SPJ Deletion & Action Toast state
   const [kuitansiToDelete, setKuitansiToDelete] = useState<KuitansiPerjalananDinas | null>(null);
@@ -374,6 +371,23 @@ export default function App() {
   const activeKuitansi =
     kuitansiList.find((k) => k.id === activeKuitansiId) || kuitansiList[0];
 
+  const activeSpt =
+    sptList.find((s) => s.kuitansiId === activeKuitansi.id) ||
+    sptList.find(
+      (s) =>
+        s.noSpt &&
+        activeKuitansi.noSpt &&
+        s.noSpt.trim().toLowerCase() === activeKuitansi.noSpt.trim().toLowerCase()
+    ) ||
+    sptList.find((s) => s.id === activeSptId) ||
+    sptList[0];
+
+  useEffect(() => {
+    if (activeSpt && activeSpt.id !== activeSptId) {
+      setActiveSptId(activeSpt.id);
+    }
+  }, [activeKuitansi.id, activeSpt?.id]);
+
   const handleSaveKuitansi = (updated: KuitansiPerjalananDinas) => {
     const syncStatus: KuitansiPerjalananDinas['statusSync'] =
       hasValidToken && workspaceConfig?.spreadsheetId && workspaceConfig.autoSyncEnabled
@@ -385,6 +399,70 @@ export default function App() {
         item.id === updated.id ? { ...updated, statusSync: syncStatus } : item
       )
     );
+
+    // Sinkronkan atribut inti dari Kuitansi ke SPT/SPD/Visum dalam berkas SPJ yang sama
+    setSptList((prev) =>
+      prev.map((spt) => {
+        const isLinked =
+          spt.kuitansiId === updated.id ||
+          spt.id === activeSpt?.id;
+        if (!isLinked) return spt;
+
+        let nextPegawaiList = [...(spt.pegawaiList || [])];
+        if (updated.atasNama && updated.atasNama.trim()) {
+          const existingIdx = nextPegawaiList.findIndex(
+            (p) =>
+              p.nama.trim().toLowerCase() === updated.atasNama.trim().toLowerCase() ||
+              (updated.nipPenerima && p.nip === updated.nipPenerima)
+          );
+          if (existingIdx !== -1) {
+            nextPegawaiList[existingIdx] = {
+              ...nextPegawaiList[existingIdx],
+              nama: updated.atasNama,
+              nip: updated.nipPenerima || nextPegawaiList[existingIdx].nip,
+            };
+          } else if (nextPegawaiList.length > 0) {
+            nextPegawaiList[0] = {
+              ...nextPegawaiList[0],
+              nama: updated.atasNama,
+              nip: updated.nipPenerima || nextPegawaiList[0].nip,
+            };
+          }
+        }
+
+        return {
+          ...spt,
+          kuitansiId: updated.id,
+          noSpt: updated.noSpt || spt.noSpt,
+          maksudPerjalanan: updated.untukPengeluaran || spt.maksudPerjalanan,
+          tempatTujuan: updated.tujuan
+            ? `${updated.tujuan.replace(/;$/, '').trim()};`
+            : spt.tempatTujuan,
+          pegawaiList: nextPegawaiList,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+
+    // Sinkronkan noSpt & pelaksana ke Dokumentasi dan Bukti Pembayaran
+    if (updated.noSpt) {
+      setDokumentasiPerjalanan((prev) =>
+        prev.map((d) =>
+          d.kuitansiId === updated.id
+            ? {
+                ...d,
+                noSpt: updated.noSpt,
+                pelaksana: updated.atasNama || d.pelaksana,
+              }
+            : d
+        )
+      );
+      setDokumentasiPengeluaran((prev) =>
+        prev.map((e) =>
+          e.kuitansiId === updated.id ? { ...e, noSpt: updated.noSpt } : e
+        )
+      );
+    }
   };
 
   const handleSaveSettings = (
@@ -422,75 +500,78 @@ export default function App() {
       prev.map((item) => (item.id === updated.id ? updated : item))
     );
     const syncedSubKegiatan = extractSubKegiatanFromSpt(updated);
-    if (syncedSubKegiatan) {
-      setKuitansiList((prev) =>
-        prev.map((item) => {
-          const isLinked =
-            item.id === updated.kuitansiId ||
-            (item.noSpt &&
-              updated.noSpt &&
-              item.noSpt.trim().toLowerCase() === updated.noSpt.trim().toLowerCase()) ||
-            item.id === activeKuitansiId;
-          if (!isLinked) return item;
-          return {
-            ...item,
-            subKegiatan: syncedSubKegiatan,
-            updatedAt: new Date().toISOString(),
-          };
-        })
+    const selectedPegId =
+      updated.spdData?.selectedPegawaiId || updated.pegawaiList?.[0]?.id;
+    const selectedPeg =
+      updated.pegawaiList?.find((p) => p.id === selectedPegId) ||
+      updated.pegawaiList?.[0];
+    const cleanTujuan = updated.tempatTujuan
+      ? updated.tempatTujuan.replace(/;$/, '').trim()
+      : '';
+    const cleanMaksud = updated.maksudPerjalanan
+      ? updated.maksudPerjalanan.replace(/;$/, '').trim()
+      : '';
+
+    setKuitansiList((prev) =>
+      prev.map((item) => {
+        const isLinked =
+          item.id === updated.kuitansiId ||
+          item.id === activeKuitansiId ||
+          (item.noSpt &&
+            updated.noSpt &&
+            item.noSpt.trim().toLowerCase() === updated.noSpt.trim().toLowerCase());
+        if (!isLinked) return item;
+
+        return {
+          ...item,
+          noSpt: updated.noSpt || item.noSpt,
+          subKegiatan: syncedSubKegiatan || item.subKegiatan,
+          tujuan: cleanTujuan || item.tujuan,
+          untukPengeluaran: cleanMaksud || item.untukPengeluaran,
+          atasNama: selectedPeg?.nama || item.atasNama,
+          nipPenerima: selectedPeg?.nip || item.nipPenerima,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+
+    if (updated.noSpt) {
+      const targetKuiId = updated.kuitansiId || activeKuitansiId;
+      setDokumentasiPerjalanan((prev) =>
+        prev.map((d) =>
+          d.kuitansiId === targetKuiId
+            ? {
+                ...d,
+                noSpt: updated.noSpt,
+                pelaksana: selectedPeg?.nama || d.pelaksana,
+              }
+            : d
+        )
+      );
+      setDokumentasiPengeluaran((prev) =>
+        prev.map((e) =>
+          e.kuitansiId === targetKuiId ? { ...e, noSpt: updated.noSpt } : e
+        )
       );
     }
   };
 
   const handleCreateNewSpt = () => {
-    const nextSeq = sptList.length + 1;
-    const newSpt: SuratPerintahTugas = {
-      id: `spt-2026-00${nextSeq}-${Date.now().toString().slice(-3)}`,
-      noSpt: `800.1.11.1/ 1${1898 + nextSeq}/SPT/Disdikbud/KU/X/${appSettings.tahunAnggaranDefault || '2026'}`,
-      dasarList: [
-        'Peraturan Gubernur Kalimantan Utara Nomor 41 Tahun 2022 Tentang Perubahan Atas Peraturan Gubernur Nomor 25 Tahun 2019, tentang Pedoman Pelaksanaan Perjalanan Dinas;',
-        'Telaah Staf Pejabat Pelaksana Teknis Kegiatan perihal pelaksanaan tugas perjalanan dinas lapangan;',
-      ],
-      pegawaiList: [
-        {
-          id: `st-p-${Date.now()}-1`,
-          nama: activeKuitansi.atasNama || appSettings.namaPelaksanaDefault || 'Bayu Ramadhan',
-          pangkatGol: 'Penata, III/c',
-          nip: activeKuitansi.nipPenerima || appSettings.nipPelaksanaDefault || '198307072015031002',
-          jabatan: 'Analis Perencanaan & Anggaran',
-        },
-      ],
-      maksudPerjalanan: activeKuitansi.untukPengeluaran || 'Monitoring dan Peninjauan Lokasi Rencana Kegiatan Pelayanan Pendidikan;',
-      tempatBerangkat: `${appSettings.kotaTtdDefault || 'Tanjung Selor'};`,
-      tempatTujuan: `${activeKuitansi.tujuan || 'Kota Tarakan'};`,
-      tanggalBerangkat: 'Kamis, 15 Oktober 2026;',
-      tanggalHarusKembali: 'Sabtu, 17 Oktober 2026;',
-      lamanyaPerjalanan: '3 (tiga) hari;',
-      pembebananAnggaran: activeKuitansi.subKegiatan || 'DPA Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara TA 2026',
-      tempatDitetapkan: appSettings.kotaTtdDefault || 'Tanjung Selor',
-      tanggalDitetapkan: '15 Oktober 2026',
-      jabatanPenandatangan: appSettings.jabatanPenggunaAnggaran || 'Plt. Kepala Dinas',
-      namaPenandatangan: appSettings.namaPenggunaAnggaran || 'Hasanuddin, S.Pd., M.Si.',
-      nipPenandatangan: appSettings.nipPenggunaAnggaran || '197405272007011010',
-      pangkatPenandatangan: 'Pembina Tingkat I, IV/b',
-      updatedAt: new Date().toISOString(),
-    };
-
-    setSptList((prev) => [newSpt, ...prev]);
-    setActiveSptId(newSpt.id);
-    setMainMenu('perjalanan-dinas');
-    setSpjView('surat-tugas');
-    showToast(`Surat Perintah Tugas #${nextSeq} berhasil dibuat!`);
+    handleCreateNewKuitansi();
   };
 
   const handleCreateNewKuitansi = () => {
     const nextNumber = kuitansiList.length + 1;
+    const nowSuffix = Date.now().toString().slice(-3);
+    const newKuitansiId = `kui-2026-00${nextNumber}-${nowSuffix}`;
+    const newSptNo = `800.1.11.1/ 1${1898 + nextNumber}/SPT/Disdikbud/KU/X/${appSettings.tahunAnggaranDefault || '2026'}`;
     const currentSpt =
       sptList.find((s) => s.id === activeSptId) || sptList[0];
     const sptSubKeg = extractSubKegiatanFromSpt(currentSpt);
+
     const newKuitansi: KuitansiPerjalananDinas = {
       ...applySettingsToKuitansi(activeKuitansi, appSettings),
-      id: `kui-2026-00${nextNumber}-${Date.now().toString().slice(-3)}`,
+      id: newKuitansiId,
       tahunAnggaran: appSettings.tahunAnggaranDefault || activeKuitansi.tahunAnggaran,
       subKegiatan:
         sptSubKeg ||
@@ -500,12 +581,12 @@ export default function App() {
       sudahTerimaDari:
         appSettings.sudahTerimaDariDefault || activeKuitansi.sudahTerimaDari,
       noKuitansi: '',
-      atasNama: '',
-      nipPenerima: '',
-      tujuan: 'Tanjung Selor - Tarakan (PP)',
-      tanggalPerjalanan: '10 s.d 12 April 2026',
-      tempatTanggalTtd: `${appSettings.kotaTtdDefault || 'Tanjung Selor'}, 12 April 2026`,
-      noSpt: `094/${40 + nextNumber}/SPT/UM-Set/DD/IV/${appSettings.tahunAnggaranDefault || '2026'}`,
+      atasNama: appSettings.namaPelaksanaDefault || 'Bayu Ramadhan',
+      nipPenerima: appSettings.nipPelaksanaDefault || '198307072015031002',
+      tujuan: 'Kota Tarakan',
+      tanggalPerjalanan: '15 s.d 17 Oktober 2026',
+      tempatTanggalTtd: `${appSettings.kotaTtdDefault || 'Tanjung Selor'}, 17 Oktober 2026`,
+      noSpt: newSptNo,
       customFieldValues: {},
       lampiranDokumen: [],
       statusSync:
@@ -514,17 +595,78 @@ export default function App() {
           : 'Tersimpan Lokal',
       updatedAt: new Date().toISOString(),
     };
+
+    const newPegId = `st-p-${Date.now()}-1`;
+    const newSpt: SuratPerintahTugas = {
+      id: `spt-2026-00${nextNumber}-${nowSuffix}`,
+      kuitansiId: newKuitansiId,
+      noSpt: newSptNo,
+      dasarList: [
+        'Peraturan Gubernur Kalimantan Utara Nomor 41 Tahun 2022 Tentang Perubahan Atas Peraturan Gubernur Nomor 25 Tahun 2019, tentang Pedoman Pelaksanaan Perjalanan Dinas;',
+        'Telaah Staf Pejabat Pelaksana Teknis Kegiatan perihal pelaksanaan tugas perjalanan dinas lapangan;',
+      ],
+      pegawaiList: [
+        {
+          id: newPegId,
+          nama: newKuitansi.atasNama,
+          pangkatGol: 'Penata, III/c',
+          nip: newKuitansi.nipPenerima,
+          jabatan: 'Analis Perencanaan & Anggaran',
+        },
+      ],
+      maksudPerjalanan:
+        newKuitansi.untukPengeluaran ||
+        'Monitoring dan Peninjauan Lokasi Rencana Kegiatan Pelayanan Pendidikan;',
+      tempatBerangkat: `${appSettings.kotaTtdDefault || 'Tanjung Selor'};`,
+      tempatTujuan: `${newKuitansi.tujuan};`,
+      tanggalBerangkat: 'Kamis, 15 Oktober 2026;',
+      tanggalHarusKembali: 'Sabtu, 17 Oktober 2026;',
+      lamanyaPerjalanan: '3 (tiga) hari;',
+      pembebananAnggaran:
+        newKuitansi.subKegiatan ||
+        'DPA Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara TA 2026',
+      tempatDitetapkan: appSettings.kotaTtdDefault || 'Tanjung Selor',
+      tanggalDitetapkan: '15 Oktober 2026',
+      jabatanPenandatangan: appSettings.jabatanPenggunaAnggaran || 'Plt. Kepala Dinas',
+      namaPenandatangan: appSettings.namaPenggunaAnggaran || 'Hasanuddin, S.Pd., M.Si.',
+      nipPenandatangan: appSettings.nipPenggunaAnggaran || '197405272007011010',
+      pangkatPenandatangan: 'Pembina Tingkat I, IV/b',
+      spdData: {
+        lembarKe: '...............................................',
+        kodeNo: '...............................................',
+        nomorSpd: `000.1.2.3/                  /SPPD/Disdikbud/${appSettings.tahunAnggaranDefault || '2026'}`,
+        pptkNama: `${newKuitansi.atasNama}/NIP ${newKuitansi.nipPenerima}`,
+        pptkNip: newKuitansi.nipPenerima,
+        tingkatBiaya: '',
+        alatAngkut: 'Darat dan Air',
+        instansiAnggaran: appSettings.namaDinas || 'Dinas Pendidikan dan Kebudayaan',
+        akunAnggaran: newKuitansi.subKegiatan,
+        keteranganLain: '',
+        selectedPegawaiId: newPegId,
+        pengikutList: [
+          { id: '1', nama: '', tanggalLahir: '', keterangan: '' },
+          { id: '2', nama: '', tanggalLahir: '', keterangan: '' },
+          { id: '3', nama: '', tanggalLahir: '', keterangan: '' },
+          { id: '4', nama: '', tanggalLahir: '', keterangan: '' },
+        ],
+      },
+      updatedAt: new Date().toISOString(),
+    };
+
     setKuitansiList((prev) => [newKuitansi, ...prev]);
+    setSptList((prev) => [newSpt, ...prev]);
     setActiveKuitansiId(newKuitansi.id);
+    setActiveSptId(newSpt.id);
     setMainMenu('perjalanan-dinas');
-    setSpjView('kuitansi');
-    showToast(`SPJ #${nextNumber} berhasil dibuat!`);
+    setSpjView('spt');
+    showToast(`Berkas SPJ Utuh #${nextNumber} (SPT, SPD, Visum & Kuitansi) berhasil dibuat!`);
   };
 
   const handleDuplicateActiveKuitansi = () => {
     const nextNumber = kuitansiList.length + 1;
     const paddedSeq = String(nextNumber).padStart(3, '0');
     const nowSuffix = Date.now().toString().slice(-3);
+    const dupKuiId = `kui-dup-${paddedSeq}-${nowSuffix}`;
 
     const clonedRincian = activeKuitansi.rincian.map((item, idx) => ({
       ...item,
@@ -537,7 +679,7 @@ export default function App() {
 
     const duplicatedKuitansi: KuitansiPerjalananDinas = {
       ...activeKuitansi,
-      id: `kui-dup-${paddedSeq}-${nowSuffix}`,
+      id: dupKuiId,
       noKuitansi: '',
       rincian: clonedRincian,
       customFieldValues: clonedCustomValues,
@@ -549,11 +691,21 @@ export default function App() {
       updatedAt: new Date().toISOString(),
     };
 
+    const duplicatedSpt: SuratPerintahTugas = {
+      ...activeSpt,
+      id: `spt-dup-${paddedSeq}-${nowSuffix}`,
+      kuitansiId: dupKuiId,
+      updatedAt: new Date().toISOString(),
+    };
+
     setKuitansiList((prev) => [duplicatedKuitansi, ...prev]);
+    setSptList((prev) => [duplicatedSpt, ...prev]);
     setActiveKuitansiId(duplicatedKuitansi.id);
+    setActiveSptId(duplicatedSpt.id);
     setIsSpjSwitcherOpen(false);
     setMainMenu('perjalanan-dinas');
-    setSpjView('kuitansi');
+    setSpjView('spt');
+    showToast(`Berkas SPJ Utuh berhasil diduplikat!`);
   };
 
   const promptDeleteKuitansi = (target: KuitansiPerjalananDinas) => {
@@ -565,8 +717,9 @@ export default function App() {
     const targetId = kuitansiToDelete.id;
     const targetLabel = kuitansiToDelete.atasNama || kuitansiToDelete.noSpt || 'SPJ';
 
-    // 1. Hapus berkas dari kuitansiList
+    // 1. Hapus berkas dari kuitansiList & sptList terkait
     const remaining = kuitansiList.filter((k) => k.id !== targetId);
+    const remainingSpt = sptList.filter((s) => s.kuitansiId !== targetId);
 
     // 2. Cascade delete: bersihkan dokumentasi perjalanan & pengeluaran yang terikat pada SPJ ini
     setDokumentasiPerjalanan((prev) => prev.filter((d) => d.kuitansiId !== targetId));
@@ -574,25 +727,36 @@ export default function App() {
 
     // 3. Fallback jika seluruh SPJ terhapus: sediakan SPJ draft baru agar aplikasi selalu stabil
     if (remaining.length === 0) {
+      const freshKuiId = `kui-2026-001-${Date.now().toString().slice(-4)}`;
       const freshBlank: KuitansiPerjalananDinas = {
         ...applySettingsToKuitansi(INITIAL_KUITANSI_LIST[0], appSettings),
-        id: `kui-2026-001-${Date.now().toString().slice(-4)}`,
+        id: freshKuiId,
         noKuitansi: `001/KUI-SPPD/DISDIKBUD/IV/${appSettings.tahunAnggaranDefault || '2026'}`,
-        atasNama: '',
-        nipPenerima: '',
-        subKegiatan: '',
+        atasNama: appSettings.namaPelaksanaDefault || 'Bayu Ramadhan',
+        nipPenerima: appSettings.nipPelaksanaDefault || '198307072015031002',
+        subKegiatan: appSettings.subKegiatanDefault || '',
         tujuan: 'Tanjung Selor - Tarakan (PP)',
         tanggalPerjalanan: '10 s.d 12 April 2026',
         tempatTanggalTtd: `${appSettings.kotaTtdDefault || 'Tanjung Selor'}, 12 April 2026`,
-        noSpt: `094/41/SPT/UM-Set/DD/IV/2026`,
+        noSpt: `800.1.11.1/ 11898/SPT/Disdikbud/KU/X/2026`,
         lampiranDokumen: [],
         statusSync: 'Tersimpan Lokal',
         updatedAt: new Date().toISOString(),
       };
+      const freshSpt: SuratPerintahTugas = {
+        ...INITIAL_SURAT_TUGAS_LIST[0],
+        id: `spt-2026-001-${Date.now().toString().slice(-4)}`,
+        kuitansiId: freshKuiId,
+      };
       setKuitansiList([freshBlank]);
+      setSptList([freshSpt]);
       setActiveKuitansiId(freshBlank.id);
+      setActiveSptId(freshSpt.id);
     } else {
       setKuitansiList(remaining);
+      if (remainingSpt.length > 0) {
+        setSptList(remainingSpt);
+      }
       if (activeKuitansiId === targetId) {
         setActiveKuitansiId(remaining[0].id);
       }
@@ -680,228 +844,6 @@ export default function App() {
     );
   };
 
-  const handleGoogleLogin = async () => {
-    setIsLoggingIn(true);
-    setSyncError(null);
-    try {
-      const res = await googleSignIn();
-      if (res) {
-        setUser(res.user);
-        setHasValidToken(true);
-        setSyncSuccessMessage(
-          `Berhasil terhubung sebagai ${res.user.email}. Silakan buat Spreadsheet baru atau hubungkan Spreadsheet yang sudah ada.`
-        );
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal masuk dengan Google.';
-      setSyncError(msg);
-    } finally {
-      setIsLoggingIn(false);
-    }
-  };
-
-  const handleGoogleLogout = async () => {
-    await logout();
-    setUser(null);
-    setHasValidToken(false);
-    setSyncSuccessMessage(null);
-  };
-
-  const handleProvisionWorkspace = async () => {
-    setIsSyncing(true);
-    setSyncError(null);
-    setSyncSuccessMessage(null);
-    try {
-      const cfg = await provisionWorkspaceStorage(
-        workspaceConfig?.autoSyncEnabled ?? true
-      );
-      setWorkspaceConfig(cfg);
-      await syncAllRecordsToSheets({
-        spreadsheetId: cfg.spreadsheetId,
-        kuitansiList,
-        dokumentasiPerjalanan,
-        dokumentasiPengeluaran,
-        customFields,
-      });
-      setKuitansiList((prev) =>
-        prev.map((k) => ({ ...k, statusSync: 'Tersinkronisasi Sheets' }))
-      );
-      setSyncSuccessMessage(
-        'Spreadsheet baru & Folder Google Drive berhasil dibuat, serta seluruh data SPJ telah disinkronkan!'
-      );
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal menyiapkan penyimpanan Google Workspace.';
-      setSyncError(msg);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleConnectExistingSpreadsheet = async (rawUrlOrId: string) => {
-    setIsSyncing(true);
-    setSyncError(null);
-    setSyncSuccessMessage(null);
-    try {
-      const cfg = await connectExistingSpreadsheet(
-        rawUrlOrId,
-        workspaceConfig,
-        workspaceConfig?.autoSyncEnabled ?? true
-      );
-      setWorkspaceConfig(cfg);
-      await syncAllRecordsToSheets({
-        spreadsheetId: cfg.spreadsheetId,
-        kuitansiList,
-        dokumentasiPerjalanan,
-        dokumentasiPengeluaran,
-        customFields,
-      });
-      setKuitansiList((prev) =>
-        prev.map((k) => ({ ...k, statusSync: 'Tersinkronisasi Sheets' }))
-      );
-      setSyncSuccessMessage(
-        `Berhasil terhubung ke Spreadsheet "${cfg.spreadsheetTitle}" & menyinkronkan data SPJ!`
-      );
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal menghubungkan Spreadsheet yang dipilih.';
-      setSyncError(msg);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleToggleAutoSync = (enabled: boolean) => {
-    if (workspaceConfig) {
-      setWorkspaceConfig({
-        ...workspaceConfig,
-        autoSyncEnabled: enabled,
-      });
-    }
-  };
-
-  const handleSyncAllData = async () => {
-    if (!workspaceConfig) return;
-    setIsSyncing(true);
-    setSyncError(null);
-    setSyncSuccessMessage(null);
-    try {
-      // 1. Upload any unsynced supporting documents attached to Kuitansi
-      const updatedKuitansiList: KuitansiPerjalananDinas[] = [];
-      for (const k of kuitansiList) {
-        const updatedLampiran: LampiranDokumenItem[] = [];
-        for (const lamp of k.lampiranDokumen || []) {
-          if (!lamp.driveFileId && workspaceConfig.docKegiatanFolderId) {
-            const uploaded = await uploadFileToDriveFolder({
-              dataUrl: lamp.dataUrl,
-              fileName: lamp.namaFile,
-              mimeType: lamp.mimeType,
-              folderId: workspaceConfig.docKegiatanFolderId,
-              description: `Dokumen Pendukung SPJ (${lamp.jenisDokumen}): ${lamp.namaDokumen} — SPT ${k.noSpt}`,
-            });
-            updatedLampiran.push({
-              ...lamp,
-              driveFileId: uploaded.id,
-              driveWebViewLink: uploaded.webViewLink,
-              statusSync: 'Tersimpan di Drive & Sheets',
-            });
-          } else {
-            updatedLampiran.push({
-              ...lamp,
-              statusSync: 'Tersimpan di Drive & Sheets',
-            });
-          }
-        }
-        updatedKuitansiList.push({
-          ...k,
-          lampiranDokumen: updatedLampiran,
-          statusSync: 'Tersinkronisasi Sheets',
-        });
-      }
-
-      // 2. Upload any unsynced activity photos / docs to Drive
-      const updatedDocPerjalanan: DokumentasiPerjalananItem[] = [];
-      for (const docItem of dokumentasiPerjalanan) {
-        if (!docItem.driveFileId && workspaceConfig.docKegiatanFolderId) {
-          const uploaded = await uploadFileToDriveFolder({
-            dataUrl: docItem.fotoDataUrl,
-            fileName: docItem.namaFile,
-            mimeType: docItem.mimeType,
-            folderId: workspaceConfig.docKegiatanFolderId,
-            description: `${docItem.judulKegiatan} (${docItem.noSpt})`,
-          });
-          updatedDocPerjalanan.push({
-            ...docItem,
-            driveFileId: uploaded.id,
-            driveWebViewLink: uploaded.webViewLink,
-            statusSync: 'Tersimpan di Drive & Sheets',
-          });
-        } else {
-          updatedDocPerjalanan.push({
-            ...docItem,
-            statusSync: 'Tersimpan di Drive & Sheets',
-          });
-        }
-      }
-
-      // 3. Upload any unsynced expense proofs to Drive
-      const updatedDocPengeluaran: DokumentasiPengeluaranItem[] = [];
-      for (const expItem of dokumentasiPengeluaran) {
-        if (!expItem.driveFileId && workspaceConfig.docPengeluaranFolderId) {
-          const uploaded = await uploadFileToDriveFolder({
-            dataUrl: expItem.fotoBuktiDataUrl,
-            fileName: expItem.namaFile,
-            mimeType: expItem.mimeType,
-            folderId: workspaceConfig.docPengeluaranFolderId,
-            description: `${expItem.namaPengeluaran} - Rp${expItem.nominal} (${expItem.noSpt})`,
-          });
-          updatedDocPengeluaran.push({
-            ...expItem,
-            driveFileId: uploaded.id,
-            driveWebViewLink: uploaded.webViewLink,
-            statusSync: 'Tersimpan di Drive & Sheets',
-          });
-        } else {
-          updatedDocPengeluaran.push({
-            ...expItem,
-            statusSync: 'Tersimpan di Drive & Sheets',
-          });
-        }
-      }
-
-      setKuitansiList(updatedKuitansiList);
-      setDokumentasiPerjalanan(updatedDocPerjalanan);
-      setDokumentasiPengeluaran(updatedDocPengeluaran);
-
-      await syncAllRecordsToSheets({
-        spreadsheetId: workspaceConfig.spreadsheetId,
-        kuitansiList: updatedKuitansiList,
-        dokumentasiPerjalanan: updatedDocPerjalanan,
-        dokumentasiPengeluaran: updatedDocPengeluaran,
-        customFields,
-      });
-
-      setWorkspaceConfig({
-        ...workspaceConfig,
-        lastSyncedAt: new Date().toISOString(),
-      });
-      setSyncSuccessMessage(
-        'Seluruh Kuitansi, Bidang Kustom, Dokumentasi Kegiatan, Bukti Pengeluaran, dan Tautan Google Drive berhasil disinkronkan ke Google Sheets!'
-      );
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : 'Gagal menyinkronkan data ke Google Workspace.';
-      setSyncError(msg);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
 
   const handleAddDokumentasiPerjalanan = async (
     newItem: DokumentasiPerjalananItem,
@@ -952,7 +894,6 @@ export default function App() {
     item: DokumentasiPerjalananItem
   ) => {
     if (!hasValidToken || !workspaceConfig?.docKegiatanFolderId) {
-      setIsSyncModalOpen(true);
       return;
     }
     setIsUploading(true);
@@ -1058,7 +999,6 @@ export default function App() {
     item: DokumentasiPengeluaranItem
   ) => {
     if (!hasValidToken || !workspaceConfig?.docPengeluaranFolderId) {
-      setIsSyncModalOpen(true);
       return;
     }
     setIsUploading(true);
@@ -1121,10 +1061,6 @@ export default function App() {
   const activeDocPengeluaran = dokumentasiPengeluaran.filter(
     (e) => e.kuitansiId === activeKuitansi.id
   );
-  const totalDokumenPendukung = kuitansiList.reduce(
-    (sum, k) => sum + (k.lampiranDokumen?.length || 0),
-    0
-  );
 
   const isInsideStudio = mainMenu === 'perjalanan-dinas' && spjView !== 'sub-home';
   const isCloudSynced = Boolean(user && hasValidToken && workspaceConfig);
@@ -1141,34 +1077,78 @@ export default function App() {
     icon: React.ComponentType<{ className?: string }>;
   }> = [
     {
-      key: 'kuitansi',
+      key: 'spt',
       stepNum: '1',
+      label: 'SPT',
+      microcopy: 'Surat Tugas',
+      icon: FileCheck,
+    },
+    {
+      key: 'spd',
+      stepNum: '2',
+      label: 'SPD',
+      microcopy: 'SPD Depan',
+      icon: ClipboardList,
+    },
+    {
+      key: 'visum',
+      stepNum: '3',
+      label: 'Visum',
+      microcopy: 'SPD Belakang',
+      icon: Stamp,
+    },
+    {
+      key: 'kuitansi',
+      stepNum: '4',
       label: 'Kuitansi',
-      microcopy: 'Cetak SPPD',
-      icon: FileText,
+      microcopy: 'Biaya SPPD',
+      icon: Banknote,
     },
     {
       key: 'dokumentasi',
-      stepNum: '2',
+      stepNum: '5',
       label: 'Dokumentasi',
-      microcopy: 'Foto & Berkas',
+      microcopy: 'Foto Kegiatan',
       icon: Camera,
     },
     {
       key: 'pengeluaran',
-      stepNum: '3',
+      stepNum: '6',
       label: 'Bukti',
       microcopy: 'Scan Nota',
       icon: Receipt,
     },
+    {
+      key: 'berkas-utuh',
+      stepNum: 'PDF',
+      label: '1 File Utuh',
+      microcopy: 'Cetak Semua',
+      icon: Layers,
+    },
   ];
+
+  const normalizedActiveStepKey: SpjSubSectionKey =
+    spjView === 'surat-tugas'
+      ? 'spt'
+      : spjView === 'sub-home'
+        ? 'spt'
+        : spjView;
+
+  const currentStepIdx = studioSteps.findIndex(
+    (s) => s.key === normalizedActiveStepKey
+  );
+  const prevStep = currentStepIdx > 0 ? studioSteps[currentStepIdx - 1] : null;
+  const nextStep =
+    currentStepIdx >= 0 && currentStepIdx < studioSteps.length - 1
+      ? studioSteps[currentStepIdx + 1]
+      : null;
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
       {/* 1. COMPACT STUDIO APP BAR (Tampil HANYA saat di dalam mode kerja/editor Studio — Tema Terang Bersih) */}
       {isInsideStudio ? (
         <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
-          {/* Baris 1: Tombol Kembali + Pemilih Berkas SPJ Compact + Tombol "+ Duplikat" + Ikon Cloud Sync */}
+          {/* Baris 1: Tombol Kembali + Pemilih Berkas SPJ Compact + Tombol "+ Duplikat" + Pintasan 1 File Utuh */}
           <div className="max-w-7xl mx-auto px-2 sm:px-6 h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2 relative min-w-0">
             <button
               type="button"
@@ -1179,7 +1159,7 @@ export default function App() {
               className="min-h-[30px] px-2 py-1 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Kembali</span>
+              <span>Daftar SPJ</span>
             </button>
 
             {/* Judul / Nomor SPJ Aktif + Tombol Sekunder "+ Duplikat" */}
@@ -1192,20 +1172,20 @@ export default function App() {
                 className="max-w-full min-h-[34px] px-2.5 sm:px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/90 text-xs font-bold text-slate-900 inline-flex items-center gap-1.5 min-w-0 transition-colors cursor-pointer"
               >
                 <span className="truncate">
-                  SPJ #{activeKuitansiIndex + 1} · {activeKuitansi.atasNama}
+                  Berkas SPJ #{activeKuitansiIndex + 1} · {activeKuitansi.atasNama || '(Draft)'}
                 </span>
-                <span className="hidden md:inline text-slate-500 font-normal">
+                <span className="hidden md:inline text-slate-500 font-normal truncate max-w-[200px]">
                   ({activeKuitansi.noSpt})
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               </button>
 
-              {/* Tombol Aksi Sekunder "+ Duplikat" untuk menduplikasi Kuitansi aktif */}
+              {/* Tombol Aksi Sekunder "+ Duplikat" untuk menduplikasi Berkas SPJ aktif */}
               <button
                 type="button"
                 onClick={handleDuplicateActiveKuitansi}
                 data-testid="duplicate-kuitansi-button"
-                title="Gandakan (clone) kuitansi aktif menjadi draft baru untuk pelaksana lain"
+                title="Gandakan berkas SPJ utuh ini menjadi berkas baru"
                 className="min-h-[34px] px-2 sm:px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
               >
                 <Copy className="w-3.5 h-3.5 text-sky-700 shrink-0" />
@@ -1218,7 +1198,7 @@ export default function App() {
                   className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1"
                 >
                   <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                    <span>Pilih Berkas SPJ Aktif</span>
+                    <span>Pilih Berkas SPJ Utuh</span>
                     <span>{kuitansiList.length} Berkas</span>
                   </div>
                   <div className="max-h-60 overflow-y-auto space-y-1">
@@ -1300,40 +1280,36 @@ export default function App() {
               )}
             </div>
 
-            {/* Ikon Cloud Sync dengan Titik Indikator Warna (Tanpa Teks Panjang) */}
+            {/* Pintasan Cepat ke Cetak 1 File PDF Utuh */}
             <button
               type="button"
-              onClick={() => setIsSyncModalOpen(true)}
-              aria-label={
-                isCloudSynced
-                  ? 'Status Cloud: Tersinkronisasi ke Google Sheets & Drive'
-                  : 'Status Cloud: Tersimpan Lokal (Ketuk untuk hubungkan Google Workspace)'
-              }
-              title={
-                isCloudSynced
-                  ? 'Tersinkronisasi (Google Sheets & Drive Aktif)'
-                  : 'Lokal (Ketuk untuk sinkronisasi Cloud)'
-              }
-              className="relative w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200/80 text-slate-700 flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+              onClick={() => {
+                setIsSpjSwitcherOpen(false);
+                setSpjView('berkas-utuh');
+              }}
+              className={`min-h-[30px] px-2.5 py-1 rounded-xl text-xs font-extrabold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer ${
+                spjView === 'berkas-utuh'
+                  ? 'bg-emerald-700 text-white'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+              }`}
+              title="Pratinjau & Cetak 1 File SPJ Utuh (Semua Halaman)"
             >
-              <Cloud className="w-4 h-4 text-sky-700" />
-              <span
-                className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ring-2 ring-white ${
-                  isCloudSynced ? 'bg-emerald-500' : 'bg-amber-400'
-                }`}
-              />
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">PDF 1 File Utuh</span>
+              <span className="sm:hidden">Utuh</span>
             </button>
           </div>
 
-          {/* Baris 2: Grid 3 Kolom Proporsional & Ringkas (Semua 3 Tahapan Tampil Utuh Tanpa Terpotong: Icon + Label + Microcopy) */}
+          {/* Baris 2: Urutan 6 Bagian Dokumen + 1 File Utuh */}
           <div className="border-t border-slate-100 bg-slate-50/90">
             <nav
-              aria-label="Tahapan Modul SPJ"
-              className="max-w-7xl mx-auto px-1.5 sm:px-6 py-1 grid grid-cols-3 gap-1 sm:gap-2"
+              aria-label="Urutan Halaman Berkas SPJ"
+              className="max-w-7xl mx-auto px-1.5 sm:px-6 py-1 grid grid-cols-7 gap-1 sm:gap-1.5"
             >
               {studioSteps.map((step) => {
                 const StepIcon = step.icon;
-                const isActive = spjView === step.key;
+                const isActive = normalizedActiveStepKey === step.key;
+                const isUtuhTab = step.key === 'berkas-utuh';
                 return (
                   <button
                     key={step.key}
@@ -1342,28 +1318,38 @@ export default function App() {
                       setIsSpjSwitcherOpen(false);
                       setSpjView(step.key);
                     }}
-                    className={`min-w-0 px-1 sm:px-2.5 py-1 rounded-xl flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-0.5 sm:gap-2 text-center sm:text-left border transition-all cursor-pointer ${
+                    className={`min-w-0 px-1 sm:px-2 py-1 rounded-xl flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-0.5 sm:gap-1.5 text-center sm:text-left border transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
-                        : 'bg-white hover:bg-slate-100/80 text-slate-700 hover:text-slate-900 border-slate-200/80'
+                        ? isUtuhTab
+                          ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                          : 'bg-sky-700 text-white border-sky-700 shadow-2xs'
+                        : isUtuhTab
+                          ? 'bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 border-emerald-200'
+                          : 'bg-white hover:bg-slate-100/80 text-slate-700 hover:text-slate-900 border-slate-200/80'
                     }`}
                   >
                     <div
-                      className={`w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center shrink-0 ${
+                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md flex items-center justify-center shrink-0 ${
                         isActive
                           ? 'bg-white/20 text-white'
-                          : 'bg-slate-100 text-sky-700'
+                          : isUtuhTab
+                            ? 'bg-emerald-200/70 text-emerald-800'
+                            : 'bg-slate-100 text-sky-700'
                       }`}
                     >
-                      <StepIcon className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+                      <StepIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
                     </div>
                     <div className="min-w-0 max-w-full flex flex-col leading-tight">
-                      <span className="text-[9.5px] sm:text-xs font-bold tracking-tight truncate">
-                        {step.stepNum}.{step.label}
+                      <span className="text-[8.5px] sm:text-[11px] font-bold tracking-tight truncate">
+                        {step.stepNum === 'PDF' ? step.label : `${step.stepNum}. ${step.label}`}
                       </span>
                       <span
-                        className={`text-[8.5px] sm:text-[10px] font-medium truncate ${
-                          isActive ? 'text-sky-100' : 'text-slate-500'
+                        className={`hidden md:block text-[9.5px] font-medium truncate ${
+                          isActive
+                            ? 'text-sky-100'
+                            : isUtuhTab
+                              ? 'text-emerald-700'
+                              : 'text-slate-500'
                         }`}
                       >
                         {step.microcopy}
@@ -1401,13 +1387,14 @@ export default function App() {
                 e.preventDefault();
                 setMainMenu('home');
               }}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
+              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'home'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
                   : 'hover:text-slate-900'
               }`}
             >
-              Beranda
+              <Home className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <span>Beranda</span>
             </a>
             <a
               href="#perjalanan-dinas"
@@ -1416,12 +1403,13 @@ export default function App() {
                 setMainMenu('perjalanan-dinas');
                 setSpjView('sub-home');
               }}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
+              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'perjalanan-dinas'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
                   : 'hover:text-slate-900'
               }`}
             >
+              <Briefcase className="w-3.5 h-3.5 text-sky-700 shrink-0" />
               <span>SPJ Dinas</span>
             </a>
             <a
@@ -1430,46 +1418,22 @@ export default function App() {
                 e.preventDefault();
                 setMainMenu('settings');
               }}
-              className={`transition-colors whitespace-nowrap shrink-0 py-1 ${
+              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'settings'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
                   : 'hover:text-slate-900'
               }`}
             >
-              Pengaturan
+              <Settings className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <span>Pengaturan</span>
             </a>
           </nav>
 
-          {/* Zone 3: Ikon Cloud Sync dengan Indikator Titik Warna (Hijau = Tersinkron, Kuning = Lokal) */}
+          {/* Zone 3: PWA Install Button */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden lg:block">
               <PWAInstallButton />
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSyncModalOpen(true)}
-              aria-label={
-                isCloudSynced
-                  ? 'Status Cloud: Tersinkronisasi ke Google Sheets & Drive'
-                  : 'Status Cloud: Tersimpan Lokal (Ketuk untuk hubungkan Google Workspace)'
-              }
-              title={
-                isCloudSynced
-                  ? 'Hijau: Tersinkron ke Google Sheets & Drive'
-                  : 'Kuning: Tersimpan Lokal (Ketuk untuk hubungkan Cloud)'
-              }
-              className="relative w-9 h-9 sm:w-auto sm:px-3 sm:py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-2 shrink-0 transition-colors cursor-pointer"
-            >
-              <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
-              <span className="hidden sm:inline">
-                {isCloudSynced ? 'Tersinkron' : 'Lokal'}
-              </span>
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  isCloudSynced ? 'bg-emerald-400' : 'bg-amber-400'
-                } absolute top-1.5 right-1.5 sm:static`}
-              />
-            </button>
           </div>
         </header>
       )}
@@ -1495,19 +1459,18 @@ export default function App() {
             }}
             onCreateNewKuitansi={() => {
               handleCreateNewKuitansi();
-              setMainMenu('perjalanan-dinas');
-              setSpjView('kuitansi');
             }}
           />
         )}
 
-        {/* 2. SECTION PERJALANAN DINAS: Sub-Home & 4 Studio Modul */}
+        {/* 2. SECTION PERJALANAN DINAS: Sub-Home & Ruang Kerja Berurutan 1 Berkas SPJ Utuh */}
         {mainMenu === 'perjalanan-dinas' && (
           <div className="space-y-3 sm:space-y-4 min-w-0 max-w-full">
             {spjView === 'sub-home' ? (
               <SpjPerjalananSubHome
                 kuitansiList={kuitansiList}
                 activeKuitansi={activeKuitansi}
+                activeSpt={activeSpt}
                 onSelectKuitansi={setActiveKuitansiId}
                 onCreateNewKuitansi={handleCreateNewKuitansi}
                 onDuplicateKuitansi={handleDuplicateActiveKuitansi}
@@ -1519,7 +1482,7 @@ export default function App() {
                 onOpenSubSection={(sub) => setSpjView(sub)}
               />
             ) : (
-              <div className="min-w-0 max-w-full">
+              <div className="min-w-0 max-w-full space-y-4">
                 {spjView === 'kuitansi' && (
                   <KuitansiEditorSection
                     kuitansiList={kuitansiList}
@@ -1528,7 +1491,7 @@ export default function App() {
                     onSaveKuitansi={handleSaveKuitansi}
                     onCreateNewKuitansi={handleCreateNewKuitansi}
                     onDeleteKuitansi={() => promptDeleteKuitansi(activeKuitansi)}
-                    onOpenSyncModal={() => setIsSyncModalOpen(true)}
+                    onOpenSyncModal={() => {}}
                     customFields={customFields}
                     onAddCustomField={handleAddCustomField}
                     onUpdateCustomField={handleUpdateCustomField}
@@ -1550,14 +1513,17 @@ export default function App() {
                     logoPemprovDataUrl={appSettings.logoPemprovDataUrl}
                     daftarPegawai={daftarPegawai}
                     sptList={sptList}
-                    activeSptId={activeSptId}
+                    activeSptId={activeSpt.id}
                   />
                 )}
 
-                {spjView === 'surat-tugas' && (
+                {(spjView === 'spt' ||
+                  spjView === 'spd' ||
+                  spjView === 'visum' ||
+                  spjView === 'surat-tugas') && (
                   <SuratTugasEditorSection
                     sptList={sptList}
-                    activeSptId={activeSptId}
+                    activeSptId={activeSpt.id}
                     onSelectSpt={setActiveSptId}
                     onSaveSpt={handleSaveSpt}
                     onCreateNewSpt={handleCreateNewSpt}
@@ -1571,6 +1537,22 @@ export default function App() {
                       } catch {
                         // ignore
                       }
+                    }}
+                    activeDocType={
+                      spjView === 'spt' || spjView === 'surat-tugas'
+                        ? 'spt'
+                        : spjView === 'visum'
+                          ? 'spd-belakang'
+                          : 'spd'
+                    }
+                    onChangeDocType={(dt) => {
+                      setSpjView(
+                        dt === 'spt'
+                          ? 'spt'
+                          : dt === 'spd-belakang'
+                            ? 'visum'
+                            : 'spd'
+                      );
                     }}
                   />
                 )}
@@ -1586,7 +1568,7 @@ export default function App() {
                     onDeleteItem={handleDeleteDokumentasiPerjalanan}
                     isGoogleConnected={hasValidToken && !!workspaceConfig}
                     isUploading={isUploading}
-                    onOpenSyncModal={() => setIsSyncModalOpen(true)}
+                    onOpenSyncModal={() => {}}
                     paperSize={paperSize}
                     onChangePaperSize={(size) => {
                       setPaperSize(size);
@@ -1610,7 +1592,7 @@ export default function App() {
                     onDeleteItem={handleDeleteDokumentasiPengeluaran}
                     isGoogleConnected={hasValidToken && !!workspaceConfig}
                     isUploading={isUploading}
-                    onOpenSyncModal={() => setIsSyncModalOpen(true)}
+                    onOpenSyncModal={() => {}}
                     paperSize={paperSize}
                     onChangePaperSize={(size) => {
                       setPaperSize(size);
@@ -1622,6 +1604,86 @@ export default function App() {
                     }}
                   />
                 )}
+
+                {spjView === 'berkas-utuh' && (
+                  <BerkasSpjUtuhSection
+                    activeKuitansi={activeKuitansi}
+                    activeSpt={activeSpt}
+                    docPerjalanan={activeDocPerjalanan}
+                    docPengeluaran={activeDocPengeluaran}
+                    customFields={customFields}
+                    appSettings={appSettings}
+                    paperSize={paperSize}
+                    onChangePaperSize={(size) => {
+                      setPaperSize(size);
+                      try {
+                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                    onEditSection={(sec) => setSpjView(sec)}
+                  />
+                )}
+
+                {/* Navigasi Berurutan Antar-Halaman dalam 1 Berkas SPJ Utuh */}
+                <div className="no-print bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    {prevStep ? (
+                      <button
+                        type="button"
+                        onClick={() => setSpjView(prevStep.key)}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700" />
+                        <span>
+                          Sebelumnya: {prevStep.stepNum === 'PDF' ? prevStep.label : `${prevStep.stepNum}. ${prevStep.label}`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSpjView('sub-home')}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700" />
+                        <span>Ringkasan Berkas SPJ</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-slate-500 font-semibold hidden md:block">
+                    1 Kesatuan Berkas SPJ Utuh ·{' '}
+                    <span className="text-slate-900 font-bold">
+                      {activeKuitansi.atasNama} ({activeKuitansi.noSpt})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {spjView !== 'berkas-utuh' && (
+                      <button
+                        type="button"
+                        onClick={() => setSpjView('berkas-utuh')}
+                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Pratinjau 1 File Utuh</span>
+                      </button>
+                    )}
+                    {nextStep && (
+                      <button
+                        type="button"
+                        onClick={() => setSpjView(nextStep.key)}
+                        className="min-h-[38px] px-4 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <span>
+                          Selanjutnya: {nextStep.stepNum === 'PDF' ? nextStep.label : `${nextStep.stepNum}. ${nextStep.label}`}
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1643,37 +1705,11 @@ export default function App() {
                 // ignore
               }
             }}
-            onOpenWorkspaceModal={() => setIsSyncModalOpen(true)}
+            onOpenWorkspaceModal={() => {}}
             isGoogleConnected={hasValidToken && !!workspaceConfig}
           />
         )}
       </main>
-
-      {/* Google Workspace Sync Modal */}
-      <WorkspaceSyncModal
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        user={user}
-        isLoggingIn={isLoggingIn}
-        onGoogleLogin={handleGoogleLogin}
-        onGoogleLogout={handleGoogleLogout}
-        workspaceConfig={workspaceConfig}
-        onProvisionWorkspace={handleProvisionWorkspace}
-        onConnectExistingSpreadsheet={handleConnectExistingSpreadsheet}
-        onLoadDriveSpreadsheets={listUserSpreadsheetsInDrive}
-        onToggleAutoSync={handleToggleAutoSync}
-        onSyncAllData={handleSyncAllData}
-        isSyncing={isSyncing}
-        syncError={syncError}
-        syncSuccessMessage={syncSuccessMessage}
-        counts={{
-          kuitansi: kuitansiList.length,
-          dokumentasi: dokumentasiPerjalanan.length,
-          pengeluaran: dokumentasiPengeluaran.length,
-          dokumenPendukung: totalDokumenPendukung,
-          customFields: customFields.length,
-        }}
-      />
 
       {/* Modal Dialog Konfirmasi Hapus Berkas SPJ */}
       {kuitansiToDelete && (

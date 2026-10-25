@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  FileText,
   Plus,
   Trash2,
   CheckCircle2,
@@ -12,9 +11,12 @@ import {
   ChevronUp,
   Printer,
   X,
-  Users,
   Calendar,
   RefreshCw,
+  Save,
+  Coins,
+  Car,
+  BedDouble,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -1189,8 +1191,8 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 }
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/80 text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
-                <span>Uang Harian</span>
+                <Coins className="w-3.5 h-3.5 text-amber-600" />
+                <span>+ Uang Harian</span>
               </button>
               <button
                 type="button"
@@ -1205,8 +1207,8 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 }
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/80 text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
-                <span>Transportasi</span>
+                <Car className="w-3.5 h-3.5 text-sky-700" />
+                <span>+ Transportasi</span>
               </button>
               <button
                 type="button"
@@ -1215,8 +1217,8 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 }
                 className="min-h-[34px] px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/80 text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
-                <span>Penginapan</span>
+                <BedDouble className="w-3.5 h-3.5 text-indigo-700" />
+                <span>+ Penginapan</span>
               </button>
             </div>
           </div>
@@ -1735,7 +1737,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   type="submit"
                   className="min-h-[42px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  <FileText className="w-3.5 h-3.5" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>Simpan &amp; Validasi</span>
                 </button>
                 <button
@@ -1862,7 +1864,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   onClick={() => handleExplicitValidateAndSave()}
                   className="min-h-[40px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                 >
-                  <FileText className="w-3.5 h-3.5" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>Simpan</span>
                 </button>
               </div>

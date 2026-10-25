@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  FileText,
   FileCheck,
   Plus,
   Trash2,
@@ -10,14 +9,16 @@ import {
   Printer,
   X,
   User,
-  ChevronDown,
-  ChevronUp,
-  MapPin,
   Calendar,
-  Building2,
-  Layers,
-  Sparkles,
   ClipboardList,
+  Stamp,
+  PenTool,
+  Route,
+  Wallet,
+  Hash,
+  PlaneTakeoff,
+  NotebookPen,
+  Save,
 } from 'lucide-react';
 import {
   SuratPerintahTugas,
@@ -63,6 +64,8 @@ interface SuratTugasEditorSectionProps {
   daftarPegawai?: PegawaiItem[];
   paperSize: PaperSize;
   onChangePaperSize: (size: PaperSize) => void;
+  activeDocType?: ActiveDocType;
+  onChangeDocType?: (docType: ActiveDocType) => void;
 }
 
 export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = ({
@@ -76,11 +79,20 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
   daftarPegawai = [],
   paperSize,
   onChangePaperSize,
+  activeDocType,
+  onChangeDocType,
 }) => {
   const currentSpt = sptList.find((s) => s.id === activeSptId) || sptList[0];
 
   const [draft, setDraft] = useState<SuratPerintahTugas>(currentSpt);
-  const [docType, setDocType] = useState<ActiveDocType>('spd'); // Default to SPD as requested
+  const [internalDocType, setInternalDocType] = useState<ActiveDocType>(
+    activeDocType || 'spt'
+  );
+  const docType: ActiveDocType = activeDocType || internalDocType;
+  const setDocType = (nextType: ActiveDocType) => {
+    setInternalDocType(nextType);
+    onChangeDocType?.(nextType);
+  };
   const [formTab, setFormTab] = useState<SuratTugasEditableZone>('header');
   const [spdTab, setSpdTab] = useState<SpdEditableZone>('header');
   const [spdBelakangTab, setSpdBelakangTab] = useState<SpdBelakangEditableZone>('bagian-1');
@@ -1640,7 +1652,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               }`}
               title="Surat Perjalanan Dinas Lembar 2 (Belakang / Visum Pengesahan)"
             >
-              <CheckCircle2
+              <Stamp
                 className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${
                   docType === 'spd-belakang' ? 'text-emerald-300' : 'text-emerald-700'
                 }`}
@@ -1724,14 +1736,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'header'}
                 onClick={() => setSpdTab('header')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'header'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="1. Kop, No SPD & PPTK"
               >
-                1. No/PPTK
+                <Hash className="w-3 h-3 shrink-0" />
+                <span className="truncate">1. No/PPTK</span>
               </button>
 
               <button
@@ -1739,14 +1752,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'pelaksana'}
                 onClick={() => setSpdTab('pelaksana')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'pelaksana'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="2 & 3. Pegawai Pelaksana & Pangkat/Jabatan"
               >
-                2. Pelaksana
+                <User className="w-3 h-3 shrink-0" />
+                <span className="truncate">2. Pelaksana</span>
               </button>
 
               <button
@@ -1754,14 +1768,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'perjalanan'}
                 onClick={() => setSpdTab('perjalanan')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'perjalanan'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="4-7. Maksud, Angkutan, Tempat & Waktu"
               >
-                3. Rincian
+                <Route className="w-3 h-3 shrink-0" />
+                <span className="truncate">3. Rincian</span>
               </button>
 
               <button
@@ -1769,14 +1784,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'pengikut'}
                 onClick={() => setSpdTab('pengikut')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'pengikut'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="8. Daftar Pengikut"
               >
-                4. Pengikut
+                <Users className="w-3 h-3 shrink-0" />
+                <span className="truncate">4. Pengikut</span>
               </button>
 
               <button
@@ -1784,14 +1800,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'anggaran'}
                 onClick={() => setSpdTab('anggaran')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'anggaran'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="9 & 10. Pembebanan Anggaran & Ket Lain"
               >
-                5. Anggaran
+                <Wallet className="w-3 h-3 shrink-0" />
+                <span className="truncate">5. Anggaran</span>
               </button>
 
               <button
@@ -1799,14 +1816,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdTab === 'ttd'}
                 onClick={() => setSpdTab('ttd')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdTab === 'ttd'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="Penandatangan SPD & Pengguna Anggaran"
               >
-                6. TTD
+                <PenTool className="w-3 h-3 shrink-0" />
+                <span className="truncate">6. TTD</span>
               </button>
             </div>
           ) : docType === 'spd-belakang' ? (
@@ -1820,14 +1838,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdBelakangTab === 'bagian-1'}
                 onClick={() => setSpdBelakangTab('bagian-1')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdBelakangTab === 'bagian-1'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="I. Keberangkatan Awal"
               >
-                I. Berangkat
+                <PlaneTakeoff className="w-3 h-3 shrink-0" />
+                <span className="truncate">I. Berangkat</span>
               </button>
 
               <button
@@ -1835,14 +1854,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdBelakangTab === 'bagian-transit'}
                 onClick={() => setSpdBelakangTab('bagian-transit')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdBelakangTab === 'bagian-transit'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="II - V. Persinggahan / Transit"
               >
-                II-V. Transit
+                <Route className="w-3 h-3 shrink-0" />
+                <span className="truncate">II-V. Transit</span>
               </button>
 
               <button
@@ -1850,14 +1870,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdBelakangTab === 'bagian-6'}
                 onClick={() => setSpdBelakangTab('bagian-6')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdBelakangTab === 'bagian-6'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="VI. Tiba Kembali & Pengesahan KPA"
               >
-                VI. Pengesahan
+                <Stamp className="w-3 h-3 shrink-0" />
+                <span className="truncate">VI. Pengesahan</span>
               </button>
 
               <button
@@ -1865,14 +1886,15 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={spdBelakangTab === 'bagian-catatan'}
                 onClick={() => setSpdBelakangTab('bagian-catatan')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   spdBelakangTab === 'bagian-catatan'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
                 title="VII - VIII. Catatan Lain & Perhatian"
               >
-                VII-VIII. Ket
+                <NotebookPen className="w-3 h-3 shrink-0" />
+                <span className="truncate">VII-VIII. Ket</span>
               </button>
             </div>
           ) : (
@@ -1886,13 +1908,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={formTab === 'header'}
                 onClick={() => setFormTab('header')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   formTab === 'header'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                1. Kop &amp; No
+                <Hash className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">1. Kop &amp; No</span>
               </button>
 
               <button
@@ -1900,13 +1923,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={formTab === 'pegawai'}
                 onClick={() => setFormTab('pegawai')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   formTab === 'pegawai'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                2. Pegawai ({draft.pegawaiList.length})
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">2. Pegawai ({draft.pegawaiList.length})</span>
               </button>
 
               <button
@@ -1914,13 +1938,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={formTab === 'detail'}
                 onClick={() => setFormTab('detail')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   formTab === 'detail'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                3. Detail
+                <Route className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">3. Detail</span>
               </button>
 
               <button
@@ -1928,13 +1953,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 role="tab"
                 aria-selected={formTab === 'ttd'}
                 onClick={() => setFormTab('ttd')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors truncate cursor-pointer ${
+                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
                   formTab === 'ttd'
                     ? 'bg-white text-sky-800 shadow-2xs font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                4. TTD
+                <PenTool className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">4. TTD</span>
               </button>
             </div>
           )}
@@ -1959,16 +1985,17 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
             <button
               type="button"
               onClick={onCreateNewSpt}
-              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer"
+              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
             >
-              + Data Baru
+              <Plus className="w-3.5 h-3.5" />
+              <span>Data Baru</span>
             </button>
 
             <button
               type="submit"
               className="min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer shadow-xs"
             >
-              <FileText className="w-4 h-4" />
+              <Save className="w-4 h-4" />
               <span>
                 {docType === 'spd-belakang'
                   ? 'Simpan Visum'
@@ -2098,7 +2125,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 onClick={() => handleExplicitValidateAndSave()}
                 className="min-h-[40px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <FileText className="w-3.5 h-3.5" />
+                <Save className="w-3.5 h-3.5" />
                 <span>Simpan</span>
               </button>
             </div>
@@ -2123,7 +2150,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Building2 className="w-4 h-4" />
+              <PlaneTakeoff className="w-4 h-4" />
               <span>Berangkat</span>
             </button>
 
@@ -2136,7 +2163,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <MapPin className="w-4 h-4" />
+              <Route className="w-4 h-4" />
               <span>Transit</span>
             </button>
 
@@ -2149,7 +2176,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <CheckCircle2 className="w-4 h-4" />
+              <Stamp className="w-4 h-4" />
               <span>Pengesahan</span>
             </button>
 
@@ -2162,7 +2189,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <FileText className="w-4 h-4" />
+              <NotebookPen className="w-4 h-4" />
               <span>Catatan</span>
             </button>
           </div>
@@ -2177,7 +2204,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Building2 className="w-4 h-4" />
+              <Hash className="w-4 h-4" />
               <span>No/PPTK</span>
             </button>
 
@@ -2203,7 +2230,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Route className="w-4 h-4" />
               <span>Rincian</span>
             </button>
 
@@ -2229,7 +2256,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <FileText className="w-4 h-4" />
+              <PenTool className="w-4 h-4" />
               <span>TTD</span>
             </button>
           </div>
@@ -2244,7 +2271,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Building2 className="w-4 h-4" />
+              <Hash className="w-4 h-4" />
               <span>Kop &amp; No</span>
             </button>
 
@@ -2270,7 +2297,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <Layers className="w-4 h-4" />
+              <Route className="w-4 h-4" />
               <span>Detail</span>
             </button>
 
@@ -2283,7 +2310,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   : 'bg-transparent text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <User className="w-4 h-4" />
+              <PenTool className="w-4 h-4" />
               <span>TTD</span>
             </button>
           </div>

@@ -140,7 +140,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
   return (
     <div
       className={`spd-doc mx-auto bg-white text-slate-900 shadow-xl print:shadow-none print:m-0 print:p-0 print:w-full font-sans ${
-        isPrintMode ? '' : 'p-6 sm:p-8 border border-slate-200'
+        isPrintMode ? '' : 'py-6 sm:py-8 px-0 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
@@ -151,6 +151,12 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
       }}
     >
       <style>{`
+        .spd-doc .spd-depan-content {
+          width: 86%;
+          max-width: 86%;
+          margin-left: auto;
+          margin-right: auto;
+        }
         .spd-doc table {
           border-collapse: collapse;
           width: 100%;
@@ -188,6 +194,12 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           text-align: left;
         }
         @media print {
+          .spd-doc .spd-depan-content {
+            width: 86% !important;
+            max-width: 86% !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+          }
           .spd-doc td, .spd-doc th {
             font-size: 10.5px;
             padding: 2.5px 4px;
@@ -199,8 +211,17 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         }
       `}</style>
 
+      {/* PEMBATAS LEBAR TOTAL SPD DEPAN: 86% DARI LEBAR KERTAS */}
+      <div
+        data-testid="spd-depan-content-area"
+        style={{
+          width: '86%',
+          maxWidth: '86%',
+        }}
+        className="spd-depan-content w-[86%] max-w-[86%] mx-auto print:w-[86%] print:max-w-[86%] print:mx-auto"
+      >
       {/* OUTER BOX CONTAINER MATCHING image_3363546e.png */}
-      <div className="border border-black p-3 sm:p-4 bg-white">
+      <div className="border border-black p-3 sm:p-4 bg-white w-full box-border">
         {/* KOP SURAT DINAS */}
         <div
           onClick={() => onSelectZone?.('header')}
@@ -605,6 +626,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         </div>
         <div>{spt.pangkatPenandatangan || 'Pembina Tingkat I. IV/b'}</div>
         <div>NIP. {spt.nipPenandatangan ? spt.nipPenandatangan.replace(/(\d{8})(\d{6})(\d{1})(\d{3})/, '$1 $2 $3 $4') : '19740527 200701 1 010'}</div>
+      </div>
       </div>
     </div>
   );
