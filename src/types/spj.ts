@@ -175,6 +175,9 @@ export interface AppSettings {
   jabatanPenggunaAnggaran: string;
   namaPenggunaAnggaran: string;
   nipPenggunaAnggaran: string;
+  jabatanPptk?: string;
+  namaPptk?: string;
+  nipPptk?: string;
   jabatanBendahara: string;
   namaBendahara: string;
   nipBendahara: string;

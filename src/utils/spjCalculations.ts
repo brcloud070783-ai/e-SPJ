@@ -181,6 +181,209 @@ export function calculateExpenseReconciliation(
   };
 }
 
+export interface ReconciliationSemanticFeedback {
+  badgeText: string;
+  tone: 'amber' | 'emerald' | 'red' | 'slate';
+  helperText: string;
+  isWaitingStep6: boolean;
+  isReadyToPrint: boolean;
+}
+
+/**
+ * Generates semantic feedback for Kuitansi vs Bukti Pembayaran (Step 6) reconciliation.
+ * Specifically returns "Menunggu Unggah Nota (Step 6)" with Amber/Warning tone when
+ * Kuitansi > 0 but Step 6 proof of payment is still 0.
+ */
+export function getReconciliationSemanticFeedback(
+  kuitansiTotal: number,
+  expenses: ExpenseCalcItem[]
+): ReconciliationSemanticFeedback {
+  const recon = calculateExpenseReconciliation(kuitansiTotal, expenses);
+
+  if (kuitansiTotal <= 0) {
+    return {
+      badgeText: 'Menunggu Rincian Kuitansi (Step 4)',
+      tone: 'amber',
+      helperText: 'Isi rincian biaya kuitansi terlebih dahulu pada Langkah 4.',
+      isWaitingStep6: false,
+      isReadyToPrint: false,
+    };
+  }
+
+  if (expenses.length === 0 || recon.totalDocumented === 0) {
+    return {
+      badgeText: 'Menunggu Unggah Nota (Step 6)',
+      tone: 'amber',
+      helperText: 'Belum ada nota/tiket diunggah pada Langkah 6 · Ketuk untuk unggah bukti →',
+      isWaitingStep6: true,
+      isReadyToPrint: false,
+    };
+  }
+
+  if (recon.selisih === 0) {
+    return {
+      badgeText: 'Siap Cetak · Bukti Lengkap (100%)',
+      tone: 'emerald',
+      helperText: `${expenses.length} nota terverifikasi sesuai nilai kuitansi · Siap cetak 100%`,
+      isWaitingStep6: false,
+      isReadyToPrint: true,
+    };
+  }
+
+  if (recon.selisih > 0) {
+    return {
+      badgeText: `Bukti Parsial (${recon.persentaseLengkap}%) · Lengkapi Step 6`,
+      tone: 'amber',
+      helperText: `Terbukti ${formatRupiah(recon.totalDocumented)} dari ${expenses.length} nota · Kurang ${formatRupiah(recon.selisih)} →`,
+      isWaitingStep6: false,
+      isReadyToPrint: false,
+    };
+  }
+
+  return {
+    badgeText: 'Melebihi Nilai Kuitansi',
+    tone: 'red',
+    helperText: `Total nota (${formatRupiah(recon.totalDocumented)}) melebihi kuitansi sebesar ${formatRupiah(Math.abs(recon.selisih))}`,
+    isWaitingStep6: false,
+    isReadyToPrint: false,
+  };
+}
+
+export interface SpjStepItemProgress {
+  stepNumber: 1 | 2 | 3 | 4 | 5 | 6;
+  key: 'spt' | 'spd' | 'visum' | 'kuitansi' | 'dokumentasi' | 'pengeluaran';
+  shortLabel: string;
+  fullLabel: string;
+  completed: boolean;
+  statusDetail: string;
+}
+
+export interface SpjSixStepProgress {
+  steps: SpjStepItemProgress[];
+  completedCount: number;
+  totalSteps: 6;
+  progressPercent: number;
+  isReadyToPrint: boolean;
+  statusLabel: 'Siap Cetak 100%' | 'Draf — Belum Lengkap';
+}
+
+/**
+ * Evaluates the 6 sequential steps of a unified SPJ Dossier:
+ * 1. SPT, 2. SPD Depan, 3. Visum, 4. Kuitansi, 5. Dokumentasi, 6. Bukti Pembayaran
+ */
+export function calculateSpjStepProgress(params: {
+  kuitansi: {
+    noSpt?: string;
+    atasNama?: string;
+    tujuan?: string;
+    tanggalPerjalanan?: string;
+    rincian: RincianCalcItem[];
+  };
+  spt?: {
+    noSpt?: string;
+    pegawaiList?: Array<{ nama?: string }>;
+    spdData?: { nomorSpd?: string; alatAngkut?: string };
+  };
+  docPerjalananCount: number;
+  expenses: ExpenseCalcItem[];
+}): SpjSixStepProgress {
+  const { kuitansi, spt, docPerjalananCount, expenses } = params;
+  const kuitansiTotal = calculateKuitansiTotal(kuitansi.rincian || []);
+  const recon = calculateExpenseReconciliation(kuitansiTotal, expenses || []);
+
+  const step1Done = Boolean(
+    (kuitansi.noSpt && kuitansi.noSpt.trim()) &&
+      ((kuitansi.atasNama && kuitansi.atasNama.trim()) ||
+        (spt?.pegawaiList && spt.pegawaiList.length > 0))
+  );
+
+  const step2Done = Boolean(
+    step1Done &&
+      ((kuitansi.tujuan && kuitansi.tujuan.trim()) ||
+        (spt?.spdData?.alatAngkut && spt.spdData.alatAngkut.trim()))
+  );
+
+  const step3Done = Boolean(
+    step2Done &&
+      kuitansi.tujuan &&
+      kuitansi.tujuan.trim() &&
+      kuitansi.tanggalPerjalanan &&
+      kuitansi.tanggalPerjalanan.trim()
+  );
+
+  const step4Done = kuitansiTotal > 0 && (kuitansi.rincian?.length || 0) > 0;
+  const step5Done = docPerjalananCount > 0;
+  const step6Done = kuitansiTotal > 0 && expenses.length > 0 && recon.selisih === 0;
+
+  const steps: SpjStepItemProgress[] = [
+    {
+      stepNumber: 1,
+      key: 'spt',
+      shortLabel: '1. SPT',
+      fullLabel: 'Surat Perintah Tugas',
+      completed: step1Done,
+      statusDetail: step1Done ? 'Terisi' : 'Belum lengkap',
+    },
+    {
+      stepNumber: 2,
+      key: 'spd',
+      shortLabel: '2. SPD',
+      fullLabel: 'SPD Lembar Depan',
+      completed: step2Done,
+      statusDetail: step2Done ? 'Terisi' : 'Belum lengkap',
+    },
+    {
+      stepNumber: 3,
+      key: 'visum',
+      shortLabel: '3. Visum',
+      fullLabel: 'Visum SPD Belakang',
+      completed: step3Done,
+      statusDetail: step3Done ? 'Terisi' : 'Belum lengkap',
+    },
+    {
+      stepNumber: 4,
+      key: 'kuitansi',
+      shortLabel: '4. Kuitansi',
+      fullLabel: 'Kuitansi & Rincian SPPD',
+      completed: step4Done,
+      statusDetail: step4Done ? formatRupiah(kuitansiTotal) : 'Rp0',
+    },
+    {
+      stepNumber: 5,
+      key: 'dokumentasi',
+      shortLabel: '5. Dok',
+      fullLabel: 'Dokumentasi Kegiatan',
+      completed: step5Done,
+      statusDetail: step5Done ? `${docPerjalananCount} Foto` : 'Belum ada foto',
+    },
+    {
+      stepNumber: 6,
+      key: 'pengeluaran',
+      shortLabel: '6. Bukti',
+      fullLabel: 'Bukti Pembayaran (Nota)',
+      completed: step6Done,
+      statusDetail: step6Done
+        ? '100% Sesuai'
+        : expenses.length === 0
+          ? 'Menunggu Nota'
+          : `${recon.persentaseLengkap}%`,
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.completed).length;
+  const progressPercent = Math.round((completedCount / 6) * 100);
+  const isReadyToPrint = completedCount === 6;
+
+  return {
+    steps,
+    completedCount,
+    totalSteps: 6,
+    progressPercent,
+    isReadyToPrint,
+    statusLabel: isReadyToPrint ? 'Siap Cetak 100%' : 'Draf — Belum Lengkap',
+  };
+}
+
 export function validateKuitansiInput(
   input: {
     atasNama?: string;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Banknote,
   FileCheck,
@@ -20,6 +20,9 @@ import {
   Pencil,
   Layers,
   Printer,
+  Search,
+  X,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -30,6 +33,8 @@ import {
 import {
   calculateKuitansiTotal,
   calculateExpenseReconciliation,
+  getReconciliationSemanticFeedback,
+  calculateSpjStepProgress,
   formatRupiah,
 } from '../utils/spjCalculations';
 import { InfoTooltip, UnifiedMediaCard } from './UiPatterns';
@@ -44,10 +49,13 @@ export type SpjSubSectionKey =
   | 'berkas-utuh'
   | 'surat-tugas';
 
+type SpjFilterChipKey = 'semua' | 'belum-lengkap' | 'siap-cetak';
+
 interface SpjPerjalananSubHomeProps {
   kuitansiList: KuitansiPerjalananDinas[];
   activeKuitansi: KuitansiPerjalananDinas;
   activeSpt?: SuratPerintahTugas;
+  sptList?: SuratPerintahTugas[];
   onSelectKuitansi: (id: string) => void;
   onCreateNewKuitansi: () => void;
   onDuplicateKuitansi?: () => void;
@@ -63,16 +71,26 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
   kuitansiList,
   activeKuitansi,
   activeSpt,
+  sptList,
   onSelectKuitansi,
   onCreateNewKuitansi,
   onDuplicateKuitansi,
   onDeleteKuitansi,
   docPerjalanan,
   docPengeluaran,
+  allDocPerjalanan,
+  allDocPengeluaran,
   onOpenSubSection,
 }) => {
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<SpjFilterChipKey>('semua');
+
   const totalKuitansi = calculateKuitansiTotal(activeKuitansi.rincian);
   const reconciliation = calculateExpenseReconciliation(totalKuitansi, docPengeluaran);
+  const activeReconFeedback = getReconciliationSemanticFeedback(
+    totalKuitansi,
+    docPengeluaran
+  );
   const formattedUpdatedDate = activeKuitansi.updatedAt
     ? new Date(activeKuitansi.updatedAt).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -84,6 +102,81 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
   const sptPegawaiCount = activeSpt?.pegawaiList?.length || 1;
   const spdNomor =
     activeSpt?.spdData?.nomorSpd?.trim() || '000.1.2.3/ ... /SPPD/Disdikbud/2026';
+
+  // Evaluasi status setiap berkas SPJ (#1 s.d. terakhir) untuk Search & Filter Chips
+  const enrichedSpjRecords = useMemo(() => {
+    return kuitansiList.map((item, idx) => {
+      const itemTotal = calculateKuitansiTotal(item.rincian);
+      const itemExpenses = allDocPengeluaran
+        ? allDocPengeluaran.filter((e) => e.kuitansiId === item.id)
+        : item.id === activeKuitansi.id
+          ? docPengeluaran
+          : [];
+      const itemPhotos = allDocPerjalanan
+        ? allDocPerjalanan.filter((d) => d.kuitansiId === item.id)
+        : item.id === activeKuitansi.id
+          ? docPerjalanan
+          : [];
+      const linkedSpt =
+        sptList?.find((s) => s.kuitansiId === item.id) ||
+        (item.id === activeKuitansi.id ? activeSpt : undefined);
+
+      const itemRecon = calculateExpenseReconciliation(itemTotal, itemExpenses);
+      const itemFeedback = getReconciliationSemanticFeedback(itemTotal, itemExpenses);
+      const itemProgress = calculateSpjStepProgress({
+        kuitansi: item,
+        spt: linkedSpt,
+        docPerjalananCount: itemPhotos.length,
+        expenses: itemExpenses,
+      });
+
+      const isSiapCetak = itemRecon.status === 'Lengkap & Sesuai' && itemTotal > 0;
+
+      return {
+        item,
+        sequenceNumber: idx + 1,
+        itemTotal,
+        itemRecon,
+        itemFeedback,
+        itemProgress,
+        isSiapCetak,
+      };
+    });
+  }, [
+    kuitansiList,
+    allDocPengeluaran,
+    allDocPerjalanan,
+    sptList,
+    activeKuitansi.id,
+    docPengeluaran,
+    docPerjalanan,
+    activeSpt,
+  ]);
+
+  const countsByFilter = useMemo(() => {
+    const siapCetak = enrichedSpjRecords.filter((r) => r.isSiapCetak).length;
+    const belumLengkap = enrichedSpjRecords.length - siapCetak;
+    return {
+      semua: enrichedSpjRecords.length,
+      belumLengkap,
+      siapCetak,
+    };
+  }, [enrichedSpjRecords]);
+
+  const filteredSpjRecords = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return enrichedSpjRecords.filter((record) => {
+      if (statusFilter === 'siap-cetak' && !record.isSiapCetak) return false;
+      if (statusFilter === 'belum-lengkap' && record.isSiapCetak) return false;
+
+      if (!q) return true;
+      const matchNama = (record.item.atasNama || '').toLowerCase().includes(q);
+      const matchSpt = (record.item.noSpt || '').toLowerCase().includes(q);
+      const matchTujuan = (record.item.tujuan || '').toLowerCase().includes(q);
+      const matchNip = (record.item.nipPenerima || '').toLowerCase().includes(q);
+      return matchNama || matchSpt || matchTujuan || matchNip;
+    });
+  }, [enrichedSpjRecords, searchQuery, statusFilter]);
 
   // 6 Komponen Tak Terpisahkan dalam 1 Berkas SPJ Utuh
   const subModules: Array<{
@@ -179,12 +272,15 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       subtitle: 'Halaman 6 · Tiket, Boarding Pass & Invoice Hotel',
       description:
         'Lampiran hasil scan nota/tiket/bukti pengeluaran riil dengan rekonsiliasi otomatis terhadap kuitansi.',
-      highlightValue: `${docPengeluaran.length} Bukti (${reconciliation.persentaseLengkap}%)`,
+      highlightValue:
+        docPengeluaran.length === 0 && totalKuitansi > 0
+          ? 'Menunggu Nota (Step 6)'
+          : `${docPengeluaran.length} Bukti (${reconciliation.persentaseLengkap}%)`,
       metadataItems: [
         `Terbukti ${formatRupiah(reconciliation.totalDocumented)}`,
         `Selisih ${formatRupiah(reconciliation.selisih)}`,
       ],
-      statusText: reconciliation.status,
+      statusText: activeReconFeedback.badgeText,
       icon: Receipt,
       iconBgClass: 'bg-amber-600 text-white',
     },
@@ -192,8 +288,397 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
 
   return (
     <div className="space-y-5 min-w-0 max-w-full overflow-x-hidden">
-      {/* SATU CONTEXT HEADER TERPADU: Mengelola 1 Kesatuan Berkas SPJ Utuh */}
-      <div className="sm:sticky sm:top-14 z-20 bg-white/95 backdrop-blur-md border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-3.5 min-w-0 max-w-full overflow-hidden">
+      {/* 1. DAFTAR RIWAYAT BERKAS SPJ TERPADU (#1 S.D. TERAKHIR) + SEARCH BAR & FILTER CHIP DI BAGIAN ATAS */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-4 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-3.5 min-w-0">
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-sky-700 shrink-0" />
+              <span>Daftar Riwayat Berkas SPJ Terpadu (#1 s.d. #{kuitansiList.length})</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Cari dan filter seluruh berkas SPJ utuh (SPT, SPD, Visum, Kuitansi, Dokumentasi &amp; Bukti Pembayaran).
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {onDuplicateKuitansi && (
+              <button
+                type="button"
+                onClick={onDuplicateKuitansi}
+                className="flex-1 sm:flex-initial justify-center min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <Copy className="w-3.5 h-3.5 shrink-0" />
+                <span>Duplikat Aktif</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onCreateNewKuitansi}
+              className="flex-1 sm:flex-initial justify-center min-h-[36px] px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>+ Berkas SPJ Baru</span>
+            </button>
+          </div>
+        </div>
+
+        {/* BARIS PENCARIAN (SEARCH BAR) & FILTER CHIP ("Semua", "Belum Lengkap", "Siap Cetak") */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 min-w-0">
+          {/* Search Bar: Nama Pegawai / Nomor SPT / Tujuan */}
+          <div className="relative flex-1 min-w-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama pegawai, nomor SPT, atau tujuan perjalanan..."
+              aria-label="Cari nama pegawai, nomor SPT, atau tujuan"
+              className="w-full min-h-[38px] pl-9 pr-8 py-1.5 rounded-xl border border-slate-300 bg-slate-50/70 focus:bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:border-sky-600 focus:outline-none transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                aria-label="Bersihkan pencarian"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Chips: "Semua", "Belum Lengkap", "Siap Cetak" */}
+          <div
+            role="group"
+            aria-label="Filter status berkas SPJ"
+            className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl shrink-0 overflow-x-auto"
+          >
+            <button
+              type="button"
+              onClick={() => setStatusFilter('semua')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                statusFilter === 'semua'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua ({countsByFilter.semua})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('belum-lengkap')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                statusFilter === 'belum-lengkap'
+                  ? 'bg-amber-600 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Belum Lengkap ({countsByFilter.belumLengkap})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('siap-cetak')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                statusFilter === 'siap-cetak'
+                  ? 'bg-emerald-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Siap Cetak ({countsByFilter.siapCetak})
+            </button>
+          </div>
+        </div>
+
+        {/* Empty State saat Pencarian / Filter tidak menemukan hasil */}
+        {filteredSpjRecords.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-6 text-center space-y-2">
+            <p className="text-xs font-bold text-slate-800">
+              Tidak ada berkas SPJ yang sesuai dengan pencarian atau filter.
+            </p>
+            <p className="text-[11px] text-slate-500">
+              Coba kata kunci lain atau tampilkan semua berkas SPJ.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('semua');
+              }}
+              className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-100 cursor-pointer"
+            >
+              Reset Pencarian &amp; Filter
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Tampilan Mobile (< md): Daftar Kartu Ringkas Tanpa Scroll Kanan-Kiri */}
+            <div className="md:hidden space-y-2.5 min-w-0">
+              {filteredSpjRecords.map(
+                ({
+                  item,
+                  sequenceNumber,
+                  itemTotal,
+                  itemFeedback,
+                  itemProgress,
+                  isSiapCetak,
+                }) => {
+                  const isActive = item.id === activeKuitansi.id;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border p-3 space-y-2 transition-colors min-w-0 ${
+                        isActive
+                          ? 'bg-sky-50/70 border-sky-200'
+                          : 'bg-slate-50/50 border-slate-200/80'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 min-w-0">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-mono font-bold text-slate-500">
+                              #{sequenceNumber}
+                            </span>
+                            <p className="text-xs font-bold text-slate-900 truncate">
+                              {item.atasNama || '(Nama belum diisi)'}
+                            </p>
+                          </div>
+                          <p className="text-[11px] font-mono text-slate-500 truncate">
+                            {item.nipPenerima ? `NIP ${item.nipPenerima}` : '-'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isSiapCetak ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                              <CheckCircle2 className="w-3 h-3 shrink-0" />
+                              <span>Siap Cetak</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 text-[10px] font-bold">
+                              <AlertTriangle className="w-3 h-3 shrink-0" />
+                              <span>{itemProgress.completedCount}/6</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] space-y-0.5 min-w-0">
+                        <p className="font-mono text-red-700 font-bold truncate">
+                          {item.noSpt}
+                        </p>
+                        <p className="text-slate-600 truncate">
+                          {item.tujuan} · {item.tanggalPerjalanan}
+                        </p>
+                        <p className="text-[10px] text-amber-800 font-semibold truncate">
+                          {itemFeedback.badgeText}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-xs font-mono font-extrabold text-slate-900 tabular-nums truncate">
+                          {formatRupiah(itemTotal)}
+                        </span>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!isActive ? (
+                            <button
+                              type="button"
+                              onClick={() => onSelectKuitansi(item.id)}
+                              className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-sky-50 text-slate-700 hover:text-sky-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Check className="w-3 h-3 shrink-0" />
+                              <span>Pilih</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => onOpenSubSection('berkas-utuh')}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <Printer className="w-3 h-3 shrink-0" />
+                                <span>PDF Utuh</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onOpenSubSection('spt')}
+                                className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3 h-3 shrink-0" />
+                                <span>Edit</span>
+                              </button>
+                            </>
+                          )}
+                          {onDeleteKuitansi && (
+                            <button
+                              type="button"
+                              onClick={() => onDeleteKuitansi(item)}
+                              title={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                              aria-label={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+
+            {/* Tampilan Desktop (md+): Tabel Riwayat Lengkap */}
+            <div className="hidden md:block overflow-x-auto min-w-0 max-w-full">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/75">
+                    <th className="py-2.5 px-3">No</th>
+                    <th className="py-2.5 px-3">Pelaksana &amp; NIP</th>
+                    <th className="py-2.5 px-3">Nomor SPT &amp; Progress (1–6)</th>
+                    <th className="py-2.5 px-3">Tujuan &amp; Tanggal</th>
+                    <th className="py-2.5 px-3 text-right">Nilai Kuitansi</th>
+                    <th className="py-2.5 px-3 text-center">Status Rekonsiliasi</th>
+                    <th className="py-2.5 px-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredSpjRecords.map(
+                    ({
+                      item,
+                      sequenceNumber,
+                      itemTotal,
+                      itemFeedback,
+                      itemProgress,
+                      isSiapCetak,
+                    }) => {
+                      const isActive = item.id === activeKuitansi.id;
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`transition-colors ${
+                            isActive
+                              ? 'bg-sky-50/60 font-semibold'
+                              : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <td className="py-2.5 px-3 text-slate-500 font-mono tabular-nums">
+                            #{sequenceNumber}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-slate-900 truncate max-w-[180px]">
+                                {item.atasNama || '(Nama belum diisi)'}
+                              </p>
+                              {isActive && (
+                                <span className="text-[10px] font-bold text-sky-700">
+                                  (Aktif)
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] font-mono text-slate-500 tabular-nums">
+                              {item.nipPenerima ? `NIP ${item.nipPenerima}` : '-'}
+                            </p>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <p className="font-mono text-red-700 font-bold truncate max-w-[220px]">
+                              {item.noSpt}
+                            </p>
+                            <p className="text-[11px] text-slate-500 font-mono">
+                              Progress: {itemProgress.completedCount}/6 Langkah (
+                              {itemProgress.progressPercent}%)
+                            </p>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <p className="text-slate-800 truncate max-w-[180px]">
+                              {item.tujuan}
+                            </p>
+                            <p className="text-[11px] text-slate-500">
+                              {item.tanggalPerjalanan}
+                            </p>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
+                            {formatRupiah(itemTotal)}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {isSiapCetak ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold whitespace-nowrap">
+                                <CheckCircle2 className="w-3 h-3 shrink-0" />
+                                <span>Siap Cetak 100%</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSelectKuitansi(item.id);
+                                  onOpenSubSection('pengeluaran');
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 hover:bg-amber-200/80 text-amber-900 border border-amber-300 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors"
+                                title="Ketuk untuk melengkapi nota di Langkah 6"
+                              >
+                                <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" />
+                                <span>{itemFeedback.badgeText}</span>
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {!isActive ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectKuitansi(item.id)}
+                                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-sky-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                                >
+                                  <Check className="w-3 h-3 shrink-0" />
+                                  <span>Pilih</span>
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenSubSection('berkas-utuh')}
+                                    className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                                    title="Pratinjau & Cetak 1 File SPJ Utuh"
+                                  >
+                                    <Printer className="w-3 h-3 shrink-0" />
+                                    <span>1 File Utuh</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => onOpenSubSection('spt')}
+                                    className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
+                                  >
+                                    <Pencil className="w-3 h-3 shrink-0" />
+                                    <span>Edit</span>
+                                  </button>
+                                </>
+                              )}
+                              {onDeleteKuitansi && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteKuitansi(item)}
+                                  title={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                                  aria-label={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 2. CONTEXT HEADER BERKAS SPJ AKTIF & PINTASAN 1 FILE UTUH */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-3.5 min-w-0 max-w-full overflow-hidden">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 sm:gap-3 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700 truncate">
@@ -207,56 +692,24 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full lg:w-auto">
-            <label htmlFor="subhome-kuitansi-select" className="sr-only">
-              Pilih Berkas SPJ Aktif
-            </label>
-            <select
-              id="subhome-kuitansi-select"
-              value={activeKuitansi.id}
-              onChange={(e) => onSelectKuitansi(e.target.value)}
-              className="w-full sm:w-64 min-w-0 max-w-full min-h-[38px] rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-900 truncate focus:border-sky-600 focus:bg-white focus:outline-none"
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => onOpenSubSection('spt')}
+              className="flex-1 sm:flex-initial justify-center min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
             >
-              {kuitansiList.map((item, idx) => (
-                <option key={item.id} value={item.id}>
-                  Berkas SPJ #{idx + 1} · {item.atasNama || '(Draft)'} — {item.tujuan} (
-                  {formatRupiah(calculateKuitansiTotal(item.rincian))})
-                </option>
-              ))}
-            </select>
+              <Pencil className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <span>Edit Berurutan (1–6)</span>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => onOpenSubSection('berkas-utuh')}
-                className="flex-1 sm:flex-initial justify-center min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer shadow-2xs"
-              >
-                <Printer className="w-3.5 h-3.5 shrink-0" />
-                <span>Cetak / PDF 1 File Utuh</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onCreateNewKuitansi}
-                className="flex-1 sm:flex-initial justify-center min-h-[38px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span>Berkas SPJ Baru</span>
-              </button>
-
-              {onDeleteKuitansi && (
-                <button
-                  type="button"
-                  onClick={() => onDeleteKuitansi(activeKuitansi)}
-                  title="Hapus berkas SPJ yang sedang aktif"
-                  aria-label="Hapus berkas SPJ aktif"
-                  className="min-h-[38px] px-2.5 sm:px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">Hapus</span>
-                </button>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => onOpenSubSection('berkas-utuh')}
+              className="flex-1 sm:flex-initial justify-center min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold inline-flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer shadow-2xs"
+            >
+              <Printer className="w-3.5 h-3.5 shrink-0" />
+              <span>Cetak / PDF 1 File Utuh</span>
+            </button>
           </div>
         </div>
 
@@ -315,14 +768,6 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => onOpenSubSection('spt')}
-              className="min-h-[34px] px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 border border-emerald-300 text-xs font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5 text-sky-700" />
-              <span>Edit Berurutan (1–6)</span>
-            </button>
-            <button
-              type="button"
               onClick={() => onOpenSubSection('berkas-utuh')}
               className="min-h-[34px] px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
             >
@@ -333,7 +778,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
         </div>
       </div>
 
-      {/* 6 KARTU BAGIAN DOKUMEN BERURUTAN (Halaman 1 s.d. 6) */}
+      {/* 3. 6 KARTU BAGIAN DOKUMEN BERURUTAN (Halaman 1 s.d. 6) */}
       <div
         role="region"
         aria-label="6 Bagian Dokumen Berkas SPJ Perjalanan Dinas"
@@ -364,262 +809,6 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
             }
           />
         ))}
-      </div>
-
-      {/* TABEL KELOLA SATU DAFTAR BERKAS SPJ TERPADU */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 border-b border-slate-100 pb-3 min-w-0">
-          <div className="min-w-0">
-            <h3 className="text-sm font-extrabold text-slate-900 flex flex-wrap items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-sky-700 shrink-0" />
-              <span>Daftar Berkas SPJ Terpadu (SPT, SPD, Visum, Kuitansi, Dokumentasi &amp; Bukti)</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                {kuitansiList.length} Berkas Utuh
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Setiap baris di bawah ini merupakan 1 berkas SPJ utuh yang menyatukan keenam dokumen perjalanan dinas secara otomatis.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {onDuplicateKuitansi && (
-              <button
-                type="button"
-                onClick={onDuplicateKuitansi}
-                className="flex-1 sm:flex-initial justify-center min-h-[34px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5 shrink-0" />
-                <span>Duplikat Berkas Aktif</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={onCreateNewKuitansi}
-              className="flex-1 sm:flex-initial justify-center min-h-[34px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 shrink-0" />
-              <span>+ Berkas SPJ Baru</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tampilan Mobile (< md): Daftar Kartu Ringkas Tanpa Scroll Kanan-Kiri */}
-        <div className="md:hidden space-y-2.5 min-w-0">
-          {kuitansiList.map((item, idx) => {
-            const isActive = item.id === activeKuitansi.id;
-            const totalItem = calculateKuitansiTotal(item.rincian);
-            return (
-              <div
-                key={item.id}
-                className={`rounded-xl border p-3 space-y-2 transition-colors min-w-0 ${
-                  isActive
-                    ? 'bg-sky-50/70 border-sky-200'
-                    : 'bg-slate-50/50 border-slate-200/80'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2 min-w-0">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono font-bold text-slate-500">
-                        #{idx + 1}
-                      </span>
-                      <p className="text-xs font-bold text-slate-900 truncate">
-                        {item.atasNama || '(Nama belum diisi)'}
-                      </p>
-                    </div>
-                    <p className="text-[11px] font-mono text-slate-500 truncate">
-                      {item.nipPenerima ? `NIP ${item.nipPenerima}` : '-'}
-                    </p>
-                  </div>
-
-                  {isActive ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
-                      <CheckCircle2 className="w-3 h-3 shrink-0" />
-                      <span>Aktif</span>
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-full bg-slate-200/70 text-slate-600 text-[10px] font-medium shrink-0">
-                      1 Berkas Utuh
-                    </span>
-                  )}
-                </div>
-
-                <div className="text-[11px] space-y-0.5 min-w-0">
-                  <p className="font-mono text-red-700 font-bold truncate">
-                    {item.noSpt}
-                  </p>
-                  <p className="text-slate-600 truncate">
-                    {item.tujuan} · {item.tanggalPerjalanan}
-                  </p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2 min-w-0">
-                  <span className="text-xs font-mono font-extrabold text-slate-900 tabular-nums truncate">
-                    {formatRupiah(totalItem)}
-                  </span>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {!isActive ? (
-                      <button
-                        type="button"
-                        onClick={() => onSelectKuitansi(item.id)}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-sky-50 text-slate-700 hover:text-sky-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Check className="w-3 h-3 shrink-0" />
-                        <span>Pilih</span>
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => onOpenSubSection('berkas-utuh')}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Printer className="w-3 h-3 shrink-0" />
-                          <span>PDF Utuh</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenSubSection('spt')}
-                          className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Pencil className="w-3 h-3 shrink-0" />
-                          <span>Edit</span>
-                        </button>
-                      </>
-                    )}
-                    {onDeleteKuitansi && (
-                      <button
-                        type="button"
-                        onClick={() => onDeleteKuitansi(item)}
-                        title={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
-                        aria-label={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Tampilan Desktop (md+): Tabel Lengkap */}
-        <div className="hidden md:block overflow-x-auto min-w-0 max-w-full">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/75">
-                <th className="py-2.5 px-3">No</th>
-                <th className="py-2.5 px-3">Pelaksana &amp; NIP</th>
-                <th className="py-2.5 px-3">Nomor SPT &amp; Kelengkapan</th>
-                <th className="py-2.5 px-3">Tujuan &amp; Tanggal</th>
-                <th className="py-2.5 px-3 text-right">Nilai Kuitansi</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
-                <th className="py-2.5 px-3 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {kuitansiList.map((item, idx) => {
-                const isActive = item.id === activeKuitansi.id;
-                const totalItem = calculateKuitansiTotal(item.rincian);
-                return (
-                  <tr
-                    key={item.id}
-                    className={`transition-colors ${
-                      isActive ? 'bg-sky-50/60 font-semibold' : 'hover:bg-slate-50/80'
-                    }`}
-                  >
-                    <td className="py-2.5 px-3 text-slate-500 font-mono">
-                      #{idx + 1}
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <p className="font-bold text-slate-900 truncate max-w-[180px]">
-                        {item.atasNama || '(Nama belum diisi)'}
-                      </p>
-                      <p className="text-[11px] font-mono text-slate-500">
-                        {item.nipPenerima ? `NIP ${item.nipPenerima}` : '-'}
-                      </p>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <p className="font-mono text-red-700 font-bold truncate max-w-[220px]">
-                        {item.noSpt}
-                      </p>
-                      <p className="text-[11px] text-slate-500 truncate max-w-[220px]">
-                        SPT · SPD · Visum · Kuitansi · Dok · Bukti
-                      </p>
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <p className="text-slate-800 truncate max-w-[180px]">{item.tujuan}</p>
-                      <p className="text-[11px] text-slate-500">{item.tanggalPerjalanan}</p>
-                    </td>
-                    <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                      {formatRupiah(totalItem)}
-                    </td>
-                    <td className="py-2.5 px-3 text-center">
-                      {isActive ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold">
-                          <CheckCircle2 className="w-3 h-3" />
-                          <span>Aktif</span>
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px]">
-                          1 File Utuh
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {!isActive ? (
-                          <button
-                            type="button"
-                            onClick={() => onSelectKuitansi(item.id)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-700 hover:text-sky-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                          >
-                            <Check className="w-3 h-3 shrink-0" />
-                            <span>Pilih</span>
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => onOpenSubSection('berkas-utuh')}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                              title="Pratinjau & Cetak 1 File SPJ Utuh"
-                            >
-                              <Printer className="w-3 h-3 shrink-0" />
-                              <span>1 File Utuh</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => onOpenSubSection('spt')}
-                              className="px-2.5 py-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
-                            >
-                              <Pencil className="w-3 h-3 shrink-0" />
-                              <span>Edit</span>
-                            </button>
-                          </>
-                        )}
-                        {onDeleteKuitansi && (
-                          <button
-                            type="button"
-                            onClick={() => onDeleteKuitansi(item)}
-                            title={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
-                            aria-label={`Hapus berkas SPJ ${item.atasNama || item.noSpt}`}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

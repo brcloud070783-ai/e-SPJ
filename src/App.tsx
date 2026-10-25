@@ -1144,7 +1144,7 @@ export default function App() {
       : null;
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
+    <div className="min-h-screen w-full max-w-full overflow-x-clip flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
       {/* 1. COMPACT STUDIO APP BAR (Tampil HANYA saat di dalam mode kerja/editor Studio — Tema Terang Bersih) */}
       {isInsideStudio ? (
         <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
@@ -1439,15 +1439,19 @@ export default function App() {
       )}
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 min-w-0 overflow-x-hidden">
-        {/* 1. HALAMAN UTAMA (BERANDA): Actionable Dashboard dengan Metrik Nyata & Akses 1-Klik */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 min-w-0 overflow-x-clip">
+        {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
         {mainMenu === 'home' && (
           <MainHomeSection
             settings={appSettings}
             kuitansiList={kuitansiList}
             activeKuitansi={activeKuitansi}
+            activeSpt={activeSpt}
             docPerjalananCount={activeDocPerjalanan.length}
             docPengeluaranList={activeDocPengeluaran}
+            allDocPerjalanan={dokumentasiPerjalanan}
+            allDocPengeluaran={dokumentasiPengeluaran}
+            sptList={sptList}
             isCloudSynced={isCloudSynced}
             onEnterSpjPerjalananDinas={() => {
               setMainMenu('perjalanan-dinas');
@@ -1460,6 +1464,7 @@ export default function App() {
             onCreateNewKuitansi={() => {
               handleCreateNewKuitansi();
             }}
+            onSelectKuitansi={setActiveKuitansiId}
           />
         )}
 
@@ -1471,6 +1476,7 @@ export default function App() {
                 kuitansiList={kuitansiList}
                 activeKuitansi={activeKuitansi}
                 activeSpt={activeSpt}
+                sptList={sptList}
                 onSelectKuitansi={setActiveKuitansiId}
                 onCreateNewKuitansi={handleCreateNewKuitansi}
                 onDuplicateKuitansi={handleDuplicateActiveKuitansi}
@@ -1527,6 +1533,7 @@ export default function App() {
                     onSelectSpt={setActiveSptId}
                     onSaveSpt={handleSaveSpt}
                     onCreateNewSpt={handleCreateNewSpt}
+                    onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
                     appSettings={appSettings}
                     daftarPegawai={daftarPegawai}
                     paperSize={paperSize}

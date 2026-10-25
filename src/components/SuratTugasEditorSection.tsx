@@ -97,8 +97,41 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
   const [spdTab, setSpdTab] = useState<SpdEditableZone>('header');
   const [spdBelakangTab, setSpdBelakangTab] = useState<SpdBelakangEditableZone>('bagian-1');
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState<boolean>(false);
+  // Snapshot of SPT when opening the mobile bottom-sheet modal so "X" cancels uncommitted edits
+  const modalSnapshotRef = React.useRef<SuratPerintahTugas | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+
+  const commitOrStageDraft = (next: SuratPerintahTugas) => {
+    setDraft(next);
+    // When editing in desktop inline panel, persist immediately; when in mobile modal, stage in draft across sub-tabs until "Simpan Perubahan"
+    if (!isMobileSheetOpen) {
+      onSaveSpt(next);
+    }
+  };
+
+  const openModalWithZone = (
+    nextFormTab?: SuratTugasEditableZone,
+    nextSpdTab?: SpdEditableZone,
+    nextVisumTab?: SpdBelakangEditableZone
+  ) => {
+    if (!isMobileSheetOpen) {
+      modalSnapshotRef.current = draft;
+    }
+    if (nextFormTab) setFormTab(nextFormTab);
+    if (nextSpdTab) setSpdTab(nextSpdTab);
+    if (nextVisumTab) setSpdBelakangTab(nextVisumTab);
+    setIsMobileSheetOpen(true);
+  };
+
+  const handleCancelAndCloseModal = () => {
+    if (modalSnapshotRef.current) {
+      setDraft(modalSnapshotRef.current);
+      modalSnapshotRef.current = null;
+    }
+    setValidationErrors([]);
+    setIsMobileSheetOpen(false);
+  };
 
   const getTodayIso = (addDays = 0) => {
     const d = new Date();
@@ -127,8 +160,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
       lamanyaPerjalanan: durationInfo.formattedText,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveSpt(next);
+    commitOrStageDraft(next);
   };
 
   const startPickerRef = React.useRef<HTMLInputElement>(null);
@@ -203,63 +235,33 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
   };
 
   const handleSelectZoneFromCanvas = (zone: SuratTugasEditableZone) => {
-    if (isMobileSheetOpen && formTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setFormTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(zone, undefined, undefined);
   };
 
   const handleSelectSpdZoneFromCanvas = (zone: SpdEditableZone) => {
-    if (isMobileSheetOpen && spdTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setSpdTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(undefined, zone, undefined);
   };
 
+  // Switching sub-tabs at the bottom dock keeps the modal open and auto-saves to temporary draft state
   const handleOpenMobileTool = (zone: SuratTugasEditableZone) => {
-    if (isMobileSheetOpen && formTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setFormTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(zone, undefined, undefined);
   };
 
   const handleOpenMobileSpdTool = (zone: SpdEditableZone) => {
-    if (isMobileSheetOpen && spdTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setSpdTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(undefined, zone, undefined);
   };
 
   const handleSelectSpdBelakangZoneFromCanvas = (zone: SpdBelakangEditableZone) => {
-    if (isMobileSheetOpen && spdBelakangTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setSpdBelakangTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(undefined, undefined, zone);
   };
 
   const handleOpenMobileSpdBelakangTool = (zone: SpdBelakangEditableZone) => {
-    if (isMobileSheetOpen && spdBelakangTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setSpdBelakangTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(undefined, undefined, zone);
   };
 
   const handleFieldChange = (field: keyof SuratPerintahTugas, value: any) => {
     const next = { ...draft, [field]: value, updatedAt: new Date().toISOString() };
-    setDraft(next);
-    onSaveSpt(next);
+    commitOrStageDraft(next);
   };
 
   const handleUpdateVisumData = (updated: SpdVisumBelakangData) => {
@@ -274,8 +276,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
       spdVisumData: updated,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveSpt(next);
+    commitOrStageDraft(next);
   };
 
   // Handlers for SPD Data
@@ -285,8 +286,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
       spdData: nextSpd,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveSpt(next);
+    commitOrStageDraft(next);
   };
 
   const handleUpdateSpdField = (field: keyof SuratPerjalananDinasData, value: any) => {
@@ -464,14 +464,92 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     }
 
     setValidationErrors([]);
-    onSaveSpt({ ...draft, updatedAt: new Date().toISOString() });
+    const finalSaved = { ...draft, updatedAt: new Date().toISOString() };
+    setDraft(finalSaved);
+    modalSnapshotRef.current = finalSaved;
+    onSaveSpt(finalSaved);
     setIsMobileSheetOpen(false);
     setSaveBanner(
-      docType === 'spd'
-        ? 'Surat Perjalanan Dinas (SPD) berhasil disimpan & disinkronkan.'
-        : 'Surat Perintah Tugas (SPT) berhasil divalidasi & disimpan.'
+      docType === 'spd-belakang'
+        ? 'Visum SPD Lembar 2 berhasil disimpan & disinkronkan.'
+        : docType === 'spd'
+          ? 'Surat Perjalanan Dinas (SPD) berhasil disimpan & disinkronkan.'
+          : 'Surat Perintah Tugas (SPT) berhasil divalidasi & disimpan.'
     );
     setTimeout(() => setSaveBanner(null), 4000);
+  };
+
+  const handleClearPengikutRows = () => {
+    handleUpdateSpdData({
+      ...(draft.spdData || {}),
+      pengikutList: [
+        { id: '1', nama: '', tanggalLahir: '', keterangan: '' },
+        { id: '2', nama: '', tanggalLahir: '', keterangan: '' },
+        { id: '3', nama: '', tanggalLahir: '', keterangan: '' },
+        { id: '4', nama: '', tanggalLahir: '', keterangan: '' },
+      ],
+    });
+  };
+
+  const handleClearVisumTransitRows = () => {
+    const currentVisum = getEffectiveVisumData(draft);
+    handleUpdateVisumData({
+      ...currentVisum,
+      persinggahanList: [
+        {
+          id: 'II',
+          labelRomawi: 'II',
+          tibaDi: '',
+          tibaTgl: '',
+          tibaKepala: '',
+          tibaNip: '',
+          berangkatDari: '',
+          berangkatKe: '',
+          berangkatTgl: '',
+          berangkatKepala: '',
+          berangkatNip: '',
+        },
+        {
+          id: 'III',
+          labelRomawi: 'III',
+          tibaDi: '',
+          tibaTgl: '',
+          tibaKepala: '',
+          tibaNip: '',
+          berangkatDari: '',
+          berangkatKe: '',
+          berangkatTgl: '',
+          berangkatKepala: '',
+          berangkatNip: '',
+        },
+        {
+          id: 'IV',
+          labelRomawi: 'IV',
+          tibaDi: '',
+          tibaTgl: '',
+          tibaKepala: '',
+          tibaNip: '',
+          berangkatDari: '',
+          berangkatKe: '',
+          berangkatTgl: '',
+          berangkatKepala: '',
+          berangkatNip: '',
+        },
+        {
+          id: 'V',
+          labelRomawi: 'V',
+          tibaDi: '',
+          tibaTgl: '',
+          tibaKepala: '',
+          tibaNip: '',
+          berangkatDari: '',
+          berangkatKe: '',
+          berangkatTgl: '',
+          berangkatKepala: '',
+          berangkatNip: '',
+        },
+      ],
+    });
   };
 
   // FORM INSPECTOR CONTENT FOR SPD (Surat Perjalanan Dinas)
@@ -1544,8 +1622,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                       pangkatPenandatangan: found.pangkatGolongan || draft.pangkatPenandatangan,
                       updatedAt: new Date().toISOString(),
                     };
-                    setDraft(next);
-                    onSaveSpt(next);
+                    commitOrStageDraft(next);
                   } else {
                     handleFieldChange('namaPenandatangan', val);
                   }
@@ -1996,13 +2073,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               className="min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer shadow-xs"
             >
               <Save className="w-4 h-4" />
-              <span>
-                {docType === 'spd-belakang'
-                  ? 'Simpan Visum'
-                  : docType === 'spd'
-                  ? 'Simpan SPD'
-                  : 'Simpan SPT'}
-              </span>
+              <span>Simpan Perubahan</span>
             </button>
           </div>
         </form>
@@ -2070,26 +2141,44 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
         <>
           <div
             className="no-print lg:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150"
-            onClick={() => setIsMobileSheetOpen(false)}
+            onClick={handleCancelAndCloseModal}
             aria-hidden="true"
           />
 
-          <div className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-200">
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-1 rounded-full bg-slate-300 block mx-auto" />
-                <span className="text-xs font-bold text-slate-900">
-                  {docType === 'spd-belakang'
-                    ? 'Editor SPD Lembar 2 (Visum Belakang)'
-                    : docType === 'spd'
-                    ? 'Editor Surat Perjalanan Dinas (SPD)'
-                    : 'Editor Surat Perintah Tugas (SPT)'}
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              docType === 'spd-belakang'
+                ? 'Editor SPD Lembar 2 (Visum Belakang)'
+                : docType === 'spd'
+                ? 'Editor Surat Perjalanan Dinas (SPD)'
+                : 'Editor Surat Perintah Tugas (SPT)'
+            }
+            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-200"
+          >
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-8 h-1 rounded-full bg-slate-300 block shrink-0" />
+                  <span className="text-xs font-bold text-slate-900 truncate">
+                    {docType === 'spd-belakang'
+                      ? 'Editor SPD Lembar 2 (Visum Belakang)'
+                      : docType === 'spd'
+                      ? 'Editor Surat Perjalanan Dinas (SPD)'
+                      : 'Editor Surat Perintah Tugas (SPT)'}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 block pl-10">
+                  Pindah tab otomatis menyimpan draf sementara
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => setIsMobileSheetOpen(false)}
-                className="w-8 h-8 rounded-full text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
+                onClick={handleCancelAndCloseModal}
+                aria-label="Batal / Tutup tanpa menyimpan"
+                title="Batal / Tutup tanpa menyimpan"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2111,22 +2200,69 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               )}
             </div>
 
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setIsMobileSheetOpen(false)}
-                className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
-                Selesai
-              </button>
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5">
+              {/* Contextual Destructive Button ("Hapus") ONLY on relevant sub-tabs */}
+              {docType === 'spt' && formTab === 'header' && onDeleteSpt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileSheetOpen(false);
+                    onDeleteSpt();
+                  }}
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                  title="Hapus Berkas SPJ ini"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Hapus</span>
+                </button>
+              )}
 
+              {docType === 'spt' && formTab === 'pegawai' && draft.pegawaiList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleRemovePegawaiRow(draft.pegawaiList[draft.pegawaiList.length - 1].id)
+                  }
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                  title="Hapus baris pegawai terakhir"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Hapus</span>
+                </button>
+              )}
+
+              {docType === 'spd' && spdTab === 'pengikut' && (
+                <button
+                  type="button"
+                  onClick={handleClearPengikutRows}
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                  title="Kosongkan daftar pengikut"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Hapus</span>
+                </button>
+              )}
+
+              {docType === 'spd-belakang' && spdBelakangTab === 'bagian-transit' && (
+                <button
+                  type="button"
+                  onClick={handleClearVisumTransitRows}
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
+                  title="Kosongkan baris transit II - V"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Hapus</span>
+                </button>
+              )}
+
+              {/* Single Primary Action Button ("Simpan Perubahan") */}
               <button
                 type="button"
                 onClick={() => handleExplicitValidateAndSave()}
-                className="min-h-[40px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="flex-1 min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
-                <Save className="w-3.5 h-3.5" />
-                <span>Simpan</span>
+                <Save className="w-4 h-4 shrink-0" />
+                <span>Simpan Perubahan</span>
               </button>
             </div>
           </div>

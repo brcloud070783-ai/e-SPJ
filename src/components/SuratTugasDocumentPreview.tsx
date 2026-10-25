@@ -32,25 +32,26 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
 
   const getZoneClass = (zone: SuratTugasEditableZone) => {
     if (isPrintMode || !onSelectZone) return '';
-    const base = 'relative cursor-pointer transition-all duration-150 rounded-lg p-1.5 -m-1.5 group';
+    const base =
+      'relative cursor-pointer transition-all duration-150 rounded-md p-1.5 -m-1.5 group print:outline-none print:ring-0 print:bg-transparent';
     if (activeZone === zone) {
-      return `${base} ring-2 ring-sky-600 bg-sky-50/60 shadow-xs`;
+      return `${base} outline-2 outline-dashed outline-sky-500 bg-sky-50/50 shadow-2xs`;
     }
-    return `${base} hover:ring-2 hover:ring-sky-300 hover:bg-slate-50/70`;
+    return `${base} hover:outline-1 hover:outline-dashed hover:outline-sky-400 active:outline-2 active:outline-dashed active:outline-sky-500 hover:bg-sky-50/30 active:bg-sky-50/50`;
   };
 
   const renderZoneBadge = (label: string) => {
     if (isPrintMode || !onSelectZone) return null;
     return (
-      <span className="no-print absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-sky-700 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-xs">
-        Klik / Ketik untuk Edit {label}
+      <span className="no-print absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-sky-700 text-white opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity z-10 shadow-xs pointer-events-none">
+        Ketuk untuk Edit {label}
       </span>
     );
   };
 
   const editableClass = isPrintMode
     ? ''
-    : 'outline-none focus:bg-amber-100/90 focus:ring-2 focus:ring-sky-500 rounded px-1 transition-colors cursor-text';
+    : 'outline-none hover:outline-1 hover:outline-dashed hover:outline-sky-400/90 focus:bg-amber-100/90 focus:outline-2 focus:outline-dashed focus:outline-sky-500 rounded px-1 transition-all cursor-text print:outline-none';
 
   return (
     <div

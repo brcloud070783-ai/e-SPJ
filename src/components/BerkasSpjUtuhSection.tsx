@@ -11,7 +11,9 @@ import {
   Pencil,
   CheckCircle2,
   Layers,
-  Sparkles,
+  AlertTriangle,
+  Filter,
+  Compass,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -71,7 +73,16 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
   onEditSection,
 }) => {
   const [printScope, setPrintScope] = useState<DossierSectionId>('all');
+  const [activeNavSection, setActiveNavSection] = useState<DossierSectionId>('all');
+  const [navBehavior, setNavBehavior] = useState<'jump' | 'filter'>('jump');
+  const [stickyTopOffset, setStickyTopOffset] = useState<number>(84);
+
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const chipScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const sectionDomRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const isProgrammaticScrollRef = useRef<boolean>(false);
+
   const spec = getPaperDimensions(paperSize);
 
   const [previewScale, setPreviewScale] = useState<number>(() => {
@@ -81,6 +92,30 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     }
     return 1;
   });
+
+  // Measure main app sticky header height so our sticky quick-jump bar sits flush underneath
+  useEffect(() => {
+    const updateHeaderOffset = () => {
+      const appHeader = document.querySelector('header.sticky');
+      if (appHeader instanceof HTMLElement) {
+        setStickyTopOffset(Math.max(48, appHeader.offsetHeight));
+      } else {
+        setStickyTopOffset(84);
+      }
+    };
+    updateHeaderOffset();
+    window.addEventListener('resize', updateHeaderOffset);
+    const appHeader = document.querySelector('header.sticky');
+    let obs: ResizeObserver | null = null;
+    if (appHeader instanceof HTMLElement && typeof ResizeObserver !== 'undefined') {
+      obs = new ResizeObserver(updateHeaderOffset);
+      obs.observe(appHeader);
+    }
+    return () => {
+      window.removeEventListener('resize', updateHeaderOffset);
+      if (obs) obs.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -150,6 +185,232 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
   const totalPagesCount =
     4 + paginatedDocPages.length + paginatedExpensePages.length;
 
+  // Per-Page Completeness Evaluation
+  const isSptComplete = Boolean(
+    activeSpt.noSpt?.trim() &&
+      activeSpt.pegawaiList?.length > 0 &&
+      activeSpt.maksudPerjalanan?.trim()
+  );
+  const isSpdComplete = Boolean(
+    activeSpt.tempatBerangkat?.trim() &&
+      activeSpt.tempatTujuan?.trim() &&
+      activeSpt.tanggalBerangkat
+  );
+  const isVisumComplete = Boolean(activeSpt.tempatTujuan?.trim());
+  const isKuitansiComplete = Boolean(
+    totalKuitansi > 0 && activeKuitansi.atasNama?.trim()
+  );
+  const isDokumentasiComplete = docPerjalanan.length > 0;
+  const isPengeluaranComplete = docPengeluaran.length > 0;
+
+  const sectionPills = useMemo<
+    Array<{
+      id: DossierSectionId;
+      num: string;
+      label: string;
+      editKey?: SpjSubSectionKey;
+      icon: React.ComponentType<{ className?: string }>;
+      isIncomplete?: boolean;
+      warningBadgeText?: string;
+      statusBadgeText?: string;
+    }>
+  >(() => {
+    const incompleteCount = [
+      !isSptComplete,
+      !isSpdComplete,
+      !isVisumComplete,
+      !isKuitansiComplete,
+      !isDokumentasiComplete,
+      !isPengeluaranComplete,
+    ].filter(Boolean).length;
+
+    return [
+      {
+        id: 'all',
+        num: '1–6',
+        label: `Semua Halaman (${totalPagesCount} Hal)`,
+        icon: Layers,
+        isIncomplete: incompleteCount > 0,
+        warningBadgeText:
+          incompleteCount > 0 ? `${incompleteCount} Kosong` : undefined,
+        statusBadgeText: incompleteCount === 0 ? 'Lengkap' : undefined,
+      },
+      {
+        id: 'spt',
+        num: '1',
+        label: 'SPT',
+        editKey: 'spt',
+        icon: FileCheck,
+        isIncomplete: !isSptComplete,
+        warningBadgeText: !isSptComplete ? 'Belum Lengkap' : undefined,
+      },
+      {
+        id: 'spd',
+        num: '2',
+        label: 'SPD Depan',
+        editKey: 'spd',
+        icon: ClipboardList,
+        isIncomplete: !isSpdComplete,
+        warningBadgeText: !isSpdComplete ? 'Belum Lengkap' : undefined,
+      },
+      {
+        id: 'visum',
+        num: '3',
+        label: 'Visum SPD',
+        editKey: 'visum',
+        icon: Stamp,
+        isIncomplete: !isVisumComplete,
+        warningBadgeText: !isVisumComplete ? 'Kosong' : undefined,
+      },
+      {
+        id: 'kuitansi',
+        num: '4',
+        label: 'Kuitansi',
+        editKey: 'kuitansi',
+        icon: Banknote,
+        isIncomplete: !isKuitansiComplete,
+        warningBadgeText: !isKuitansiComplete ? 'Rp 0' : undefined,
+      },
+      {
+        id: 'dokumentasi',
+        num: '5',
+        label: `Dokumentasi (${docPerjalanan.length})`,
+        editKey: 'dokumentasi',
+        icon: Camera,
+        isIncomplete: !isDokumentasiComplete,
+        warningBadgeText: !isDokumentasiComplete ? 'Kosong' : undefined,
+      },
+      {
+        id: 'pengeluaran',
+        num: '6',
+        label: `Bukti Bayar (${docPengeluaran.length})`,
+        editKey: 'pengeluaran',
+        icon: Receipt,
+        isIncomplete: !isPengeluaranComplete,
+        warningBadgeText: !isPengeluaranComplete ? 'Kosong' : undefined,
+      },
+    ];
+  }, [
+    totalPagesCount,
+    isSptComplete,
+    isSpdComplete,
+    isVisumComplete,
+    isKuitansiComplete,
+    isDokumentasiComplete,
+    isPengeluaranComplete,
+    docPerjalanan.length,
+    docPengeluaran.length,
+  ]);
+
+  const incompleteSections = useMemo(
+    () => sectionPills.filter((p) => p.id !== 'all' && p.isIncomplete),
+    [sectionPills]
+  );
+
+  // Scroll spy to highlight the currently visible page chip while scrolling in 'all' mode
+  useEffect(() => {
+    if (printScope !== 'all') return;
+
+    const handleScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
+      const orderedIds: Array<Exclude<DossierSectionId, 'all'>> = [
+        'spt',
+        'spd',
+        'visum',
+        'kuitansi',
+        'dokumentasi',
+        'pengeluaran',
+      ];
+      const threshold = stickyTopOffset + 110;
+
+      // If near the top of the container, highlight 'all'
+      if (window.scrollY < 180) {
+        setActiveNavSection('all');
+        return;
+      }
+
+      let currentFound: DossierSectionId = 'all';
+      for (const secId of orderedIds) {
+        const el = sectionDomRefs.current[secId];
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= threshold) {
+            currentFound = secId;
+          }
+        }
+      }
+      setActiveNavSection(currentFound);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [printScope, stickyTopOffset]);
+
+  // Keep active chip visible inside horizontal scroll bar
+  useEffect(() => {
+    const activeKey = printScope === 'all' ? activeNavSection : printScope;
+    const chipEl = chipRefs.current[activeKey];
+    const barEl = chipScrollContainerRef.current;
+    if (chipEl && barEl) {
+      const chipLeft = chipEl.offsetLeft;
+      const chipWidth = chipEl.offsetWidth;
+      const barScrollLeft = barEl.scrollLeft;
+      const barWidth = barEl.clientWidth;
+
+      if (chipLeft < barScrollLeft + 16 || chipLeft + chipWidth > barScrollLeft + barWidth - 16) {
+        barEl.scrollTo({
+          left: Math.max(0, chipLeft - barWidth / 2 + chipWidth / 2),
+          behavior: 'smooth',
+        });
+      }
+    }
+  }, [activeNavSection, printScope]);
+
+  const scrollToSectionAnchor = (sectionId: DossierSectionId) => {
+    if (sectionId === 'all') {
+      if (containerRef.current) {
+        isProgrammaticScrollRef.current = true;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.setTimeout(() => {
+          isProgrammaticScrollRef.current = false;
+        }, 650);
+      }
+      return;
+    }
+
+    const targetEl = sectionDomRefs.current[sectionId];
+    if (targetEl) {
+      isProgrammaticScrollRef.current = true;
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 650);
+    }
+  };
+
+  const handleChipClick = (sectionId: DossierSectionId) => {
+    setActiveNavSection(sectionId);
+
+    if (sectionId === 'all') {
+      setPrintScope('all');
+      window.setTimeout(() => scrollToSectionAnchor('all'), 40);
+      return;
+    }
+
+    if (navBehavior === 'filter') {
+      setPrintScope(sectionId);
+      window.setTimeout(() => scrollToSectionAnchor(sectionId), 50);
+    } else {
+      // Quick-Jump mode: ensure all pages are shown and smooth-scroll directly to the target page anchor
+      if (printScope !== 'all') {
+        setPrintScope('all');
+        window.setTimeout(() => scrollToSectionAnchor(sectionId), 80);
+      } else {
+        scrollToSectionAnchor(sectionId);
+      }
+    }
+  };
+
   const triggerPrintWithTitle = (scope: DossierSectionId, customLabel?: string) => {
     const prevScope = printScope;
     const prevTitle = document.title;
@@ -184,72 +445,19 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     }
   };
 
-  const sectionPills: Array<{
-    id: DossierSectionId;
-    num: string;
-    label: string;
-    editKey?: SpjSubSectionKey;
-    icon: React.ComponentType<{ className?: string }>;
-  }> = [
-    {
-      id: 'all',
-      num: '1–6',
-      label: `Semua Halaman (${totalPagesCount} Hal)`,
-      icon: Layers,
-    },
-    {
-      id: 'spt',
-      num: '1',
-      label: 'SPT (Surat Tugas)',
-      editKey: 'spt',
-      icon: FileCheck,
-    },
-    {
-      id: 'spd',
-      num: '2',
-      label: 'SPD Depan',
-      editKey: 'spd',
-      icon: ClipboardList,
-    },
-    {
-      id: 'visum',
-      num: '3',
-      label: 'Visum (SPD Belakang)',
-      editKey: 'visum',
-      icon: Stamp,
-    },
-    {
-      id: 'kuitansi',
-      num: '4',
-      label: 'Kuitansi SPPD',
-      editKey: 'kuitansi',
-      icon: Banknote,
-    },
-    {
-      id: 'dokumentasi',
-      num: '5',
-      label: `Dokumentasi (${docPerjalanan.length})`,
-      editKey: 'dokumentasi',
-      icon: Camera,
-    },
-    {
-      id: 'pengeluaran',
-      num: '6',
-      label: `Bukti Bayar (${docPengeluaran.length})`,
-      editKey: 'pengeluaran',
-      icon: Receipt,
-    },
-  ];
-
   const isSectionVisible = (sec: Exclude<DossierSectionId, 'all'>) =>
     printScope === 'all' || printScope === sec;
 
   const renderPageWrapper = (params: {
     key: string;
+    anchorId?: string;
+    registerRefSection?: Exclude<DossierSectionId, 'all'>;
     pageNumberLabel: string;
     title: string;
     sectionId: Exclude<DossierSectionId, 'all'>;
     editKey: SpjSubSectionKey;
+    isIncomplete?: boolean;
+    incompleteReason?: string;
     children: React.ReactNode;
   }) => {
     const scaledW = Math.round(spec.widthPx * previewScale);
@@ -258,27 +466,50 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     return (
       <div
         key={params.key}
+        id={params.anchorId}
+        ref={(el) => {
+          if (params.registerRefSection) {
+            sectionDomRefs.current[params.registerRefSection] = el;
+          }
+        }}
+        style={{ scrollMarginTop: `${stickyTopOffset + 68}px` }}
         className="spj-dossier-page-wrapper space-y-2 min-w-0 max-w-full"
       >
         {/* Top Action Bar for Each Page on Screen (Hidden in Print) */}
-        <div className="no-print flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200/90 rounded-xl px-3.5 py-2 shadow-2xs">
-          <div className="flex items-center gap-2 min-w-0">
+        <div
+          className={`no-print flex flex-wrap items-center justify-between gap-2 bg-white border rounded-xl px-3.5 py-2 shadow-2xs transition-colors ${
+            params.isIncomplete
+              ? 'border-amber-300 bg-amber-50/30'
+              : 'border-slate-200/90'
+          }`}
+        >
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <span className="px-2 py-0.5 rounded-md bg-sky-700 text-white text-[11px] font-extrabold font-mono shrink-0">
               {params.pageNumberLabel}
             </span>
             <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
               {params.title}
             </h3>
+            {params.isIncomplete && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold shrink-0">
+                <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                <span>{params.incompleteReason || 'Masih Kosong (0)'}</span>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => onEditSection(params.editKey)}
-              className="min-h-[30px] px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-sky-50 hover:border-sky-200 text-slate-700 hover:text-sky-800 text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
+              className={`min-h-[30px] px-2.5 py-1 rounded-lg border text-[11px] font-bold inline-flex items-center gap-1 transition-colors cursor-pointer ${
+                params.isIncomplete
+                  ? 'border-amber-300 bg-amber-100/80 hover:bg-amber-200/80 text-amber-950'
+                  : 'border-slate-200 bg-slate-50 hover:bg-sky-50 hover:border-sky-200 text-slate-700 hover:text-sky-800'
+              }`}
             >
               <Pencil className="w-3 h-3 text-sky-700" />
-              <span>Edit Bagian Ini</span>
+              <span>{params.isIncomplete ? 'Lengkapi Bagian Ini' : 'Edit Bagian Ini'}</span>
             </button>
             <button
               type="button"
@@ -321,7 +552,7 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
   const gridDim = calculateDocumentationGridDimensions(paperSize, docGridMode);
 
   return (
-    <div ref={containerRef} className="space-y-4 min-w-0 max-w-full overflow-x-hidden">
+    <div ref={containerRef} className="space-y-3 min-w-0 max-w-full overflow-x-clip">
       {/* Print CSS Rules for Multi-Page Unified PDF Output */}
       <style>{`
         @media print {
@@ -368,9 +599,9 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
         }
       `}</style>
 
-      {/* UNIFIED DOSSIER CONTROL PANEL (Hidden in Print) */}
-      <div className="no-print bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-100 pb-3.5">
+      {/* UNIFIED DOSSIER HEADER PANEL (Hidden in Print) */}
+      <div className="no-print bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           <div className="space-y-1 min-w-0">
             <div className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-emerald-700">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
@@ -427,63 +658,205 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
           </div>
         </div>
 
-        {/* Filter Mode Cetak: Semua Halaman (1 File Utuh) vs Per Halaman / Bagian */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="font-bold text-slate-700 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-              <span>Pilih Tampilan &amp; Mode Cetak (Semua Halaman atau Per Bagian):</span>
+        {/* Peringatan Kelengkapan Sebelum Cetak (Tampil Jika Ada Halaman / Lampiran Kosong) */}
+        {incompleteSections.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-amber-50 border border-amber-300/90 px-3.5 py-2.5 text-xs text-amber-950">
+            <div className="flex items-start sm:items-center gap-2 min-w-0">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+              <div className="min-w-0">
+                <span className="font-extrabold">Perhatian Sebelum Cetak PDF Utuh: </span>
+                <span>
+                  Terdapat {incompleteSections.length} bagian yang masih kosong/belum lengkap (
+                  {incompleteSections.map((s) => `${s.num}. ${s.label}`).join(', ')}).
+                </span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+              {!isDokumentasiComplete && (
+                <button
+                  type="button"
+                  onClick={() => onEditSection('dokumentasi')}
+                  className="px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-extrabold text-[11px] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Camera className="w-3 h-3" />
+                  <span>+ Isi Dokumentasi</span>
+                </button>
+              )}
+              {!isPengeluaranComplete && (
+                <button
+                  type="button"
+                  onClick={() => onEditSection('pengeluaran')}
+                  className="px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-extrabold text-[11px] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Receipt className="w-3 h-3" />
+                  <span>+ Isi Bukti Bayar</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ===================================================================== */}
+      {/* STICKY QUICK-JUMP NAVIGATION & COMPLETENESS BAR (Hidden in Print)     */}
+      {/* ===================================================================== */}
+      <div
+        style={{ top: `${stickyTopOffset}px` }}
+        className="no-print sticky z-20 -mx-2.5 sm:mx-0 px-2.5 sm:px-3.5 py-2 bg-white/95 backdrop-blur-md border-y sm:border border-slate-200/90 sm:rounded-2xl shadow-sm space-y-1.5 transition-all"
+      >
+        <div className="flex items-center justify-between gap-2 text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0 text-slate-600 font-bold truncate">
+            <Compass className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+            <span className="truncate">
+              Navigasi Cepat &amp; Status Kelengkapan Halaman:
             </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             {printScope !== 'all' && (
               <button
                 type="button"
                 onClick={() => triggerPrintWithTitle(printScope)}
-                className="text-xs font-extrabold text-emerald-700 hover:underline inline-flex items-center gap-1 cursor-pointer"
+                className="px-2 py-0.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-extrabold inline-flex items-center gap-1 cursor-pointer"
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Bagian Ini Saja</span>
+                <Printer className="w-3 h-3" />
+                <span>Cetak Bagian Ini</span>
               </button>
             )}
-          </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            {sectionPills.map((pill) => {
-              const Icon = pill.icon;
-              const active = printScope === pill.id;
-              return (
-                <button
-                  key={pill.id}
-                  type="button"
-                  onClick={() => setPrintScope(pill.id)}
-                  className={`min-h-[34px] px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border transition-all cursor-pointer ${
-                    active
-                      ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {pill.num}. {pill.label}
-                  </span>
-                </button>
-              );
-            })}
+            {/* Mode Toggle: Loncat Cepat (Scroll) vs Filter Bagian */}
+            <div
+              role="group"
+              aria-label="Mode Navigasi Chip"
+              className="inline-flex items-center p-0.5 bg-slate-100 rounded-lg border border-slate-200 text-[10px] font-bold"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setNavBehavior('jump');
+                  if (printScope !== 'all') setPrintScope('all');
+                }}
+                className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                  navBehavior === 'jump'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Ketuk chip untuk menggulir halus (smooth-scroll) langsung ke halaman tersebut"
+              >
+                Loncat Halaman
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNavBehavior('filter');
+                  if (activeNavSection !== 'all') {
+                    setPrintScope(activeNavSection);
+                  }
+                }}
+                className={`px-2 py-0.5 rounded-md inline-flex items-center gap-1 transition-colors cursor-pointer ${
+                  navBehavior === 'filter'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+                title="Ketuk chip untuk memfilter tampilan hanya pada bagian tersebut"
+              >
+                <Filter className="w-2.5 h-2.5" />
+                <span>Filter Bagian</span>
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Horizontal Scrollable Chip Bar */}
+        <div
+          ref={chipScrollContainerRef}
+          className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {sectionPills.map((pill) => {
+            const Icon = pill.icon;
+            const active =
+              navBehavior === 'filter'
+                ? printScope === pill.id
+                : activeNavSection === pill.id;
+            const hasWarning = Boolean(pill.isIncomplete);
+
+            return (
+              <button
+                key={pill.id}
+                ref={(el) => {
+                  chipRefs.current[pill.id] = el;
+                }}
+                type="button"
+                onClick={() => handleChipClick(pill.id)}
+                className={`min-h-[34px] px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 border whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
+                    : hasWarning && pill.id !== 'all'
+                      ? 'bg-amber-50/90 hover:bg-amber-100/80 text-amber-950 border-amber-300'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                }`}
+              >
+                <Icon
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    active
+                      ? 'text-white'
+                      : hasWarning && pill.id !== 'all'
+                        ? 'text-amber-600'
+                        : 'text-sky-700'
+                  }`}
+                />
+                <span>
+                  {pill.num}. {pill.label}
+                </span>
+
+                {/* Amber Warning Badge when (0) or Incomplete */}
+                {pill.warningBadgeText && (
+                  <span
+                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold leading-none ${
+                      active
+                        ? 'bg-amber-300 text-slate-950'
+                        : 'bg-amber-200/90 text-amber-950 border border-amber-400/80'
+                    }`}
+                  >
+                    <AlertTriangle className="w-2.5 h-2.5 text-amber-700 shrink-0" />
+                    <span>{pill.warningBadgeText}</span>
+                  </span>
+                )}
+
+                {/* Complete Badge for All Pages when everything is complete */}
+                {pill.statusBadgeText && (
+                  <span
+                    className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold leading-none ${
+                      active
+                        ? 'bg-emerald-300 text-slate-950'
+                        : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                    }`}
+                  >
+                    <span>{pill.statusBadgeText}</span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* ===================================================================== */}
       {/* CONTINUOUS MULTI-PAGE OFFICIAL SPJ DOSSIER                            */}
       {/* ===================================================================== */}
-      <div className="space-y-6">
+      <div className="space-y-6 pt-1">
         {/* HALAMAN 1: SURAT PERINTAH TUGAS (SPT) */}
         {isSectionVisible('spt') &&
           renderPageWrapper({
             key: 'dossier-page-spt',
+            anchorId: 'dossier-section-spt',
+            registerRefSection: 'spt',
             pageNumberLabel: 'Bagian 1 / 6',
             title: 'Surat Perintah Tugas (SPT)',
             sectionId: 'spt',
             editKey: 'spt',
+            isIncomplete: !isSptComplete,
+            incompleteReason: 'Data SPT Belum Lengkap',
             children: (
               <div className="p-6 sm:p-10 print:p-2">
                 <SuratTugasDocumentPreview
@@ -500,10 +873,14 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
         {isSectionVisible('spd') &&
           renderPageWrapper({
             key: 'dossier-page-spd',
+            anchorId: 'dossier-section-spd',
+            registerRefSection: 'spd',
             pageNumberLabel: 'Bagian 2 / 6',
             title: 'Surat Perjalanan Dinas (SPD Depan)',
             sectionId: 'spd',
             editKey: 'spd',
+            isIncomplete: !isSpdComplete,
+            incompleteReason: 'Data SPD Belum Lengkap',
             children: (
               <div className="py-5 px-0 print:py-1">
                 <SuratPerjalananDinasDocumentPreview
@@ -520,10 +897,14 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
         {isSectionVisible('visum') &&
           renderPageWrapper({
             key: 'dossier-page-visum',
+            anchorId: 'dossier-section-visum',
+            registerRefSection: 'visum',
             pageNumberLabel: 'Bagian 3 / 6',
             title: 'Lembar Visum Perjalanan Dinas (SPD Belakang)',
             sectionId: 'visum',
             editKey: 'visum',
+            isIncomplete: !isVisumComplete,
+            incompleteReason: 'Tujuan Visum Kosong',
             children: (
               <div className="p-6 sm:p-8 print:p-2">
                 <SuratPerjalananDinasBelakangDocumentPreview
@@ -540,10 +921,14 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
         {isSectionVisible('kuitansi') &&
           renderPageWrapper({
             key: 'dossier-page-kuitansi',
+            anchorId: 'dossier-section-kuitansi',
+            registerRefSection: 'kuitansi',
             pageNumberLabel: 'Bagian 4 / 6',
             title: 'Kuitansi & Rincian Perhitungan Biaya Perjalanan Dinas',
             sectionId: 'kuitansi',
             editKey: 'kuitansi',
+            isIncomplete: !isKuitansiComplete,
+            incompleteReason: 'Nominal Kuitansi Rp 0',
             children: (
               <KuitansiDocumentPreview
                 kuitansi={activeKuitansi}
@@ -558,6 +943,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
           paginatedDocPages.map((pageItems, pageIdx) =>
             renderPageWrapper({
               key: `dossier-page-doc-${pageIdx}`,
+              anchorId: pageIdx === 0 ? 'dossier-section-dokumentasi' : undefined,
+              registerRefSection: pageIdx === 0 ? 'dokumentasi' : undefined,
               pageNumberLabel: `Bagian 5 / 6 ${
                 paginatedDocPages.length > 1
                   ? `(Lembar ${pageIdx + 1}/${paginatedDocPages.length})`
@@ -566,6 +953,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               title: 'Dokumentasi Kegiatan Perjalanan Dinas',
               sectionId: 'dokumentasi',
               editKey: 'dokumentasi',
+              isIncomplete: !isDokumentasiComplete,
+              incompleteReason: '0 Foto Dokumentasi',
               children: (
                 <div
                   className="mx-auto my-auto flex flex-col justify-between py-4 box-border overflow-hidden"
@@ -587,14 +976,15 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                   </div>
 
                   {pageItems.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-300 rounded-xl my-4">
-                      <p className="text-xs text-slate-500 italic">
-                        Belum ada foto dokumentasi kegiatan pada berkas SPJ ini.
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl my-4">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2 no-print" />
+                      <p className="text-xs text-slate-600 font-medium italic">
+                        Belum ada foto dokumentasi kegiatan pada berkas SPJ ini (0 lampiran).
                       </p>
                       <button
                         type="button"
                         onClick={() => onEditSection('dokumentasi')}
-                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 text-white text-xs font-bold cursor-pointer"
+                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
                       >
                         + Unggah Foto Dokumentasi
                       </button>
@@ -653,6 +1043,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
           paginatedExpensePages.map((expensePageItems, pageIdx) =>
             renderPageWrapper({
               key: `dossier-page-exp-${pageIdx}`,
+              anchorId: pageIdx === 0 ? 'dossier-section-pengeluaran' : undefined,
+              registerRefSection: pageIdx === 0 ? 'pengeluaran' : undefined,
               pageNumberLabel: `Bagian 6 / 6 ${
                 paginatedExpensePages.length > 1
                   ? `(Lembar ${pageIdx + 1}/${paginatedExpensePages.length})`
@@ -661,6 +1053,8 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
               title: 'Bukti Pembayaran / Pengeluaran Perjalanan Dinas',
               sectionId: 'pengeluaran',
               editKey: 'pengeluaran',
+              isIncomplete: !isPengeluaranComplete,
+              incompleteReason: '0 Bukti Bayar',
               children: (
                 <div className="w-[86%] max-w-[86%] mx-auto py-6 space-y-4">
                   <div className="text-center pb-2 border-b border-slate-950 space-y-0.5">
@@ -673,14 +1067,15 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
                   </div>
 
                   {expensePageItems.length === 0 ? (
-                    <div className="h-[420px] flex flex-col items-center justify-center text-center p-8 border border-dashed border-slate-300 rounded-xl">
-                      <p className="text-xs text-slate-500 italic">
-                        Belum ada scan nota / tiket / bukti pembayaran pada berkas SPJ ini.
+                    <div className="h-[420px] flex flex-col items-center justify-center text-center p-8 border border-dashed border-amber-300 bg-amber-50/40 rounded-xl">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 mb-2 no-print" />
+                      <p className="text-xs text-slate-600 font-medium italic">
+                        Belum ada scan nota / tiket / bukti pembayaran pada berkas SPJ ini (0 lampiran).
                       </p>
                       <button
                         type="button"
                         onClick={() => onEditSection('pengeluaran')}
-                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 text-white text-xs font-bold cursor-pointer"
+                        className="no-print mt-3 px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold cursor-pointer"
                       >
                         + Unggah / Scan Bukti Pembayaran
                       </button>
@@ -728,3 +1123,4 @@ export const BerkasSpjUtuhSection: React.FC<BerkasSpjUtuhSectionProps> = ({
     </div>
   );
 };
+

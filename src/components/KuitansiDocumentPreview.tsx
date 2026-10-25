@@ -41,18 +41,23 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
   const getZoneClasses = (zone: CanvasEditableZone) => {
     if (!isInteractive) return '';
     const isSelected = activeZone === zone;
-    return `relative rounded-sm transition-all cursor-pointer print:ring-0 print:bg-transparent ${
+    return `relative rounded-md p-1 -m-1 transition-all duration-150 cursor-pointer group print:outline-none print:ring-0 print:bg-transparent ${
       isSelected
-        ? 'ring-2 ring-sky-500 bg-sky-50/30 print:bg-transparent'
-        : 'hover:ring-1 hover:ring-sky-400/80 hover:bg-sky-50/15'
+        ? 'outline-2 outline-dashed outline-sky-500 bg-sky-50/40 print:bg-transparent'
+        : 'hover:outline-1 hover:outline-dashed hover:outline-sky-400 active:outline-2 active:outline-dashed active:outline-sky-500 hover:bg-sky-50/30 active:bg-sky-50/50'
     }`;
   };
 
   const renderCanvaSelectionBadge = (zone: CanvasEditableZone, label: string) => {
-    if (!isInteractive || activeZone !== zone) return null;
+    if (!isInteractive) return null;
+    const isSelected = activeZone === zone;
     return (
-      <span className="no-print absolute -top-5 left-0 z-10 px-2 py-0.5 rounded-t-md bg-sky-600 text-white font-sans text-[10px] font-bold tracking-wide shadow-2xs pointer-events-none">
-        {label} · Ketuk untuk edit
+      <span
+        className={`no-print absolute -top-4 right-1 z-10 px-1.5 py-0.5 rounded text-[9px] font-sans font-extrabold uppercase tracking-wider bg-sky-700 text-white shadow-2xs pointer-events-none transition-opacity ${
+          isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-active:opacity-100'
+        }`}
+      >
+        Ketuk untuk Edit {label}
       </span>
     );
   };

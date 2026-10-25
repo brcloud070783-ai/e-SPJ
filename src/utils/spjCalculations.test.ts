@@ -21,6 +21,8 @@ import {
   serializePegawaiCsv,
   parsePegawaiCsv,
   mergePegawaiList,
+  getReconciliationSemanticFeedback,
+  calculateSpjStepProgress,
 } from './spjCalculations.ts';
 
 test('terbilangRupiah matches Gambar 1 exact string for Rp2.860.000', () => {
@@ -319,6 +321,55 @@ test('serializePegawaiCsv and parsePegawaiCsv roundtrip 4 columns (NIP Pegawai, 
   assert.equal(merged.updatedCount, 0);
   assert.equal(merged.merged.length, 3);
 });
+
+test('getReconciliationSemanticFeedback returns Menunggu Unggah Nota (Step 6) when Kuitansi > 0 and Bukti = 0', () => {
+  const waitingStep6 = getReconciliationSemanticFeedback(2860000, []);
+  assert.equal(waitingStep6.badgeText, 'Menunggu Unggah Nota (Step 6)');
+  assert.equal(waitingStep6.tone, 'amber');
+  assert.equal(waitingStep6.isWaitingStep6, true);
+  assert.equal(waitingStep6.isReadyToPrint, false);
+
+  const complete = getReconciliationSemanticFeedback(2860000, [
+    { id: '1', kategori: 'Transportasi', nominal: 2860000 },
+  ]);
+  assert.equal(complete.tone, 'emerald');
+  assert.equal(complete.isReadyToPrint, true);
+});
+
+test('calculateSpjStepProgress evaluates 6 steps accurately for draft vs 100% ready-to-print SPJ', () => {
+  const draftProgress = calculateSpjStepProgress({
+    kuitansi: {
+      noSpt: '800.1.11.1/ 11898/SPT/Disdikbud/KU/X/2026',
+      atasNama: 'Bayu Ramadhan',
+      tujuan: 'Tarakan',
+      tanggalPerjalanan: '15 s.d 17 Oktober 2026',
+      rincian: [{ id: '1', uraian: 'Uang harian', nominalSatuan: 430000, kuantitas: 3, satuan: 'hari' }],
+    },
+    docPerjalananCount: 2,
+    expenses: [],
+  });
+  assert.equal(draftProgress.completedCount, 5);
+  assert.equal(draftProgress.isReadyToPrint, false);
+  assert.equal(draftProgress.steps[5].completed, false);
+  assert.equal(draftProgress.steps[5].statusDetail, 'Menunggu Nota');
+
+  const fullProgress = calculateSpjStepProgress({
+    kuitansi: {
+      noSpt: '800.1.11.1/ 11898/SPT/Disdikbud/KU/X/2026',
+      atasNama: 'Bayu Ramadhan',
+      tujuan: 'Tarakan',
+      tanggalPerjalanan: '15 s.d 17 Oktober 2026',
+      rincian: [{ id: '1', uraian: 'Uang harian', nominalSatuan: 430000, kuantitas: 3, satuan: 'hari' }],
+    },
+    docPerjalananCount: 2,
+    expenses: [{ id: 'e1', kategori: 'Uang Harian', nominal: 1290000 }],
+  });
+  assert.equal(fullProgress.completedCount, 6);
+  assert.equal(fullProgress.progressPercent, 100);
+  assert.equal(fullProgress.isReadyToPrint, true);
+  assert.equal(fullProgress.statusLabel, 'Siap Cetak 100%');
+});
+
 
 
 

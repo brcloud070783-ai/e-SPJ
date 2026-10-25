@@ -162,10 +162,10 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
   const getZoneClass = (zone: SpdBelakangEditableZone) => {
     if (isPrintMode || !onSelectZone) return '';
     const isActive = activeZone === zone;
-    return `cursor-pointer transition-all ${
+    return `relative cursor-pointer transition-all duration-150 group print:outline-none print:ring-0 print:bg-transparent ${
       isActive
-        ? 'ring-2 ring-sky-600 bg-sky-50/40'
-        : 'hover:bg-slate-50/70 hover:outline-dashed hover:outline-1 hover:outline-sky-400'
+        ? 'outline-2 outline-dashed outline-sky-500 -outline-offset-2 bg-sky-50/45'
+        : 'hover:bg-sky-50/30 active:bg-sky-50/50 hover:outline-1 hover:outline-dashed hover:outline-sky-400 hover:-outline-offset-2 active:outline-2 active:outline-dashed active:outline-sky-500'
     }`;
   };
 

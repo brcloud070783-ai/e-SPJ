@@ -106,12 +106,38 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   const [formTab, setFormTab] = useState<CanvasEditableZone>('utama');
   // Canva Mobile Bottom Sheet state: open when user taps a tool in the bottom dock or taps directly on the paper canvas
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState<boolean>(false);
+  // Snapshot of Kuitansi when opening the mobile bottom-sheet modal so "X" cancels uncommitted edits
+  const modalSnapshotRef = React.useRef<KuitansiPerjalananDinas | null>(null);
   const [showAnggaranDetail, setShowAnggaranDetail] = useState(false);
   const [isManualPelaksanaInput, setIsManualPelaksanaInput] = useState(false);
   const [isPelaksanaDropdownOpen, setIsPelaksanaDropdownOpen] = useState(false);
   const pelaksanaDropdownRef = React.useRef<HTMLDivElement>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+
+  const commitOrStageDraft = (next: KuitansiPerjalananDinas) => {
+    setDraft(next);
+    if (!isMobileSheetOpen) {
+      onSaveKuitansi(next);
+    }
+  };
+
+  const openModalWithZone = (zone: CanvasEditableZone) => {
+    if (!isMobileSheetOpen) {
+      modalSnapshotRef.current = draft;
+    }
+    setFormTab(zone);
+    setIsMobileSheetOpen(true);
+  };
+
+  const handleCancelAndCloseModal = () => {
+    if (modalSnapshotRef.current) {
+      setDraft(modalSnapshotRef.current);
+      modalSnapshotRef.current = null;
+    }
+    setValidationErrors([]);
+    setIsMobileSheetOpen(false);
+  };
 
   React.useEffect(() => {
     if (!isPelaksanaDropdownOpen) return;
@@ -283,8 +309,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       tanggalPerjalanan: formattedRange,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleKuiTtdDateChange = (isoDate: string) => {
@@ -301,8 +326,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       tempatTanggalTtd: nextVal,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const prevActiveIdRef = React.useRef<string>(activeKuitansiId);
@@ -339,27 +363,17 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   }, [isMobileSheetOpen]);
 
   const handleSelectZoneFromCanvas = (zone: CanvasEditableZone) => {
-    if (isMobileSheetOpen && formTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setFormTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(zone);
   };
 
+  // Switching sub-tabs at the bottom dock keeps draft edits intact without closing the modal
   const handleOpenMobileTool = (zone: CanvasEditableZone) => {
-    if (isMobileSheetOpen && formTab === zone) {
-      setIsMobileSheetOpen(false);
-      return;
-    }
-    setFormTab(zone);
-    setIsMobileSheetOpen(true);
+    openModalWithZone(zone);
   };
 
   const handleFieldChange = (field: keyof KuitansiPerjalananDinas, value: string) => {
     const next = { ...draft, [field]: value, updatedAt: new Date().toISOString() };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleCustomFieldValueChange = (fieldId: string, value: string) => {
@@ -372,8 +386,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       customFieldValues: nextValues,
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleCreateCustomField = () => {
@@ -431,8 +444,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       return { ...item, [field]: value };
     });
     const next = { ...draft, rincian: nextRincian, updatedAt: new Date().toISOString() };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleAddPresetRincian = (
@@ -455,8 +467,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       rincian: [...draft.rincian, newItem],
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleRemoveRincianRow = (itemId: string) => {
@@ -469,8 +480,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       rincian: draft.rincian.filter((r) => r.id !== itemId),
       updatedAt: new Date().toISOString(),
     };
-    setDraft(next);
-    onSaveKuitansi(next);
+    commitOrStageDraft(next);
   };
 
   const handleExplicitValidateAndSave = (e?: React.FormEvent) => {
@@ -490,7 +500,10 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       return;
     }
     setValidationErrors([]);
-    onSaveKuitansi({ ...draft, updatedAt: new Date().toISOString() });
+    const committed = { ...draft, updatedAt: new Date().toISOString() };
+    setDraft(committed);
+    onSaveKuitansi(committed);
+    modalSnapshotRef.current = committed;
     setIsMobileSheetOpen(false);
     setSaveBanner(
       autoSyncEnabled && isGoogleConnected
@@ -586,8 +599,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                                 customFieldValues: nextCustomFields,
                                 updatedAt: new Date().toISOString(),
                               };
-                              setDraft(next);
-                              onSaveKuitansi(next);
+                              commitOrStageDraft(next);
                               setIsPelaksanaDropdownOpen(false);
                             }}
                             className={`w-full max-w-full px-3 py-2.5 text-left transition-colors cursor-pointer flex items-start justify-between gap-2 ${
@@ -655,8 +667,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                           customFieldValues: nextCustomFields,
                           updatedAt: new Date().toISOString(),
                         };
-                        setDraft(next);
-                        onSaveKuitansi(next);
+                        commitOrStageDraft(next);
                         return;
                       }
                       const activePeg = (daftarPegawai || []).filter(
@@ -680,8 +691,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                           customFieldValues: nextCustomFields,
                           updatedAt: new Date().toISOString(),
                         };
-                        setDraft(next);
-                        onSaveKuitansi(next);
+                        commitOrStageDraft(next);
                       } else {
                         handleFieldChange('atasNama', val);
                       }
@@ -942,8 +952,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                           nipPenerima: firstPeg ? firstPeg.nip : draft.nipPenerima,
                           updatedAt: new Date().toISOString(),
                         };
-                        setDraft(next);
-                        onSaveKuitansi(next);
+                        commitOrStageDraft(next);
                         setValidationErrors([]);
                       }
                     }}
@@ -1015,8 +1024,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                       untukPengeluaran: foundSpt.maksudPerjalanan || draft.untukPengeluaran,
                       updatedAt: new Date().toISOString(),
                     };
-                    setDraft(next);
-                    onSaveKuitansi(next);
+                    commitOrStageDraft(next);
                   } else {
                     handleFieldChange('noSpt', val);
                   }
@@ -1738,7 +1746,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   className="min-h-[42px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Simpan &amp; Validasi</span>
+                  <span>Simpan Perubahan</span>
                 </button>
                 <button
                   type="button"
@@ -1797,7 +1805,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             role="presentation"
             aria-hidden="true"
             data-testid="mobile-sheet-backdrop"
-            onClick={() => setIsMobileSheetOpen(false)}
+            onClick={handleCancelAndCloseModal}
             className="no-print lg:hidden fixed inset-0 z-40 bg-slate-900/35 backdrop-blur-[2px] transition-opacity"
           />
 
@@ -1805,24 +1813,30 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             role="dialog"
             aria-modal="true"
             aria-label="Panel Editor Kuitansi Mobile"
-            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.18)] max-h-[62vh] flex flex-col overflow-hidden"
+            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.18)] max-h-[68vh] flex flex-col overflow-hidden"
           >
             {/* Drag Handle Modern & Sheet Header */}
             <div className="px-4 pt-2.5 pb-2.5 border-b border-slate-200/90 bg-slate-50 shrink-0">
               <div className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-2" />
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold text-slate-900">
-                  {formTab === 'utama'
-                    ? 'Edit Pelaksana, Tujuan & SPT'
-                    : formTab === 'rincian'
-                      ? `Edit Rincian Biaya (${formatRupiah(totalKuitansi)})`
-                      : `Edit Bidang Kustom (${customFields.length})`}
-                </span>
+                <div className="min-w-0">
+                  <span className="text-xs font-extrabold text-slate-900 block truncate">
+                    {formTab === 'utama'
+                      ? 'Edit Pelaksana, Tujuan & SPT'
+                      : formTab === 'rincian'
+                        ? `Edit Rincian Biaya (${formatRupiah(totalKuitansi)})`
+                        : `Edit Bidang Kustom (${customFields.length})`}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    Pindah tab otomatis menyimpan draf sementara
+                  </span>
+                </div>
                 <button
                   type="button"
-                  onClick={() => setIsMobileSheetOpen(false)}
-                  aria-label="Tutup panel editor"
-                  className="min-h-[32px] min-w-[32px] rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-800 flex items-center justify-center cursor-pointer"
+                  onClick={handleCancelAndCloseModal}
+                  aria-label="Batal / Tutup tanpa menyimpan"
+                  title="Batal / Tutup tanpa menyimpan"
+                  className="min-h-[32px] min-w-[32px] rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-800 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1834,40 +1848,45 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               {renderFormFieldsContent()}
             </div>
 
-            {/* Sticky Action Footer Konsisten di Bagian Bawah Sheet */}
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2 shrink-0">
-              {onDeleteKuitansi ? (
+            {/* Sticky Action Footer Konsisten di Bagian Bawah Sheet (Satu Primary Action + Hapus Kontekstual) */}
+            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2.5 shrink-0">
+              {formTab === 'utama' && onDeleteKuitansi && (
                 <button
                   type="button"
                   onClick={() => {
                     setIsMobileSheetOpen(false);
                     onDeleteKuitansi();
                   }}
-                  className="min-h-[40px] px-3 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-semibold text-red-700 hover:bg-red-100 cursor-pointer inline-flex items-center gap-1"
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
                   title="Hapus berkas SPJ"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Hapus</span>
                 </button>
-              ) : <div />}
+              )}
 
-              <div className="flex items-center gap-2">
+              {formTab === 'rincian' && draft.rincian.length > 1 && (
                 <button
                   type="button"
-                  onClick={() => setIsMobileSheetOpen(false)}
-                  className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
+                  onClick={() =>
+                    handleRemoveRincianRow(draft.rincian[draft.rincian.length - 1].id)
+                  }
+                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+                  title="Hapus baris rincian biaya terakhir"
                 >
-                  Selesai
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Hapus</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleExplicitValidateAndSave()}
-                  className="min-h-[40px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Simpan</span>
-                </button>
-              </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => handleExplicitValidateAndSave()}
+                className="flex-1 min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              >
+                <Save className="w-4 h-4 shrink-0" />
+                <span>Simpan Perubahan</span>
+              </button>
             </div>
           </div>
         </>

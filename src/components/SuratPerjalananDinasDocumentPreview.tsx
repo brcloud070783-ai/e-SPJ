@@ -104,16 +104,17 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
 
   const getZoneClass = (zone: SpdEditableZone) => {
     if (isPrintMode || !onSelectZone) return '';
-    const base = 'relative cursor-pointer transition-all duration-150 rounded group';
+    const base =
+      'relative cursor-pointer transition-all duration-150 rounded-sm group print:outline-none print:ring-0 print:bg-transparent';
     if (activeZone === zone) {
-      return `${base} ring-2 ring-sky-600 bg-sky-50/50 shadow-xs`;
+      return `${base} outline-2 outline-dashed outline-sky-500 -outline-offset-1 bg-sky-50/50`;
     }
-    return `${base} hover:ring-1 hover:ring-sky-300`;
+    return `${base} hover:outline-1 hover:outline-dashed hover:outline-sky-400 hover:-outline-offset-1 active:outline-2 active:outline-dashed active:outline-sky-500 hover:bg-sky-50/30 active:bg-sky-50/50`;
   };
 
   const editableClass = isPrintMode
     ? ''
-    : 'outline-none focus:bg-amber-100/90 focus:ring-1 focus:ring-sky-500 rounded px-0.5 transition-colors cursor-text';
+    : 'outline-none hover:outline-1 hover:outline-dashed hover:outline-sky-400/90 focus:bg-amber-100/90 focus:outline-2 focus:outline-dashed focus:outline-sky-500 rounded px-0.5 transition-all cursor-text print:outline-none';
 
   const rows = spdData.pengikutList && spdData.pengikutList.length >= 4
     ? spdData.pengikutList.slice(0, 4)
