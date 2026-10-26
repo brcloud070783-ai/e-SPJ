@@ -129,6 +129,10 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     sistem: false,
   });
 
+  // Mode Edit On-Demand untuk Seksi yang jarang diubah agar hemat tempat
+  const [isEditingInstansi, setIsEditingInstansi] = useState<boolean>(false);
+  const [isEditingPejabat, setIsEditingPejabat] = useState<boolean>(false);
+
   const toggleSection = (sectionId: AccordionSectionId) => {
     setOpenSections((prev) => ({
       ...prev,
@@ -687,12 +691,12 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           </div>
         </div>
 
-        {/* Quick Segmented Sub-Tabs / Section Jump Bar */}
+        {/* Quick Segmented Sub-Tabs / Section Jump Bar (Crisp Mini Copy, Zero Truncation) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-1 border-t border-slate-100">
           <button
             type="button"
             onClick={() => focusSingleSection('instansi')}
-            className={`px-3 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`px-2.5 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2 ${
               openSections.instansi
                 ? 'bg-emerald-50/90 border-emerald-300 text-emerald-950 shadow-2xs'
                 : 'bg-slate-50/70 border-slate-200/80 text-slate-600 hover:bg-slate-100'
@@ -701,16 +705,16 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
               <Building2 className="w-3.5 h-3.5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-extrabold truncate">1. Instansi &amp; Kop</div>
-              <div className="text-[10px] text-slate-500 truncate">Logo, Alamat, Kontak</div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-[11px] font-extrabold">1. Instansi</div>
+              <div className="text-[10px] text-slate-500">Logo &amp; Kop</div>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => focusSingleSection('pegawai')}
-            className={`px-3 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`px-2.5 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2 ${
               openSections.pegawai
                 ? 'bg-indigo-50/90 border-indigo-300 text-indigo-950 shadow-2xs'
                 : 'bg-slate-50/70 border-slate-200/80 text-slate-600 hover:bg-slate-100'
@@ -719,16 +723,16 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
               <Users className="w-3.5 h-3.5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-extrabold truncate">2. Master Pegawai</div>
-              <div className="text-[10px] text-slate-500 truncate">{daftarPegawai.length} Pegawai Terdaftar</div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-[11px] font-extrabold">2. Pegawai</div>
+              <div className="text-[10px] text-slate-500">{daftarPegawai.length} Data</div>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => focusSingleSection('pejabat')}
-            className={`px-3 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`px-2.5 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2 ${
               openSections.pejabat
                 ? 'bg-sky-50/90 border-sky-300 text-sky-950 shadow-2xs'
                 : 'bg-slate-50/70 border-slate-200/80 text-slate-600 hover:bg-slate-100'
@@ -737,16 +741,16 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="w-7 h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
               <UserCheck className="w-3.5 h-3.5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-extrabold truncate">3. Pejabat Default</div>
-              <div className="text-[10px] text-slate-500 truncate">PA/KPA, PPTK, Bendahara</div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-[11px] font-extrabold">3. Pejabat</div>
+              <div className="text-[10px] text-slate-500">PA, PPTK, Bend.</div>
             </div>
           </button>
 
           <button
             type="button"
             onClick={() => focusSingleSection('sistem')}
-            className={`px-3 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2.5 ${
+            className={`px-2.5 py-2 rounded-xl text-left border transition-all cursor-pointer flex items-center gap-2 ${
               openSections.sistem
                 ? 'bg-amber-50/90 border-amber-300 text-amber-950 shadow-2xs'
                 : 'bg-slate-50/70 border-slate-200/80 text-slate-600 hover:bg-slate-100'
@@ -755,9 +759,9 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
               <SlidersHorizontal className="w-3.5 h-3.5" />
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[11px] font-extrabold truncate">4. Kertas &amp; Sistem</div>
-              <div className="text-[10px] text-slate-500 truncate">Default {draft.defaultPaperSize}, Reset Data</div>
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="text-[11px] font-extrabold">4. Sistem</div>
+              <div className="text-[10px] text-slate-500">Kertas {draft.defaultPaperSize} &amp; Reset</div>
             </div>
           </button>
         </div>
@@ -790,14 +794,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
-                  Seksi 1: Identitas Instansi &amp; Kop Surat
+                  1. Instansi &amp; Kop Surat
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   {draft.logoPemprovDataUrl ? 'Logo Kustom' : 'Logo Kaltara'} • TA {draft.tahunAnggaranDefault}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                Logo Pemerintah Provinsi, nama OPD ({draft.namaDinas}), alamat, dan kontak kop surat naskah dinas.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Logo Pemprov, nama OPD, alamat &amp; kontak kop surat.
               </p>
             </div>
           </div>
@@ -817,183 +821,263 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         </button>
 
         {openSections.instansi && (
-          <div className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6 border-t border-slate-100 space-y-5">
-            {/* Kartu Upload Logo Pemprov */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <div className="w-24 h-28 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center p-2 shrink-0">
-                <KaltaraEmblem
-                  className="w-18 h-22"
-                  logoDataUrl={draft.logoPemprovDataUrl}
-                />
-              </div>
-
-              <div className="flex-1 space-y-2 text-center sm:text-left">
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <h3 className="text-xs sm:text-sm font-extrabold text-slate-900">
-                    Logo Pemerintah Provinsi pada Kop Surat
-                  </h3>
-                  <span
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                      draft.logoPemprovDataUrl
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-slate-200/80 text-slate-700'
-                    }`}
-                  >
-                    {draft.logoPemprovDataUrl ? 'Logo Kustom Aktif' : 'Logo Bawaan Kaltara'}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Unggah gambar logo resmi Pemerintah Provinsi dengan latar transparan (disarankan format <strong>PNG</strong> atau <strong>SVG</strong>) agar tercetak tajam di bagian kiri Kop Surat SPT, SPD, dan Kuitansi.
-                </p>
-
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 pt-1">
-                  <label
-                    htmlFor="setting-upload-logo-pemprov"
-                    className="min-h-[40px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-2 shadow-2xs transition-colors cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Unggah Logo Pemprov</span>
-                    <input
-                      id="setting-upload-logo-pemprov"
-                      data-testid="input-upload-logo-pemprov"
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml,image/webp,image/*"
-                      onChange={handleUploadLogoChange}
-                      className="sr-only"
+          <div className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6 border-t border-slate-100 space-y-4">
+            {!isEditingInstansi ? (
+              /* TAMPILAN RINGKAS (COMPACT PREVIEW) - HEMAT TEMPAT DAN TIDAK MEMAKAN RUANG */
+              <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/50 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                  <div className="w-12 h-14 rounded-xl bg-white border border-slate-200 flex items-center justify-center p-1.5 shrink-0 shadow-2xs">
+                    <KaltaraEmblem
+                      className="w-9 h-11"
+                      logoDataUrl={draft.logoPemprovDataUrl}
                     />
-                  </label>
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider truncate">
+                        {draft.instansiUtama}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        TA {draft.tahunAnggaranDefault}
+                      </span>
+                      {draft.logoPemprovDataUrl && (
+                        <span className="px-1.5 py-0.2 rounded text-[9.5px] font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                          Logo Kustom
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                      {draft.namaDinas}
+                    </p>
+                    <p className="text-[11px] text-slate-600 truncate">
+                      {draft.alamatDinasBaris1} · {draft.alamatDinasBaris2}
+                    </p>
+                    <p className="text-[10.5px] text-slate-500 truncate font-mono">
+                      {draft.kontakDinas}
+                    </p>
+                  </div>
+                </div>
 
-                  {draft.logoPemprovDataUrl && (
-                    <button
-                      type="button"
-                      onClick={handleResetLogoDefault}
-                      className="min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Gunakan Logo Bawaan</span>
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingInstansi(true)}
+                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-sky-700" />
+                    <span>Ubah / Edit Kop Surat</span>
+                  </button>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* FORM RINCIAN IDENTITAS KOP SURAT (DAPAT DILIPAT KEMBALI SETELAH SELESAI EDIT) */
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <Pencil className="w-3.5 h-3.5 text-sky-700" />
+                    <span className="text-xs font-bold text-slate-800">
+                      Form Edit Identitas Instansi &amp; Kop Surat
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingInstansi(false)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-[11px] font-semibold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    <span>Lipat Kembali</span>
+                  </button>
+                </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label
-                  htmlFor="setting-instansi-utama"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Instansi Pemerintah
-                </label>
-                <input
-                  id="setting-instansi-utama"
-                  type="text"
-                  value={draft.instansiUtama}
-                  onChange={(e) => handleField('instansiUtama', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
-              </div>
+                {/* Kartu Upload Logo Pemprov */}
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3.5 sm:p-4 flex flex-col sm:flex-row items-center gap-3.5">
+                  <div className="w-16 h-20 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center p-1.5 shrink-0">
+                    <KaltaraEmblem
+                      className="w-12 h-16"
+                      logoDataUrl={draft.logoPemprovDataUrl}
+                    />
+                  </div>
 
-              <div>
-                <label
-                  htmlFor="setting-nama-dinas"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Nama Dinas / OPD
-                </label>
-                <input
-                  id="setting-nama-dinas"
-                  type="text"
-                  value={draft.namaDinas}
-                  onChange={(e) => handleField('namaDinas', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-900"
-                />
-              </div>
+                  <div className="flex-1 space-y-1.5 text-center sm:text-left">
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                      <h3 className="text-xs font-extrabold text-slate-900">
+                        Logo Pemerintah Daerah pada Kop Surat
+                      </h3>
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                          draft.logoPemprovDataUrl
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : 'bg-slate-200/80 text-slate-700'
+                        }`}
+                      >
+                        {draft.logoPemprovDataUrl ? 'Logo Kustom Aktif' : 'Logo Bawaan Kaltara'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 leading-normal">
+                      Unggah logo resmi instansi berformat PNG atau SVG transparan agar tercetak tajam pada Kop Surat SPT, SPD, dan Kuitansi.
+                    </p>
 
-              <div>
-                <label
-                  htmlFor="setting-tahun-anggaran"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Tahun Anggaran Default
-                </label>
-                <input
-                  id="setting-tahun-anggaran"
-                  type="text"
-                  value={draft.tahunAnggaranDefault}
-                  onChange={(e) => handleField('tahunAnggaranDefault', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono text-slate-900"
-                />
-              </div>
-            </div>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-0.5">
+                      <label
+                        htmlFor="setting-upload-logo-pemprov"
+                        className="min-h-[34px] px-3 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Unggah Logo Baru</span>
+                        <input
+                          id="setting-upload-logo-pemprov"
+                          data-testid="input-upload-logo-pemprov"
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/webp,image/*"
+                          onChange={handleUploadLogoChange}
+                          className="sr-only"
+                        />
+                      </label>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="setting-alamat-1"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Alamat Kop Surat Baris 1
-                </label>
-                <input
-                  id="setting-alamat-1"
-                  type="text"
-                  value={draft.alamatDinasBaris1}
-                  onChange={(e) => handleField('alamatDinasBaris1', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
-              </div>
+                      {draft.logoPemprovDataUrl && (
+                        <button
+                          type="button"
+                          onClick={handleResetLogoDefault}
+                          className="min-h-[34px] px-3 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        >
+                          <ImageIcon className="w-3 h-3 text-slate-500" />
+                          <span>Gunakan Logo Bawaan</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
-              <div>
-                <label
-                  htmlFor="setting-alamat-2"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Alamat Kop Surat Baris 2 &amp; Telepon
-                </label>
-                <input
-                  id="setting-alamat-2"
-                  type="text"
-                  value={draft.alamatDinasBaris2}
-                  onChange={(e) => handleField('alamatDinasBaris2', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
-              </div>
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label
+                      htmlFor="setting-instansi-utama"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Instansi Pemerintah
+                    </label>
+                    <input
+                      id="setting-instansi-utama"
+                      type="text"
+                      value={draft.instansiUtama}
+                      onChange={(e) => handleField('instansiUtama', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="setting-kontak-dinas"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Laman Web &amp; Pos-el Kop Surat
-                </label>
-                <input
-                  id="setting-kontak-dinas"
-                  type="text"
-                  value={draft.kontakDinas}
-                  onChange={(e) => handleField('kontakDinas', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
-              </div>
+                  <div>
+                    <label
+                      htmlFor="setting-nama-dinas"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Nama Dinas / OPD
+                    </label>
+                    <input
+                      id="setting-nama-dinas"
+                      type="text"
+                      value={draft.namaDinas}
+                      onChange={(e) => handleField('namaDinas', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-900"
+                    />
+                  </div>
 
-              <div>
-                <label
-                  htmlFor="setting-terima-dari"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Kalimat &ldquo;Sudah Terima Dari&rdquo; Default
-                </label>
-                <input
-                  id="setting-terima-dari"
-                  type="text"
-                  value={draft.sudahTerimaDariDefault}
-                  onChange={(e) => handleField('sudahTerimaDariDefault', e.target.value)}
-                  className="w-full min-h-[42px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
+                  <div>
+                    <label
+                      htmlFor="setting-tahun-anggaran"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Tahun Anggaran Default
+                    </label>
+                    <input
+                      id="setting-tahun-anggaran"
+                      type="text"
+                      value={draft.tahunAnggaranDefault}
+                      onChange={(e) => handleField('tahunAnggaranDefault', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-mono text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="setting-alamat-1"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Alamat Kop Surat Baris 1
+                    </label>
+                    <input
+                      id="setting-alamat-1"
+                      type="text"
+                      value={draft.alamatDinasBaris1}
+                      onChange={(e) => handleField('alamatDinasBaris1', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="setting-alamat-2"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Alamat Kop Surat Baris 2 &amp; Telepon
+                    </label>
+                    <input
+                      id="setting-alamat-2"
+                      type="text"
+                      value={draft.alamatDinasBaris2}
+                      onChange={(e) => handleField('alamatDinasBaris2', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="setting-kontak-dinas"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Laman Web &amp; Pos-el Kop Surat
+                    </label>
+                    <input
+                      id="setting-kontak-dinas"
+                      type="text"
+                      value={draft.kontakDinas}
+                      onChange={(e) => handleField('kontakDinas', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="setting-terima-dari"
+                      className="block text-xs font-medium text-slate-700 mb-1"
+                    >
+                      Kalimat &ldquo;Sudah Terima Dari&rdquo; Default
+                    </label>
+                    <input
+                      id="setting-terima-dari"
+                      type="text"
+                      value={draft.sudahTerimaDariDefault}
+                      onChange={(e) => handleField('sudahTerimaDariDefault', e.target.value)}
+                      className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingInstansi(false)}
+                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Selesai Edit Identitas (Lipat Kembali)</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -1015,14 +1099,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
-                  Seksi 2: Database Master Pegawai
+                  2. Master Pegawai
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
                   {daftarPegawai.length} Total • {activePegawaiCount} Aktif
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                Import/Export CSV, pencarian cepat NIP/Nama, tabel master pegawai terpaginasi, &amp; tambah manual.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Impor/Ekspor CSV, cari NIP/Nama &amp; kelola daftar pegawai.
               </p>
             </div>
           </div>
@@ -1850,14 +1934,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
-                  Seksi 3: Pejabat Penandatangan &amp; Bendahara Default
+                  3. Pejabat &amp; Bendahara
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
                   PA/KPA • PPTK • Bendahara
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                PA/KPA: {draft.namaPenggunaAnggaran || '-'} • PPTK: {draft.namaPptk || '-'} • Bendahara: {draft.namaBendahara || '-'}
+              <p className="text-xs text-slate-500 mt-0.5">
+                PA: {draft.namaPenggunaAnggaran || '-'} • Bendahara: {draft.namaBendahara || '-'}
               </p>
             </div>
           </div>
@@ -1877,202 +1961,281 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
         </button>
 
         {openSections.pejabat && (
-          <div className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6 border-t border-slate-100 space-y-5">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* 1. Pengguna Anggaran / KPA */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-amber-900 bg-amber-100/80 px-2.5 py-0.5 rounded-md border border-amber-200">
-                    1. Pengguna Anggaran (PA / KPA)
-                  </span>
+          <div className="px-4 pb-5 pt-2 sm:px-6 sm:pb-6 border-t border-slate-100 space-y-4">
+            {!isEditingPejabat ? (
+              /* TAMPILAN RINGKAS PEJABAT (COMPACT PREVIEW) */
+              <div className="rounded-2xl border border-sky-200/90 bg-sky-50/40 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1 min-w-0 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                      PA / KPA
+                    </span>
+                    <p className="font-extrabold text-slate-900 truncate">
+                      {draft.namaPenggunaAnggaran || '(Belum diset)'}
+                    </p>
+                    <p className="font-mono text-[10.5px] text-slate-500 truncate">
+                      {draft.nipPenggunaAnggaran ? `NIP ${draft.nipPenggunaAnggaran}` : '-'}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-800 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                      PPTK Default
+                    </span>
+                    <p className="font-extrabold text-slate-900 truncate">
+                      {draft.namaPptk || '(Belum diset)'}
+                    </p>
+                    <p className="font-mono text-[10.5px] text-slate-500 truncate">
+                      {draft.nipPptk ? `NIP ${draft.nipPptk}` : '-'}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/90 space-y-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-sky-800 bg-sky-50 px-1.5 py-0.2 rounded border border-sky-200">
+                      Bendahara
+                    </span>
+                    <p className="font-extrabold text-slate-900 truncate">
+                      {draft.namaBendahara || '(Belum diset)'}
+                    </p>
+                    <p className="font-mono text-[10.5px] text-slate-500 truncate">
+                      {draft.nipBendahara ? `NIP ${draft.nipBendahara}` : '-'}
+                    </p>
+                  </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="setting-jabatan-pa"
-                    className="block text-xs font-medium text-slate-700 mb-1"
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPejabat(true)}
+                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                   >
-                    Jabatan Penandatangan Setuju
-                  </label>
-                  <input
-                    id="setting-jabatan-pa"
-                    type="text"
-                    value={draft.jabatanPenggunaAnggaran}
-                    onChange={(e) => handleField('jabatanPenggunaAnggaran', e.target.value)}
-                    placeholder="Contoh: Pengguna Anggaran / KPA"
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="setting-nama-pa"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Nama Lengkap &amp; Gelar PA / KPA
-                  </label>
-                  <input
-                    id="setting-nama-pa"
-                    type="text"
-                    value={draft.namaPenggunaAnggaran}
-                    onChange={(e) => handleField('namaPenggunaAnggaran', e.target.value)}
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="setting-nip-pa"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    NIP Pengguna Anggaran
-                  </label>
-                  <input
-                    id="setting-nip-pa"
-                    type="text"
-                    value={draft.nipPenggunaAnggaran}
-                    onChange={(e) => handleField('nipPenggunaAnggaran', e.target.value)}
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-900"
-                  />
+                    <Pencil className="w-3.5 h-3.5 text-sky-700" />
+                    <span>Ubah / Edit Pejabat</span>
+                  </button>
                 </div>
               </div>
-
-              {/* 2. Pejabat Pelaksana Teknis Kegiatan (PPTK) */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 bg-indigo-100/80 px-2.5 py-0.5 rounded-md border border-indigo-200">
-                    2. Pejabat Pelaksana Teknis (PPTK)
-                  </span>
+            ) : (
+              /* FORM RINCIAN PEJABAT (EXPANDED ON-DEMAND) */
+              <div className="space-y-4 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5">
+                    <Pencil className="w-3.5 h-3.5 text-sky-700" />
+                    <span className="text-xs font-bold text-slate-800">
+                      Form Edit Pejabat Penandatangan &amp; Bendahara
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingPejabat(false)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-[11px] font-semibold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    <span>Lipat Kembali</span>
+                  </button>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="setting-jabatan-pptk"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Jabatan PPTK Default
-                  </label>
-                  <input
-                    id="setting-jabatan-pptk"
-                    type="text"
-                    value={draft.jabatanPptk || ''}
-                    onChange={(e) => handleField('jabatanPptk', e.target.value)}
-                    placeholder="Contoh: Pejabat Pelaksana Teknis Kegiatan"
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-                  />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5">
+                  {/* 1. Pengguna Anggaran / KPA */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100/80 px-2 py-0.5 rounded-md border border-amber-200">
+                      1. Pengguna Anggaran (PA / KPA)
+                    </span>
+
+                    <div>
+                      <label
+                        htmlFor="setting-jabatan-pa"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Jabatan Penandatangan
+                      </label>
+                      <input
+                        id="setting-jabatan-pa"
+                        type="text"
+                        value={draft.jabatanPenggunaAnggaran}
+                        onChange={(e) => handleField('jabatanPenggunaAnggaran', e.target.value)}
+                        placeholder="Contoh: Pengguna Anggaran / KPA"
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nama-pa"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Nama Lengkap &amp; Gelar PA / KPA
+                      </label>
+                      <input
+                        id="setting-nama-pa"
+                        type="text"
+                        value={draft.namaPenggunaAnggaran}
+                        onChange={(e) => handleField('namaPenggunaAnggaran', e.target.value)}
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nip-pa"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        NIP Pengguna Anggaran
+                      </label>
+                      <input
+                        id="setting-nip-pa"
+                        type="text"
+                        value={draft.nipPenggunaAnggaran}
+                        onChange={(e) => handleField('nipPenggunaAnggaran', e.target.value)}
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 2. Pejabat Pelaksana Teknis Kegiatan (PPTK) */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-900 bg-indigo-100/80 px-2 py-0.5 rounded-md border border-indigo-200">
+                      2. Pejabat Pelaksana Teknis (PPTK)
+                    </span>
+
+                    <div>
+                      <label
+                        htmlFor="setting-jabatan-pptk"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Jabatan PPTK Default
+                      </label>
+                      <input
+                        id="setting-jabatan-pptk"
+                        type="text"
+                        value={draft.jabatanPptk || ''}
+                        onChange={(e) => handleField('jabatanPptk', e.target.value)}
+                        placeholder="Contoh: Pejabat Pelaksana Teknis Kegiatan"
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nama-pptk"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Nama Lengkap &amp; Gelar PPTK
+                      </label>
+                      <input
+                        id="setting-nama-pptk"
+                        type="text"
+                        value={draft.namaPptk || ''}
+                        onChange={(e) => handleField('namaPptk', e.target.value)}
+                        placeholder="Nama Pejabat PPTK..."
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nip-pptk"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        NIP PPTK
+                      </label>
+                      <input
+                        id="setting-nip-pptk"
+                        type="text"
+                        value={draft.nipPptk || ''}
+                        onChange={(e) => handleField('nipPptk', e.target.value)}
+                        placeholder="18 digit NIP PPTK..."
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3. Bendahara Pengeluaran */}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-900 bg-sky-100/80 px-2 py-0.5 rounded-md border border-sky-200">
+                      3. Bendahara Pengeluaran
+                    </span>
+
+                    <div>
+                      <label
+                        htmlFor="setting-jabatan-bendahara"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Jabatan Bendahara
+                      </label>
+                      <input
+                        id="setting-jabatan-bendahara"
+                        type="text"
+                        value={draft.jabatanBendahara}
+                        onChange={(e) => handleField('jabatanBendahara', e.target.value)}
+                        placeholder="Contoh: Bendahara Pengeluaran"
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nama-bendahara"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        Nama Lengkap &amp; Gelar Bendahara
+                      </label>
+                      <input
+                        id="setting-nama-bendahara"
+                        type="text"
+                        value={draft.namaBendahara}
+                        onChange={(e) => handleField('namaBendahara', e.target.value)}
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="setting-nip-bendahara"
+                        className="block text-[11px] font-medium text-slate-700 mb-1"
+                      >
+                        NIP Bendahara
+                      </label>
+                      <input
+                        id="setting-nip-bendahara"
+                        type="text"
+                        value={draft.nipBendahara}
+                        onChange={(e) => handleField('nipBendahara', e.target.value)}
+                        className="w-full min-h-[36px] rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-mono text-slate-900"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="setting-nama-pptk"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Nama Lengkap &amp; Gelar PPTK
-                  </label>
-                  <input
-                    id="setting-nama-pptk"
-                    type="text"
-                    value={draft.namaPptk || ''}
-                    onChange={(e) => handleField('namaPptk', e.target.value)}
-                    placeholder="Nama Pejabat PPTK..."
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 items-center">
+                  <div>
+                    <label
+                      htmlFor="setting-kota-ttd"
+                      className="block text-[11px] font-medium text-slate-700 mb-1"
+                    >
+                      Kota Tempat Tanda Tangan Default
+                    </label>
+                    <input
+                      id="setting-kota-ttd"
+                      type="text"
+                      value={draft.kotaTtdDefault}
+                      onChange={(e) => handleField('kotaTtdDefault', e.target.value)}
+                      className="w-full min-h-[36px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                    />
+                  </div>
 
-                <div>
-                  <label
-                    htmlFor="setting-nip-pptk"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    NIP PPTK
-                  </label>
-                  <input
-                    id="setting-nip-pptk"
-                    type="text"
-                    value={draft.nipPptk || ''}
-                    onChange={(e) => handleField('nipPptk', e.target.value)}
-                    placeholder="18 digit NIP PPTK..."
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-900"
-                  />
+                  <div className="flex sm:justify-end self-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPejabat(false)}
+                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Selesai Edit Pejabat (Lipat Kembali)</span>
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* 3. Bendahara Pengeluaran */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-sky-900 bg-sky-100/80 px-2.5 py-0.5 rounded-md border border-sky-200">
-                    3. Bendahara Pengeluaran
-                  </span>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="setting-jabatan-bendahara"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Jabatan Bendahara
-                  </label>
-                  <input
-                    id="setting-jabatan-bendahara"
-                    type="text"
-                    value={draft.jabatanBendahara}
-                    onChange={(e) => handleField('jabatanBendahara', e.target.value)}
-                    placeholder="Contoh: Bendahara Pengeluaran"
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="setting-nama-bendahara"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    Nama Lengkap &amp; Gelar Bendahara
-                  </label>
-                  <input
-                    id="setting-nama-bendahara"
-                    type="text"
-                    value={draft.namaBendahara}
-                    onChange={(e) => handleField('namaBendahara', e.target.value)}
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="setting-nip-bendahara"
-                    className="block text-xs font-medium text-slate-700 mb-1"
-                  >
-                    NIP Bendahara
-                  </label>
-                  <input
-                    id="setting-nip-bendahara"
-                    type="text"
-                    value={draft.nipBendahara}
-                    onChange={(e) => handleField('nipBendahara', e.target.value)}
-                    className="w-full min-h-[40px] rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono text-slate-900"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 items-center">
-              <div>
-                <label
-                  htmlFor="setting-kota-ttd"
-                  className="block text-xs font-medium text-slate-700 mb-1"
-                >
-                  Kota Tempat Tanda Tangan Default
-                </label>
-                <input
-                  id="setting-kota-ttd"
-                  type="text"
-                  value={draft.kotaTtdDefault}
-                  onChange={(e) => handleField('kotaTtdDefault', e.target.value)}
-                  className="w-full min-h-[40px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-                />
-              </div>
-            </div>
+            )}
           </div>
         )}
       </div>
@@ -2094,14 +2257,14 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
-                  Seksi 4: Preferensi Kertas &amp; Sistem
+                  4. Kertas &amp; Sistem
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
-                  Default: {draft.defaultPaperSize === 'F4' ? 'F4 Folio (215×330mm)' : 'A4 (210×297mm)'}
+                  Default: {draft.defaultPaperSize === 'F4' ? 'F4 Folio' : 'A4'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5 truncate">
-                Ukuran kertas cetak default (A4 / F4 Folio), konektivitas Google Workspace, dan reset data standar Disdikbud.
+              <p className="text-xs text-slate-500 mt-0.5">
+                Ukuran kertas default ({draft.defaultPaperSize}), Cloud &amp; reset data.
               </p>
             </div>
           </div>

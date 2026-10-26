@@ -28,6 +28,7 @@ import {
   ZoomOut,
   Maximize2,
   Check,
+  FileDown,
 } from 'lucide-react';
 import {
   DokumentasiPerjalananItem,
@@ -53,6 +54,7 @@ import {
 import {
   buildCleanPdfTitle,
   triggerIsolatedSpjPrint,
+  exportToDirectPdf,
 } from '../utils/printPdf';
 
 interface StagedDocFile {
@@ -552,6 +554,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
   const [viewMode, setViewMode] = useState<'cards' | 'printSheet'>('cards');
   const [printGridMode, setPrintGridMode] = useState<PrintGridMode>('2x2');
   const [isAutoGrid, setIsAutoGrid] = useState<boolean>(true);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (!isAutoGrid) return;
@@ -2168,26 +2171,56 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  void triggerIsolatedSpjPrint({
-                    paperSize,
-                    documentTitle: buildCleanPdfTitle({
-                      prefix: 'Dokumentasi_Perjalanan_Dinas',
-                      atasNama: activeKuitansi.atasNama,
-                      noSpt: activeKuitansi.noSpt,
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isExportingPdf || items.length === 0}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      await exportToDirectPdf({
+                        paperSize,
+                        documentTitle: buildCleanPdfTitle({
+                          prefix: 'Dokumentasi_Perjalanan_Dinas',
+                          atasNama: activeKuitansi.atasNama,
+                          noSpt: activeKuitansi.noSpt,
+                          paperSize,
+                        }),
+                        sheetSelector: '.documentation-print-sheet',
+                      });
+                    } catch (err: any) {
+                      alert(err?.message || 'Gagal mengekspor PDF');
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>{isExportingPdf ? 'Memproses PDF...' : 'Ekspor PDF'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void triggerIsolatedSpjPrint({
                       paperSize,
-                    }),
-                    sheetSelector: '.print-only-sheet',
-                    zeroPageMargin: true,
-                  });
-                }}
-                className="min-h-[36px] px-4 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Lembar Dokumentasi ({paperSize})</span>
-              </button>
+                      documentTitle: buildCleanPdfTitle({
+                        prefix: 'Dokumentasi_Perjalanan_Dinas',
+                        atasNama: activeKuitansi.atasNama,
+                        noSpt: activeKuitansi.noSpt,
+                        paperSize,
+                      }),
+                      sheetSelector: '.print-only-sheet',
+                      zeroPageMargin: true,
+                    });
+                  }}
+                  className="min-h-[36px] px-4 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Lembar Dokumentasi ({paperSize})</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-6">

@@ -66,6 +66,26 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
     });
   };
 
+  const handleSyncPejabatAwalFromSpt = () => {
+    onUpdateVisumData({
+      ...data,
+      berangkatKepalaAwal: spt.jabatanPenandatangan || 'Kepala Dinas',
+      pejabatNamaAwal: spt.namaPenandatangan || '',
+      pejabatPangkatAwal: spt.pangkatPenandatangan || '',
+      pejabatNipAwal: spt.nipPenandatangan || '',
+    });
+  };
+
+  const handleSyncPejabatAkhirFromSpt = () => {
+    onUpdateVisumData({
+      ...data,
+      tibaKepalaAkhir: spt.jabatanPenandatangan || 'Kepala Dinas',
+      pejabatNamaAkhir: spt.namaPenandatangan || '',
+      pejabatPangkatAkhir: spt.pangkatPenandatangan || '',
+      pejabatNipAkhir: spt.nipPenandatangan || '',
+    });
+  };
+
   const handleClearPersinggahan = () => {
     const blankRows: SpdVisumPersinggahanRow[] = [
       {
@@ -310,9 +330,22 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           </div>
 
           <div className="pt-2 border-t border-slate-200/90 space-y-2.5">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-              Pejabat Penandatangan Keberangkatan Awal
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                Pejabat Penandatangan Keberangkatan Awal
+              </span>
+              <button
+                type="button"
+                onClick={handleSyncPejabatAwalFromSpt}
+                className="text-[10px] font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                title="Tarik data penandatangan dari SPT"
+              >
+                🔄 Sinkronkan dari SPT
+              </button>
+            </div>
+            <p className="text-[10.5px] text-slate-500">
+              Otomatis mengikuti pejabat penandatangan SPT (dapat disunting manual jika ada pendelegasian wewenang).
+            </p>
 
             <div>
               <label
@@ -622,9 +655,22 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
           </div>
 
           <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-3 shadow-2xs">
-            <span className="text-xs font-bold text-slate-800 block">
-              Kolom Kiri: Pengesahan Tiba di Tempat Kedudukan
-            </span>
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+              <span className="text-xs font-bold text-slate-800 block">
+                Kolom Kiri: Pengesahan Tiba di Tempat Kedudukan
+              </span>
+              <button
+                type="button"
+                onClick={handleSyncPejabatAkhirFromSpt}
+                className="text-[10px] font-semibold text-sky-700 hover:text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                title="Tarik pejabat penandatangan dari SPT"
+              >
+                🔄 Sinkronkan dari SPT
+              </button>
+            </div>
+            <p className="text-[10.5px] text-slate-500 -mt-1">
+              Otomatis sinkron dengan penandatangan SPT (dapat diubah manual jika pengesahan diwakilkan kepada Plh/pejabat lain).
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

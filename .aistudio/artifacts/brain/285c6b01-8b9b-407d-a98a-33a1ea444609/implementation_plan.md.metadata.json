@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana implementasi penyatuan 6 dokumen perjalanan dinas (SPT, SPD Depan, Visum SPD Belakang, Kuitansi, Dokumentasi Kegiatan, dan Bukti Pembayaran) menjadi 1 kesatuan Berkas SPJ Utuh dengan ruang kerja berurutan dan fitur cetak/unduh 1 file PDF multi-halaman utuh maupun cetak per halaman.",
-  "updatedAt":  "2026-10-25T12:01:54.630504699Z",
+  "summary":  "Rencana implementasi penataan penandatanganan dokumen dinas: selektor status jabatan SPT (Kepala Dinas, Plt., Plh., Kustom), format tanda tangan 2 pejabat vertikal pada SPD Lembar Depan (Pengguna Anggaran di atas dan Penandatangan SPT di bawah), serta sinkronisasi otomatis penandatangan Visum SPPD dari data pejabat SPT dengan fleksibilitas edit manual.",
+  "updatedAt":  "2026-10-26T01:22:54.003983781Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

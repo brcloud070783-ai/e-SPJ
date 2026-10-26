@@ -19,6 +19,7 @@ import {
   PlaneTakeoff,
   NotebookPen,
   Save,
+  FileDown,
 } from 'lucide-react';
 import {
   SuratPerintahTugas,
@@ -53,6 +54,7 @@ import {
 import {
   buildCleanPdfTitle,
   triggerIsolatedSpjPrint,
+  exportToDirectPdf,
 } from '../utils/printPdf';
 
 export type ActiveDocType = 'spd' | 'spd-belakang' | 'spt';
@@ -105,6 +107,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
   const modalSnapshotRef = React.useRef<SuratPerintahTugas | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   const commitOrStageDraft = (next: SuratPerintahTugas) => {
     setDraft(next);
@@ -1048,36 +1051,194 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               </div>
             </div>
 
+            {/* 1. PEJABAT SPT: PENANDATANGAN SPT (KANAN BAWAH DALAM KOTAK) */}
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-                Penandatangan Dokumen SPD
-              </span>
+              <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-slate-700 text-white text-[10px] flex items-center justify-center font-mono">1</span>
+                  <span>Penandatangan SPT (Kanan Bawah Kotak)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateSpdData({
+                      ...currentSpd,
+                      pejabatSptJabatan: draft.jabatanPenandatangan,
+                      pejabatSptNama: draft.namaPenandatangan,
+                      pejabatSptNip: draft.nipPenandatangan,
+                      pejabatSptPangkat: draft.pangkatPenandatangan,
+                    });
+                  }}
+                  className="text-[10px] font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 px-2 py-0.5 rounded cursor-pointer transition-colors shadow-2xs"
+                  title="Tarik langsung dari data penandatangan SPT"
+                >
+                  🔄 Sinkronkan SPT
+                </button>
+              </div>
+
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">Jabatan</label>
+                <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Jabatan Penandatangan SPT</label>
                 <input
                   type="text"
-                  value={draft.jabatanPenandatangan}
-                  onChange={(e) => handleFieldChange('jabatanPenandatangan', e.target.value)}
+                  value={currentSpd.pejabatSptJabatan ?? draft.jabatanPenandatangan}
+                  onChange={(e) => handleUpdateSpdField('pejabatSptJabatan', e.target.value)}
+                  placeholder="Contoh: Plt. Kepala Dinas"
                   className="w-full min-h-[36px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-900"
                 />
               </div>
+
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">Nama Lengkap &amp; Gelar</label>
+                <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Nama Lengkap &amp; Gelar</label>
                 <input
                   type="text"
-                  value={draft.namaPenandatangan}
-                  onChange={(e) => handleFieldChange('namaPenandatangan', e.target.value)}
+                  list="datalist-spt-pegawai"
+                  value={currentSpd.pejabatSptNama ?? draft.namaPenandatangan}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const activePeg = (daftarPegawai || []).filter((p) => p.statusActive !== false);
+                    const found = activePeg.find(
+                      (p) => p.nama.trim().toLowerCase() === val.trim().toLowerCase()
+                    );
+                    if (found) {
+                      handleUpdateSpdData({
+                        ...currentSpd,
+                        pejabatSptNama: found.nama,
+                        pejabatSptNip: found.nip,
+                        pejabatSptPangkat: found.pangkatGolongan || draft.pangkatPenandatangan,
+                      });
+                    } else {
+                      handleUpdateSpdField('pejabatSptNama', val);
+                    }
+                  }}
                   className="w-full min-h-[36px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-900"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Pangkat / Golongan</label>
+                  <input
+                    type="text"
+                    value={currentSpd.pejabatSptPangkat ?? draft.pangkatPenandatangan}
+                    onChange={(e) => handleUpdateSpdField('pejabatSptPangkat', e.target.value)}
+                    className="w-full min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">NIP</label>
+                  <input
+                    type="text"
+                    value={currentSpd.pejabatSptNip ?? draft.nipPenandatangan}
+                    onChange={(e) => handleUpdateSpdField('pejabatSptNip', e.target.value)}
+                    className="w-full min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. PENGGUNA ANGGARAN (TENGAH BAWAH DOKUMEN) */}
+            <div className="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200/90 space-y-2.5">
+              <div className="flex items-center justify-between pb-1 border-b border-sky-200/60">
+                <span className="text-xs font-bold uppercase tracking-wider text-sky-950 flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-sky-700 text-white text-[10px] flex items-center justify-center font-mono">2</span>
+                  <span>Pengguna Anggaran (Tengah Bawah Dokumen)</span>
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateSpdData({
+                        ...currentSpd,
+                        paJabatan: appSettings.jabatanPenggunaAnggaran || 'Pengguna Anggaran',
+                        paNama: appSettings.namaPenggunaAnggaran || 'Hasanuddin, S.Pd, M.Si',
+                        paNip: appSettings.nipPenggunaAnggaran || '197405272007011010',
+                        paPangkat: 'Pembina Tingkat I, IV/b',
+                      });
+                    }}
+                    className="text-[10px] font-semibold text-sky-800 bg-white hover:bg-sky-100 border border-sky-300 px-2 py-0.5 rounded cursor-pointer transition-colors shadow-2xs"
+                    title="Tarik data PA dari Pengaturan Instansi"
+                  >
+                    Dari Pengaturan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateSpdData({
+                        ...currentSpd,
+                        paJabatan: 'Pengguna Anggaran',
+                        paNama: draft.namaPenandatangan,
+                        paNip: draft.nipPenandatangan,
+                        paPangkat: draft.pangkatPenandatangan,
+                      });
+                    }}
+                    className="text-[10px] font-semibold text-sky-800 bg-white hover:bg-sky-100 border border-sky-300 px-2 py-0.5 rounded cursor-pointer transition-colors shadow-2xs"
+                    title="Samakan orang dengan penandatangan SPT"
+                  >
+                    Sama Pejabat SPT
+                  </button>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">NIP</label>
+                <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Jabatan PA / KPA</label>
                 <input
                   type="text"
-                  value={draft.nipPenandatangan}
-                  onChange={(e) => handleFieldChange('nipPenandatangan', e.target.value)}
-                  className="w-full min-h-[36px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-mono text-slate-900"
+                  value={currentSpd.paJabatan ?? (appSettings.jabatanPenggunaAnggaran || 'Pengguna Anggaran')}
+                  onChange={(e) => handleUpdateSpdField('paJabatan', e.target.value)}
+                  placeholder="Contoh: Pengguna Anggaran / Kuasa Pengguna Anggaran"
+                  className="w-full min-h-[36px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-900"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-medium text-slate-600 mb-0.5">Nama Lengkap &amp; Gelar PA</label>
+                <input
+                  type="text"
+                  list="datalist-spt-pegawai"
+                  value={currentSpd.paNama ?? (appSettings.namaPenggunaAnggaran || draft.namaPenandatangan)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const activePeg = (daftarPegawai || []).filter((p) => p.statusActive !== false);
+                    const found = activePeg.find(
+                      (p) => p.nama.trim().toLowerCase() === val.trim().toLowerCase()
+                    );
+                    if (found) {
+                      handleUpdateSpdData({
+                        ...currentSpd,
+                        paNama: found.nama,
+                        paNip: found.nip,
+                        paPangkat: found.pangkatGolongan || 'Pembina Tingkat I, IV/b',
+                      });
+                    } else {
+                      handleUpdateSpdField('paNama', val);
+                    }
+                  }}
+                  placeholder="Nama Pengguna Anggaran..."
+                  className="w-full min-h-[36px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">Pangkat / Golongan</label>
+                  <input
+                    type="text"
+                    value={currentSpd.paPangkat ?? 'Pembina Tingkat I, IV/b'}
+                    onChange={(e) => handleUpdateSpdField('paPangkat', e.target.value)}
+                    placeholder="Pembina Tingkat I, IV/b"
+                    className="w-full min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 mb-0.5">NIP</label>
+                  <input
+                    type="text"
+                    value={currentSpd.paNip ?? (appSettings.nipPenggunaAnggaran || draft.nipPenandatangan)}
+                    onChange={(e) => handleUpdateSpdField('paNip', e.target.value)}
+                    placeholder="1974..."
+                    className="w-full min-h-[34px] rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs font-mono text-slate-900"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -1577,24 +1738,82 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           </div>
 
           <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block">
-              Pejabat Penandatangan Surat Tugas
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-800 block">
+              Pejabat Penandatangan Surat Tugas (SPT)
             </span>
+
+            {/* Quick Status Selector: Kepala Dinas, Plt, Plh, Kustom */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
+                Pilih Cepat Status Jabatan:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
+                {[
+                  { label: 'Kepala Dinas', val: 'Kepala Dinas', status: 'definitive' as const },
+                  { label: 'Plt. Kepala Dinas', val: 'Plt. Kepala Dinas', status: 'plt' as const },
+                  { label: 'Plh. Kepala Dinas', val: 'Plh. Kepala Dinas', status: 'plh' as const },
+                  { label: 'Teks Kustom...', val: draft.jabatanPenandatangan || '', status: 'custom' as const },
+                ].map((item) => {
+                  const currentNorm = (draft.jabatanPenandatangan || '').trim().toLowerCase();
+                  const isMatch =
+                    item.status === 'definitive'
+                      ? currentNorm === 'kepala dinas' || currentNorm.startsWith('kepala dinas')
+                      : item.status === 'plt'
+                      ? currentNorm.includes('plt')
+                      : item.status === 'plh'
+                      ? currentNorm.includes('plh')
+                      : !currentNorm.includes('plt') &&
+                        !currentNorm.includes('plh') &&
+                        !currentNorm.startsWith('kepala dinas');
+
+                  return (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        let newJabatan = item.val;
+                        if (item.status === 'definitive') {
+                          newJabatan = 'Kepala Dinas';
+                        } else if (item.status === 'plt') {
+                          newJabatan = 'Plt. Kepala Dinas';
+                        } else if (item.status === 'plh') {
+                          newJabatan = 'Plh. Kepala Dinas';
+                        }
+                        const next: SuratPerintahTugas = {
+                          ...draft,
+                          statusJabatan: item.status,
+                          jabatanPenandatangan: newJabatan,
+                          updatedAt: new Date().toISOString(),
+                        };
+                        commitOrStageDraft(next);
+                      }}
+                      className={`min-h-[34px] px-2 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center flex items-center justify-center ${
+                        isMatch
+                          ? 'bg-sky-700 text-white shadow-2xs'
+                          : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             <div>
               <label
                 htmlFor="input-spt-jabatan-ttd"
                 className="block text-[11px] font-medium text-slate-600 mb-1"
               >
-                Jabatan Penandatangan
+                Teks Jabatan Resmi pada Naskah SPT
               </label>
               <input
                 id="input-spt-jabatan-ttd"
                 type="text"
-                placeholder="Contoh: Plt. Kepala Dinas"
+                placeholder="Contoh: Plt. Kepala Dinas / Kepala Dinas Pendidikan..."
                 value={draft.jabatanPenandatangan}
                 onChange={(e) => handleFieldChange('jabatanPenandatangan', e.target.value)}
-                className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-900"
+                className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-600"
               />
             </div>
 
@@ -1620,10 +1839,10 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   if (found) {
                     const next: SuratPerintahTugas = {
                       ...draft,
-                      namaPenandatangan: found.nama,
-                      nipPenandatangan: found.nip,
-                      jabatanPenandatangan: found.jabatan || draft.jabatanPenandatangan,
-                      pangkatPenandatangan: found.pangkatGolongan || draft.pangkatPenandatangan,
+                      namaPenandatangan: found.nama.trim(),
+                      nipPenandatangan: found.nip.trim().replace(/^NIP\.?\s*/i, ''),
+                      jabatanPenandatangan: (found.jabatan || draft.jabatanPenandatangan).trim(),
+                      pangkatPenandatangan: (found.pangkatGolongan || draft.pangkatPenandatangan).trim(),
                       updatedAt: new Date().toISOString(),
                     };
                     commitOrStageDraft(next);
@@ -1637,22 +1856,6 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
 
             <div>
               <label
-                htmlFor="input-spt-nip-ttd"
-                className="block text-[11px] font-medium text-slate-600 mb-1"
-              >
-                NIP Penandatangan
-              </label>
-              <input
-                id="input-spt-nip-ttd"
-                type="text"
-                value={draft.nipPenandatangan}
-                onChange={(e) => handleFieldChange('nipPenandatangan', e.target.value)}
-                className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-mono text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label
                 htmlFor="input-spt-pangkat-ttd"
                 className="block text-[11px] font-medium text-slate-600 mb-1"
               >
@@ -1661,10 +1864,105 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               <input
                 id="input-spt-pangkat-ttd"
                 type="text"
+                placeholder="Contoh: Pembina Tingkat I, IV/b"
                 value={draft.pangkatPenandatangan}
-                onChange={(e) => handleFieldChange('pangkatPenandatangan', e.target.value)}
+                onChange={(e) => handleFieldChange('pangkatPenandatangan', e.target.value.trimStart())}
+                onBlur={(e) => handleFieldChange('pangkatPenandatangan', e.target.value.trim())}
                 className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-900"
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="input-spt-nip-ttd"
+                className="block text-[11px] font-medium text-slate-600 mb-1"
+              >
+                NIP Penandatangan
+              </label>
+              <input
+                id="input-spt-nip-ttd"
+                type="text"
+                placeholder="Contoh: 197405272007011010"
+                value={draft.nipPenandatangan}
+                onChange={(e) => handleFieldChange('nipPenandatangan', e.target.value.trimStart().replace(/^NIP\.?\s*/i, ''))}
+                onBlur={(e) => handleFieldChange('nipPenandatangan', e.target.value.trim().replace(/^NIP\.?\s*/i, ''))}
+                className="w-full min-h-[38px] rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-mono text-slate-900"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Awalan &quot;NIP &quot; akan otomatis dicetak rapi dan sejajar lurus rata kiri dengan Nama dan Pangkat.
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
+                Urutan Baris Tanda Tangan:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('urutanTtdPangkatNip', 'pangkat-dulu')}
+                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold border text-center transition-colors cursor-pointer ${
+                    (draft.urutanTtdPangkatNip ?? 'pangkat-dulu') === 'pangkat-dulu'
+                      ? 'bg-sky-50 border-sky-600 text-sky-900 font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Nama → Pangkat → NIP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('urutanTtdPangkatNip', 'nip-dulu')}
+                  className={`px-2 py-1.5 rounded-lg text-xs font-semibold border text-center transition-colors cursor-pointer ${
+                    draft.urutanTtdPangkatNip === 'nip-dulu'
+                      ? 'bg-sky-50 border-sky-600 text-sky-900 font-bold'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Nama → NIP → Pangkat
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[11px] font-semibold text-slate-700">
+                  Ukuran Font SPT (Standar 11.5pt, min. 9.5pt):
+                </label>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">
+                  {draft.fontSizePt ? `${draft.fontSizePt} pt (Manual)` : 'Auto (Pas 1 Halaman)'}
+                </span>
+              </div>
+              <div className="grid grid-cols-6 gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleFieldChange('fontSizePt', undefined)}
+                  className={`py-1 rounded-md text-[11px] font-bold border transition-colors cursor-pointer ${
+                    draft.fontSizePt === undefined
+                      ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                  title="Sesuaikan otomatis agar pas 1 halaman (11.5pt s.d. 9.5pt)"
+                >
+                  Auto
+                </button>
+                {[11.5, 11.0, 10.5, 10.0, 9.5].map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => handleFieldChange('fontSizePt', size)}
+                    className={`py-1 rounded-md text-[11px] font-bold border transition-colors cursor-pointer ${
+                      draft.fontSizePt === size
+                        ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    {size}pt
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Font standar 11.5pt. Jika halaman melebihi 1 lembar, sistem otomatis mengecilkan bertahap hingga maksimal paling kecil 9.5pt agar pas 1 halaman penuh.
+              </p>
             </div>
           </div>
         </div>
@@ -2075,6 +2373,40 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                disabled={isExportingPdf}
+                onClick={async () => {
+                  setIsExportingPdf(true);
+                  try {
+                    const prefix =
+                      docType === 'spd-belakang'
+                        ? 'SPD_Visum_Belakang'
+                        : docType === 'spd'
+                        ? 'SPD_Depan'
+                        : 'Surat_Perintah_Tugas';
+                    await exportToDirectPdf({
+                      paperSize,
+                      documentTitle: buildCleanPdfTitle({
+                        prefix,
+                        atasNama: activeSpdPelaksana.nama,
+                        noSpt: draft.noSpt,
+                        paperSize,
+                      }),
+                      sheetSelector: '.print-only-sheet',
+                    });
+                  } catch (err: any) {
+                    alert(err?.message || 'Gagal mengekspor PDF');
+                  } finally {
+                    setIsExportingPdf(false);
+                  }
+                }}
+                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span>{isExportingPdf ? 'Memproses PDF...' : 'Ekspor PDF'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   const prefix =
                     docType === 'spd-belakang'
@@ -2091,6 +2423,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                       paperSize,
                     }),
                     sheetSelector: '.print-only-sheet',
+                    zeroPageMargin: docType === 'spd-belakang',
                   });
                 }}
                 className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
@@ -2494,6 +2827,40 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
 
         <button
           type="button"
+          disabled={isExportingPdf}
+          onClick={async () => {
+            setIsExportingPdf(true);
+            try {
+              const prefix =
+                docType === 'spd-belakang'
+                  ? 'SPD_Visum_Belakang'
+                  : docType === 'spd'
+                  ? 'SPD_Depan'
+                  : 'Surat_Perintah_Tugas';
+              await exportToDirectPdf({
+                paperSize,
+                documentTitle: buildCleanPdfTitle({
+                  prefix,
+                  atasNama: activeSpdPelaksana.nama,
+                  noSpt: draft.noSpt,
+                  paperSize,
+                }),
+                sheetSelector: '.print-only-sheet',
+              });
+            } catch (err: any) {
+              alert(err?.message || 'Gagal mengekspor PDF');
+            } finally {
+              setIsExportingPdf(false);
+            }
+          }}
+          className="min-h-[48px] px-2.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+        >
+          <FileDown className="w-4 h-4" />
+          <span>{isExportingPdf ? '...' : 'PDF'}</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => {
             const prefix =
               docType === 'spd-belakang'
@@ -2510,6 +2877,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 paperSize,
               }),
               sheetSelector: '.print-only-sheet',
+              zeroPageMargin: docType === 'spd-belakang',
             });
           }}
           aria-label={

@@ -1,4 +1,6 @@
 import type { PaperSize } from '../types/spj';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export interface PrintableDossierPagePlan {
   totalScreenPages: number;
@@ -304,7 +306,7 @@ export async function triggerIsolatedSpjPrint(
 
   const pageWidthMm = paperSize === 'F4' ? '215mm' : '210mm';
   const pageHeightMm = paperSize === 'F4' ? '330mm' : '297mm';
-  const pagePadding = zeroPageMargin ? '3mm 0mm' : '4mm 0mm';
+  const pagePadding = zeroPageMargin ? '0mm 0mm' : '4mm 0mm';
 
   const styleEl = document.createElement('style');
   styleEl.textContent = `
@@ -405,4 +407,141 @@ export async function triggerIsolatedSpjPrint(
   }, 1500);
 
   window.print();
+}
+
+export interface ExportDirectPdfOptions {
+  paperSize: PaperSize;
+  documentTitle: string;
+  sheetSelector?: string;
+  rootElement?: HTMLElement | null;
+  onProgress?: (status: string) => void;
+}
+
+/**
+ * Direct High-Fidelity PDF File Exporter.
+ * Converts active printable sheets into vector/raster PDF files with 100% exact layout, font, logo, and dimension rendering.
+ */
+export async function exportToDirectPdf(
+  options: ExportDirectPdfOptions
+): Promise<void> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const {
+    paperSize,
+    documentTitle,
+    rootElement,
+    sheetSelector = '.spj-dossier-sheet, .print-only-sheet',
+    onProgress,
+  } = options;
+
+  onProgress?.('Menyiapkan halaman PDF...');
+
+  const searchRoot: ParentNode = rootElement || document;
+  const rawCandidates = Array.from(
+    searchRoot.querySelectorAll<HTMLElement>(sheetSelector)
+  );
+
+  const outermostSheets = rawCandidates.filter(
+    (el) => !rawCandidates.some((other) => other !== el && other.contains(el))
+  );
+
+  let printableSheets = outermostSheets.filter((sheet) => {
+    const wrapper = sheet.closest('[data-empty-page="true"], .spj-empty-printable-page');
+    if (wrapper || sheet.getAttribute('data-empty-page') === 'true') {
+      return false;
+    }
+    const textContent = (sheet.innerText || sheet.textContent || '').trim();
+    const hasImages = sheet.querySelectorAll('img').length > 0;
+    return textContent.length > 0 || hasImages;
+  });
+
+  if (printableSheets.length === 0 && outermostSheets.length > 0) {
+    printableSheets = [outermostSheets[0]];
+  }
+
+  if (printableSheets.length === 0) {
+    throw new Error('Tidak ada lembar cetak yang dapat diekspor.');
+  }
+
+  const widthMm = paperSize === 'F4' ? 215 : 210;
+  const heightMm = paperSize === 'F4' ? 330 : 297;
+  const widthPx = paperSize === 'F4' ? 812 : 794;
+  const heightPx = paperSize === 'F4' ? 1247 : 1123;
+
+  const pdf = new jsPDF({
+    unit: 'mm',
+    format: [widthMm, heightMm],
+    orientation: 'portrait',
+    compress: true,
+  });
+
+  // Create temporary container for pristine off-screen canvas rendering
+  const renderContainer = document.createElement('div');
+  renderContainer.style.position = 'fixed';
+  renderContainer.style.left = '-9999px';
+  renderContainer.style.top = '-9999px';
+  renderContainer.style.width = `${widthPx}px`;
+  renderContainer.style.zIndex = '-9999';
+  renderContainer.style.background = '#ffffff';
+  document.body.appendChild(renderContainer);
+
+  try {
+    for (let idx = 0; idx < printableSheets.length; idx++) {
+      const sourceSheet = printableSheets[idx];
+      onProgress?.(`Memproses halaman ${idx + 1} dari ${printableSheets.length}...`);
+
+      const cloned = sourceSheet.cloneNode(true) as HTMLElement;
+      syncFormValuesToClone(sourceSheet, cloned);
+      cleanClonedSheetForPrint(cloned);
+
+      // Force explicit paper dimensions, white background, and pure black text
+      cloned.style.width = `${widthPx}px`;
+      cloned.style.minWidth = `${widthPx}px`;
+      cloned.style.maxWidth = `${widthPx}px`;
+      cloned.style.height = `${heightPx}px`;
+      cloned.style.minHeight = `${heightPx}px`;
+      cloned.style.maxHeight = `${heightPx}px`;
+      cloned.style.margin = '0';
+      cloned.style.padding = '0';
+      cloned.style.transform = 'none';
+      cloned.style.background = '#ffffff';
+      cloned.style.color = '#000000';
+      cloned.style.boxShadow = 'none';
+      cloned.style.border = 'none';
+      cloned.style.overflow = 'hidden';
+
+      renderContainer.innerHTML = '';
+      renderContainer.appendChild(cloned);
+
+      await waitForFontsAndImages(renderContainer);
+
+      const canvas = await html2canvas(cloned, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        width: widthPx,
+        height: heightPx,
+        windowWidth: widthPx,
+        windowHeight: heightPx,
+      });
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      if (idx > 0) {
+        pdf.addPage([widthMm, heightMm], 'portrait');
+      }
+
+      pdf.addImage(imgData, 'PNG', 0, 0, widthMm, heightMm, undefined, 'FAST');
+    }
+
+    onProgress?.('Mengunduh berkas PDF...');
+    const filename = documentTitle.endsWith('.pdf') ? documentTitle : `${documentTitle}.pdf`;
+    pdf.save(filename);
+  } finally {
+    if (document.body.contains(renderContainer)) {
+      document.body.removeChild(renderContainer);
+    }
+  }
 }

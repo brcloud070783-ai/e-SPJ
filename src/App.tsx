@@ -24,6 +24,7 @@ import {
   Stamp,
   Layers,
   Printer,
+  Download,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -54,6 +55,10 @@ import {
   extractSubKegiatanFromSpt,
 } from './utils/spjCalculations';
 import {
+  downloadSpjBackupJson,
+  SpjBackupPayload,
+} from './utils/spjBackupAndCleanup';
+import {
   initAuth,
   uploadFileToDriveFolder,
   deleteFileFromDrive,
@@ -69,7 +74,6 @@ import { KuitansiEditorSection } from './components/KuitansiEditorSection';
 import { SuratTugasEditorSection } from './components/SuratTugasEditorSection';
 import { DokumentasiPerjalananSection } from './components/DokumentasiPerjalananSection';
 import { DokumentasiPengeluaranSection } from './components/DokumentasiPengeluaranSection';
-import { BerkasSpjUtuhSection } from './components/BerkasSpjUtuhSection';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
@@ -136,7 +140,7 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEYS.SURAT_TUGAS);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
@@ -166,7 +170,7 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEYS.KUITANSI);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore storage errors
@@ -368,8 +372,16 @@ export default function App() {
     workspaceConfig?.autoSyncEnabled,
   ]);
 
+  const fallbackKuitansi = applySettingsToKuitansi(
+    INITIAL_KUITANSI_LIST[0],
+    appSettings
+  );
+
   const activeKuitansi =
-    kuitansiList.find((k) => k.id === activeKuitansiId) || kuitansiList[0];
+    kuitansiList.find((k) => k.id === activeKuitansiId) ||
+    kuitansiList.find((k) => !k.isArchived) ||
+    kuitansiList[0] ||
+    fallbackKuitansi;
 
   const activeSpt =
     sptList.find((s) => s.kuitansiId === activeKuitansi.id) ||
@@ -380,13 +392,20 @@ export default function App() {
         s.noSpt.trim().toLowerCase() === activeKuitansi.noSpt.trim().toLowerCase()
     ) ||
     sptList.find((s) => s.id === activeSptId) ||
-    sptList[0];
+    sptList[0] ||
+    INITIAL_SURAT_TUGAS_LIST[0];
 
   useEffect(() => {
     if (activeSpt && activeSpt.id !== activeSptId) {
       setActiveSptId(activeSpt.id);
     }
   }, [activeKuitansi.id, activeSpt?.id]);
+
+  useEffect(() => {
+    if (kuitansiList.length === 0 && spjView !== 'sub-home') {
+      setSpjView('sub-home');
+    }
+  }, [kuitansiList.length, spjView]);
 
   const handleSaveKuitansi = (updated: KuitansiPerjalananDinas) => {
     const syncStatus: KuitansiPerjalananDinas['statusSync'] =
@@ -566,12 +585,16 @@ export default function App() {
     const newKuitansiId = `kui-2026-00${nextNumber}-${nowSuffix}`;
     const newSptNo = `800.1.11.1/ 1${1898 + nextNumber}/SPT/Disdikbud/KU/X/${appSettings.tahunAnggaranDefault || '2026'}`;
     const currentSpt =
-      sptList.find((s) => s.id === activeSptId) || sptList[0];
+      sptList.find((s) => s.id === activeSptId) ||
+      sptList[0] ||
+      INITIAL_SURAT_TUGAS_LIST[0];
     const sptSubKeg = extractSubKegiatanFromSpt(currentSpt);
 
     const newKuitansi: KuitansiPerjalananDinas = {
       ...applySettingsToKuitansi(activeKuitansi, appSettings),
       id: newKuitansiId,
+      isArchived: false,
+      archivedAt: undefined,
       tahunAnggaran: appSettings.tahunAnggaranDefault || activeKuitansi.tahunAnggaran,
       subKegiatan:
         sptSubKeg ||
@@ -712,58 +735,111 @@ export default function App() {
     setKuitansiToDelete(target);
   };
 
+  const handleDeleteKuitansiBatch = (idsToDelete: string[]) => {
+    if (idsToDelete.length === 0) return;
+    const idSet = new Set(idsToDelete);
+
+    const remaining = kuitansiList.filter((k) => !idSet.has(k.id));
+    const remainingSpt = sptList.filter(
+      (s) => !s.kuitansiId || !idSet.has(s.kuitansiId)
+    );
+
+    // Cascade delete: bersihkan dokumentasi perjalanan & pengeluaran yang terikat pada SPJ ini
+    setDokumentasiPerjalanan((prev) =>
+      prev.filter((d) => !idSet.has(d.kuitansiId))
+    );
+    setDokumentasiPengeluaran((prev) =>
+      prev.filter((e) => !idSet.has(e.kuitansiId))
+    );
+
+    setKuitansiList(remaining);
+    setSptList(remaining.length === 0 ? [] : remainingSpt);
+
+    if (remaining.length === 0) {
+      setSpjView('sub-home');
+      showToast(
+        'Seluruh berkas SPJ berhasil dihapus. Daftar kini kosong (0 berkas).'
+      );
+    } else {
+      if (idSet.has(activeKuitansiId)) {
+        const nextActive =
+          remaining.find((k) => !k.isArchived) || remaining[0];
+        setActiveKuitansiId(nextActive.id);
+      }
+      showToast(`${idsToDelete.length} berkas SPJ berhasil dihapus permanen.`);
+    }
+  };
+
+  const handleArchiveKuitansiBatch = (ids: string[], archive: boolean) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const nowIso = new Date().toISOString();
+
+    setKuitansiList((prev) =>
+      prev.map((item) =>
+        idSet.has(item.id)
+          ? {
+              ...item,
+              isArchived: archive,
+              archivedAt: archive ? nowIso : undefined,
+            }
+          : item
+      )
+    );
+
+    showToast(
+      archive
+        ? `${ids.length} berkas SPJ dipindahkan ke Arsip.`
+        : `${ids.length} berkas SPJ dipulihkan ke daftar aktif.`
+    );
+  };
+
+  const handleRestoreBackupPayload = (payload: SpjBackupPayload) => {
+    setKuitansiList((prev) => {
+      const existingIds = new Set(prev.map((k) => k.id));
+      const newItems = payload.kuitansiItems.filter(
+        (k) => !existingIds.has(k.id)
+      );
+      return [...newItems, ...prev];
+    });
+    if (payload.sptItems.length > 0) {
+      setSptList((prev) => {
+        const existingIds = new Set(prev.map((s) => s.id));
+        const newSpts = payload.sptItems.filter((s) => !existingIds.has(s.id));
+        return [...newSpts, ...prev];
+      });
+    }
+    if (payload.docPerjalananItems.length > 0) {
+      setDokumentasiPerjalanan((prev) => {
+        const existingIds = new Set(prev.map((d) => d.id));
+        const newDocs = payload.docPerjalananItems.filter(
+          (d) => !existingIds.has(d.id)
+        );
+        return [...newDocs, ...prev];
+      });
+    }
+    if (payload.docPengeluaranItems.length > 0) {
+      setDokumentasiPengeluaran((prev) => {
+        const existingIds = new Set(prev.map((e) => e.id));
+        const newExps = payload.docPengeluaranItems.filter(
+          (e) => !existingIds.has(e.id)
+        );
+        return [...newExps, ...prev];
+      });
+    }
+    if (payload.kuitansiItems[0]) {
+      setActiveKuitansiId(payload.kuitansiItems[0].id);
+    }
+    showToast(
+      `${payload.kuitansiItems.length} berkas SPJ berhasil dipulihkan dari cadangan!`
+    );
+  };
+
   const handleConfirmDeleteKuitansi = () => {
     if (!kuitansiToDelete) return;
     const targetId = kuitansiToDelete.id;
-    const targetLabel = kuitansiToDelete.atasNama || kuitansiToDelete.noSpt || 'SPJ';
-
-    // 1. Hapus berkas dari kuitansiList & sptList terkait
-    const remaining = kuitansiList.filter((k) => k.id !== targetId);
-    const remainingSpt = sptList.filter((s) => s.kuitansiId !== targetId);
-
-    // 2. Cascade delete: bersihkan dokumentasi perjalanan & pengeluaran yang terikat pada SPJ ini
-    setDokumentasiPerjalanan((prev) => prev.filter((d) => d.kuitansiId !== targetId));
-    setDokumentasiPengeluaran((prev) => prev.filter((e) => e.kuitansiId !== targetId));
-
-    // 3. Fallback jika seluruh SPJ terhapus: sediakan SPJ draft baru agar aplikasi selalu stabil
-    if (remaining.length === 0) {
-      const freshKuiId = `kui-2026-001-${Date.now().toString().slice(-4)}`;
-      const freshBlank: KuitansiPerjalananDinas = {
-        ...applySettingsToKuitansi(INITIAL_KUITANSI_LIST[0], appSettings),
-        id: freshKuiId,
-        noKuitansi: `001/KUI-SPPD/DISDIKBUD/IV/${appSettings.tahunAnggaranDefault || '2026'}`,
-        atasNama: appSettings.namaPelaksanaDefault || 'Bayu Ramadhan',
-        nipPenerima: appSettings.nipPelaksanaDefault || '198307072015031002',
-        subKegiatan: appSettings.subKegiatanDefault || '',
-        tujuan: 'Tanjung Selor - Tarakan (PP)',
-        tanggalPerjalanan: '10 s.d 12 April 2026',
-        tempatTanggalTtd: `${appSettings.kotaTtdDefault || 'Tanjung Selor'}, 12 April 2026`,
-        noSpt: `800.1.11.1/ 11898/SPT/Disdikbud/KU/X/2026`,
-        lampiranDokumen: [],
-        statusSync: 'Tersimpan Lokal',
-        updatedAt: new Date().toISOString(),
-      };
-      const freshSpt: SuratPerintahTugas = {
-        ...INITIAL_SURAT_TUGAS_LIST[0],
-        id: `spt-2026-001-${Date.now().toString().slice(-4)}`,
-        kuitansiId: freshKuiId,
-      };
-      setKuitansiList([freshBlank]);
-      setSptList([freshSpt]);
-      setActiveKuitansiId(freshBlank.id);
-      setActiveSptId(freshSpt.id);
-    } else {
-      setKuitansiList(remaining);
-      if (remainingSpt.length > 0) {
-        setSptList(remainingSpt);
-      }
-      if (activeKuitansiId === targetId) {
-        setActiveKuitansiId(remaining[0].id);
-      }
-    }
-
     setKuitansiToDelete(null);
-    showToast(`Berkas SPJ (${targetLabel}) berhasil dihapus.`);
+    handleDeleteKuitansiBatch([targetId]);
   };
 
   const handleAddCustomField = (field: CustomFieldDefinition) => {
@@ -1118,13 +1194,6 @@ export default function App() {
       microcopy: 'Scan Nota',
       icon: Receipt,
     },
-    {
-      key: 'berkas-utuh',
-      stepNum: 'PDF',
-      label: '1 File Utuh',
-      microcopy: 'Cetak Semua',
-      icon: Layers,
-    },
   ];
 
   const normalizedActiveStepKey: SpjSubSectionKey =
@@ -1279,37 +1348,17 @@ export default function App() {
                 </div>
               )}
             </div>
-
-            {/* Pintasan Cepat ke Cetak 1 File PDF Utuh */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsSpjSwitcherOpen(false);
-                setSpjView('berkas-utuh');
-              }}
-              className={`min-h-[30px] px-2.5 py-1 rounded-xl text-xs font-extrabold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer ${
-                spjView === 'berkas-utuh'
-                  ? 'bg-emerald-700 text-white'
-                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-              }`}
-              title="Pratinjau & Cetak 1 File SPJ Utuh (Semua Halaman)"
-            >
-              <Printer className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">PDF 1 File Utuh</span>
-              <span className="sm:hidden">Utuh</span>
-            </button>
           </div>
 
-          {/* Baris 2: Urutan 6 Bagian Dokumen + 1 File Utuh */}
+          {/* Baris 2: Urutan 6 Bagian Dokumen SPJ */}
           <div className="border-t border-slate-100 bg-slate-50/90">
             <nav
               aria-label="Urutan Halaman Berkas SPJ"
-              className="max-w-7xl mx-auto px-1.5 sm:px-6 py-1 grid grid-cols-7 gap-1 sm:gap-1.5"
+              className="max-w-7xl mx-auto px-1.5 sm:px-6 py-1 grid grid-cols-6 gap-1 sm:gap-1.5"
             >
               {studioSteps.map((step) => {
                 const StepIcon = step.icon;
                 const isActive = normalizedActiveStepKey === step.key;
-                const isUtuhTab = step.key === 'berkas-utuh';
                 return (
                   <button
                     key={step.key}
@@ -1320,36 +1369,26 @@ export default function App() {
                     }}
                     className={`min-w-0 px-1 sm:px-2 py-1 rounded-xl flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-0.5 sm:gap-1.5 text-center sm:text-left border transition-all cursor-pointer ${
                       isActive
-                        ? isUtuhTab
-                          ? 'bg-emerald-700 text-white border-emerald-700 shadow-2xs'
-                          : 'bg-sky-700 text-white border-sky-700 shadow-2xs'
-                        : isUtuhTab
-                          ? 'bg-emerald-50/80 hover:bg-emerald-100 text-emerald-900 border-emerald-200'
-                          : 'bg-white hover:bg-slate-100/80 text-slate-700 hover:text-slate-900 border-slate-200/80'
+                        ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
+                        : 'bg-white hover:bg-slate-100/80 text-slate-700 hover:text-slate-900 border-slate-200/80'
                     }`}
                   >
                     <div
                       className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md flex items-center justify-center shrink-0 ${
                         isActive
                           ? 'bg-white/20 text-white'
-                          : isUtuhTab
-                            ? 'bg-emerald-200/70 text-emerald-800'
-                            : 'bg-slate-100 text-sky-700'
+                          : 'bg-slate-100 text-sky-700'
                       }`}
                     >
                       <StepIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
                     </div>
                     <div className="min-w-0 max-w-full flex flex-col leading-tight">
                       <span className="text-[8.5px] sm:text-[11px] font-bold tracking-tight truncate">
-                        {step.stepNum === 'PDF' ? step.label : `${step.stepNum}. ${step.label}`}
+                        {step.stepNum}. {step.label}
                       </span>
                       <span
                         className={`hidden md:block text-[9.5px] font-medium truncate ${
-                          isActive
-                            ? 'text-sky-100'
-                            : isUtuhTab
-                              ? 'text-emerald-700'
-                              : 'text-slate-500'
+                          isActive ? 'text-sky-100' : 'text-slate-500'
                         }`}
                       >
                         {step.microcopy}
@@ -1481,6 +1520,9 @@ export default function App() {
                 onCreateNewKuitansi={handleCreateNewKuitansi}
                 onDuplicateKuitansi={handleDuplicateActiveKuitansi}
                 onDeleteKuitansi={promptDeleteKuitansi}
+                onDeleteKuitansiBatch={handleDeleteKuitansiBatch}
+                onArchiveKuitansiBatch={handleArchiveKuitansiBatch}
+                onRestoreBackupPayload={handleRestoreBackupPayload}
                 docPerjalanan={activeDocPerjalanan}
                 docPengeluaran={activeDocPengeluaran}
                 allDocPerjalanan={dokumentasiPerjalanan}
@@ -1612,28 +1654,7 @@ export default function App() {
                   />
                 )}
 
-                {spjView === 'berkas-utuh' && (
-                  <BerkasSpjUtuhSection
-                    activeKuitansi={activeKuitansi}
-                    activeSpt={activeSpt}
-                    docPerjalanan={activeDocPerjalanan}
-                    docPengeluaran={activeDocPengeluaran}
-                    customFields={customFields}
-                    appSettings={appSettings}
-                    paperSize={paperSize}
-                    onChangePaperSize={(size) => {
-                      setPaperSize(size);
-                      try {
-                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                    onEditSection={(sec) => setSpjView(sec)}
-                  />
-                )}
-
-                {/* Navigasi Berurutan Antar-Halaman dalam 1 Berkas SPJ Utuh */}
+                {/* Navigasi Berurutan Antar-Halaman dalam 1 Berkas SPJ */}
                 <div className="no-print bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-wrap items-center justify-between gap-2">
                   <div>
                     {prevStep ? (
@@ -1644,7 +1665,7 @@ export default function App() {
                       >
                         <ArrowLeft className="w-3.5 h-3.5 text-sky-700" />
                         <span>
-                          Sebelumnya: {prevStep.stepNum === 'PDF' ? prevStep.label : `${prevStep.stepNum}. ${prevStep.label}`}
+                          Sebelumnya: {prevStep.stepNum}. {prevStep.label}
                         </span>
                       </button>
                     ) : (
@@ -1660,23 +1681,13 @@ export default function App() {
                   </div>
 
                   <div className="text-xs text-slate-500 font-semibold hidden md:block">
-                    1 Kesatuan Berkas SPJ Utuh ·{' '}
+                    1 Kesatuan Berkas SPJ ·{' '}
                     <span className="text-slate-900 font-bold">
                       {activeKuitansi.atasNama} ({activeKuitansi.noSpt})
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {spjView !== 'berkas-utuh' && (
-                      <button
-                        type="button"
-                        onClick={() => setSpjView('berkas-utuh')}
-                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Printer className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Pratinjau 1 File Utuh</span>
-                      </button>
-                    )}
                     {nextStep && (
                       <button
                         type="button"
@@ -1684,7 +1695,7 @@ export default function App() {
                         className="min-h-[38px] px-4 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                       >
                         <span>
-                          Selanjutnya: {nextStep.stepNum === 'PDF' ? nextStep.label : `${nextStep.stepNum}. ${nextStep.label}`}
+                          Selanjutnya: {nextStep.stepNum}. {nextStep.label}
                         </span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -1786,6 +1797,29 @@ export default function App() {
                 }
                 return null;
               })()}
+            </div>
+
+            {/* Opsi Unduh Cadangan 1-Klik Sebelum Hapus */}
+            <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-sky-950">
+                Simpan cadangan berkas ini sebelum dihapus?
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadSpjBackupJson({
+                    kuitansiItems: [kuitansiToDelete],
+                    allSptList: sptList,
+                    allDocPerjalanan: dokumentasiPerjalanan,
+                    allDocPengeluaran: dokumentasiPengeluaran,
+                    filenamePrefix: 'Cadangan_1_Berkas_SPJ',
+                  })
+                }
+                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-sky-100 border border-sky-300 text-sky-900 text-[11px] font-bold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-sky-700" />
+                <span>Unduh .JSON</span>
+              </button>
             </div>
 
             {/* Tombol Aksi */}

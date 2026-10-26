@@ -17,6 +17,7 @@ import {
   Coins,
   Car,
   BedDouble,
+  FileDown,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -52,6 +53,7 @@ import { LabeledIcon, InfoTooltip, EmptyStateCard } from './UiPatterns';
 import {
   buildCleanPdfTitle,
   triggerIsolatedSpjPrint,
+  exportToDirectPdf,
 } from '../utils/printPdf';
 
 interface KuitansiEditorSectionProps {
@@ -118,6 +120,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   const pelaksanaDropdownRef = React.useRef<HTMLDivElement>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   const commitOrStageDraft = (next: KuitansiPerjalananDinas) => {
     setDraft(next);
@@ -1744,13 +1747,40 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="submit"
-                  className="min-h-[42px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="min-h-[42px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>Simpan Perubahan</span>
+                  <span>Simpan</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      await exportToDirectPdf({
+                        paperSize,
+                        documentTitle: buildCleanPdfTitle({
+                          prefix: 'Kuitansi_Perjalanan_Dinas',
+                          atasNama: draft.atasNama,
+                          noSpt: draft.noSpt,
+                          paperSize,
+                        }),
+                        sheetSelector: '.print-only-sheet',
+                      });
+                    } catch (err: any) {
+                      alert(err?.message || 'Gagal mengekspor PDF');
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  className="min-h-[42px] rounded-xl bg-sky-800 hover:bg-sky-900 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>{isExportingPdf ? '...' : 'PDF'}</span>
                 </button>
                 <button
                   type="button"
@@ -1766,10 +1796,10 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                       sheetSelector: '.print-only-sheet',
                     });
                   }}
-                  className="min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak {paperSize}</span>
+                  <span>Cetak</span>
                 </button>
               </div>
 
@@ -1978,6 +2008,34 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
         </div>
 
         <div className="w-px h-8 bg-slate-200 shrink-0" aria-hidden="true" />
+
+        <button
+          type="button"
+          disabled={isExportingPdf}
+          onClick={async () => {
+            setIsExportingPdf(true);
+            try {
+              await exportToDirectPdf({
+                paperSize,
+                documentTitle: buildCleanPdfTitle({
+                  prefix: 'Kuitansi_Perjalanan_Dinas',
+                  atasNama: draft.atasNama,
+                  noSpt: draft.noSpt,
+                  paperSize,
+                }),
+                sheetSelector: '.print-only-sheet',
+              });
+            } catch (err: any) {
+              alert(err?.message || 'Gagal mengekspor PDF');
+            } finally {
+              setIsExportingPdf(false);
+            }
+          }}
+          className="min-h-[48px] px-2.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+        >
+          <FileDown className="w-4 h-4" />
+          <span>{isExportingPdf ? '...' : 'PDF'}</span>
+        </button>
 
         <button
           type="button"

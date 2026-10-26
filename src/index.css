@@ -82,6 +82,20 @@
   display: none;
 }
 
+/* Force pure black font across all printable document sheets */
+.print-only-sheet,
+.print-only-sheet *:not(.no-print *),
+.spt-doc,
+.spt-doc *:not(.no-print *),
+.spd-doc,
+.spd-doc *:not(.no-print *),
+.visum-doc,
+.visum-doc *:not(.no-print *),
+.kuitansi-sheet-container,
+.kuitansi-sheet-container *:not(.no-print *) {
+  color: #000000 !important;
+}
+
 #spj-isolated-print-root {
   display: none !important;
 }

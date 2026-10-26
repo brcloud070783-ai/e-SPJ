@@ -81,34 +81,29 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
         }}
         className="w-[85%] max-w-[85%] mx-auto print:w-[85%] print:max-w-[85%] print:mx-auto print:max-h-none"
       >
-        {/* KOP SURAT PEMPROV KALIMANTAN UTARA - DISDIKBUD (Rapat secara vertikal) */}
-        <div className="flex items-center gap-3.5 pb-1.5 border-b-[2.5px] border-black relative">
-          <div className="shrink-0 pl-0.5">
+        {/* KOP SURAT DINAS (MENGIKUTI KOP SURAT PADA SURAT TUGAS) */}
+        <div className="flex items-center gap-3 pb-2 border-b-4 border-double border-black mb-1.5">
+          <div className="w-15 h-19 shrink-0 flex items-center justify-center">
             <KaltaraEmblem
-              className="w-15 h-19"
+              className="w-14 h-18"
               logoDataUrl={kuitansi.logoPemprovDataUrl}
             />
           </div>
-          <div className="flex-1 text-center pr-1 leading-tight">
-            <p className="text-[16px] tracking-wide font-normal uppercase text-black leading-tight">
-              {kuitansi.instansiUtama}
-            </p>
-            <h2 className="text-[18px] font-bold uppercase text-black leading-tight mt-0.5">
-              {kuitansi.namaDinas}
+          <div className="flex-1 text-center pr-2 min-w-0">
+            <h2 className="text-[13.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
+              {kuitansi.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
             </h2>
-            <p className="text-[11.5px] text-black mt-0.5 leading-tight">
+            <h1 className="text-[15.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
+              {kuitansi.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
+            </h1>
+            <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
               {kuitansi.alamatDinasBaris1}
             </p>
-            <p className="text-[11.5px] text-black leading-tight">
-              {kuitansi.alamatDinasBaris2}
-            </p>
-            <p className="text-[11.5px] text-black leading-tight">
-              {kuitansi.kontakDinas}
+            <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+              {kuitansi.alamatDinasBaris2} | {kuitansi.kontakDinas}
             </p>
           </div>
         </div>
-        {/* Garis ganda bawah kop surat */}
-        <div className="border-t border-black mt-[2px] mb-1.5" />
 
         {/* ZONA CANVA 1A: Tahun Anggaran, No. Kuitansi & Sub Kegiatan */}
         <div
@@ -244,7 +239,7 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
                   <div className="grid grid-cols-[110px_12px_1fr] items-baseline">
                     <span>No. SPT</span>
                     <span>:</span>
-                    <span className="text-red-600 font-medium">{kuitansi.noSpt}</span>
+                    <span className="text-black font-medium">{kuitansi.noSpt}</span>
                   </div>
                 </div>
               </div>

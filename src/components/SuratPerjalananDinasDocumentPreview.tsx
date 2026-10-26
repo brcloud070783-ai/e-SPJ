@@ -138,6 +138,53 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
       ? '000.1.2.3/                  /SPPD/Disdikbud/2026'
       : rawNomorSpd;
 
+  // Pejabat 1 (Atas): Pengguna Anggaran (PA / KPA)
+  const effectivePaJabatan =
+    spdData.paJabatan ||
+    appSettings.jabatanPenggunaAnggaran ||
+    'Pengguna Anggaran';
+  const effectivePaNama =
+    spdData.paNama ||
+    appSettings.namaPenggunaAnggaran ||
+    spt.namaPenandatangan ||
+    'Hasanuddin, S.Pd, M.Si';
+  const effectivePaPangkat =
+    spdData.paPangkat ||
+    (effectivePaNama === spt.namaPenandatangan ? spt.pangkatPenandatangan : undefined) ||
+    'Pembina Tingkat I, IV/b';
+  const effectivePaNip =
+    spdData.paNip ||
+    appSettings.nipPenggunaAnggaran ||
+    spt.nipPenandatangan ||
+    '197405272007011010';
+
+  // Pejabat 2 (Bawah): Penandatangan SPT
+  const effectivePejabatSptJabatan =
+    spdData.pejabatSptJabatan ||
+    spt.jabatanPenandatangan ||
+    'Plt. Kepala Dinas';
+  const effectivePejabatSptNama =
+    spdData.pejabatSptNama ||
+    spt.namaPenandatangan ||
+    'Hasanuddin, S.Pd, M.Si';
+  const effectivePejabatSptPangkat =
+    spdData.pejabatSptPangkat ||
+    spt.pangkatPenandatangan ||
+    'Pembina Tingkat I, IV/b';
+  const effectivePejabatSptNip =
+    spdData.pejabatSptNip ||
+    spt.nipPenandatangan ||
+    '197405272007011010';
+
+  const formatNip = (nip?: string) => {
+    if (!nip) return '-';
+    const digitsOnly = nip.replace(/\D/g, '');
+    if (digitsOnly.length === 18) {
+      return digitsOnly.replace(/(\d{8})(\d{6})(\d{1})(\d{3})/, '$1 $2 $3 $4');
+    }
+    return nip;
+  };
+
   return (
     <div
       className={`spd-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
@@ -227,32 +274,29 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
       >
         {/* OUTER BOX CONTAINER MATCHING image_3363546e.png */}
         <div className="border border-black p-3 bg-white w-full box-border">
-          {/* KOP SURAT DINAS */}
+          {/* KOP SURAT DINAS (MENGIKUTI KOP SURAT PADA SURAT TUGAS/SPT) */}
           <div
             onClick={() => onSelectZone?.('header')}
-            className={`flex items-center gap-3 pb-1.5 border-b-2 border-black ${getZoneClass('header')}`}
+            className={`flex items-center gap-3 pb-2 border-b-4 border-double border-black ${getZoneClass('header')}`}
           >
-            <div className="w-14 h-18 shrink-0 flex items-center justify-center">
+            <div className="w-15 h-19 shrink-0 flex items-center justify-center">
               <KaltaraEmblem
-                className="w-13 h-17"
+                className="w-14 h-18"
                 logoDataUrl={appSettings.logoPemprovDataUrl}
               />
             </div>
-            <div className="flex-1 text-center min-w-0">
-              <h2 className="text-[13px] font-bold uppercase tracking-wide text-black leading-[1.16]">
+            <div className="flex-1 text-center pr-2 min-w-0">
+              <h2 className="text-[13.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
                 {appSettings.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
               </h2>
-              <h1 className="text-[15px] font-extrabold uppercase tracking-tight text-black leading-[1.16]">
+              <h1 className="text-[15.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
                 {appSettings.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
               </h1>
-              <p className="text-[9.5px] text-black leading-[1.15] mt-0.5 break-words">
-                {appSettings.alamatDinasBaris1 || 'Jalan Kol. Soetadji Nomor 009 RT. 095 (Gedung Gabungan Dinas 2, Lantai 1), Tanjung Selor,'}
+              <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+                {appSettings.alamatDinasBaris1}
               </p>
-              <p className="text-[9.5px] text-black leading-[1.15] break-words">
-                {appSettings.alamatDinasBaris2 || 'Bulungan, Kalimantan Utara 77212 Telepon Seluler 082352465546'}
-              </p>
-              <p className="text-[9px] text-black leading-[1.15] break-words">
-                Laman <span className="text-blue-700 underline">http://disdikbud.kaltaraprov.go.id</span>, Pos-el <span className="text-black">kaltara.pendidikan@gmail.com</span>
+              <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+                {appSettings.alamatDinasBaris2} | {appSettings.kontakDinas}
               </p>
             </div>
           </div>
@@ -594,7 +638,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
             </tbody>
           </table>
 
-          {/* FOOTER CATATAN & TANDA TANGAN (INSIDE OUTER BOX) */}
+          {/* FOOTER CATATAN & TANDA TANGAN PEJABAT SPT (INSIDE OUTER BOX - MATCHING GAMBAR 2) */}
           <div className="mt-1 flex items-start justify-between text-[10.5px] text-black pt-0.5">
             <div className="text-[9.5px] italic pt-0.5">
               * Coret yang tidak perlu
@@ -602,37 +646,41 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
 
             <div
               onClick={() => onSelectZone?.('ttd')}
-              className={`w-60 max-w-[55%] text-left pl-2 ${getZoneClass('ttd')}`}
+              className={`w-64 max-w-[55%] text-left pl-2 ${getZoneClass('ttd')}`}
             >
               <div>Dikeluarkan di {spt.tempatDitetapkan || 'Tanjung Selor'}</div>
               <div>Pada Tanggal {spt.tanggalDitetapkan || '15 Oktober 2026'}</div>
-              <div className="mt-0.5 font-medium">{spt.jabatanPenandatangan || 'Plt. Kepala Dinas,'}</div>
+              <div className="mt-0.5 font-medium">
+                {effectivePejabatSptJabatan}{effectivePejabatSptJabatan.trim().endsWith(',') ? '' : ','}
+              </div>
 
               {/* Ruang TTD */}
-              <div className="h-9 flex items-center justify-center" />
+              <div className="h-10 flex items-center justify-center" />
 
               <div className="font-bold underline">
-                {spt.namaPenandatangan || 'Hasanuddin, S.Pd, M.Si'}
+                {effectivePejabatSptNama}
               </div>
               <div>
-                NIP. {spt.nipPenandatangan || '197405272007011010'}
+                NIP. {effectivePejabatSptNip ? effectivePejabatSptNip.replace(/\D/g, '') : '197405272007011010'}
               </div>
             </div>
           </div>
         </div>
 
-        {/* PENGGUNA ANGGARAN (BELOW THE OUTER BOX MATCHING image_3363546e.png) */}
+        {/* PENGGUNA ANGGARAN (BELOW THE OUTER BOX - EXACTLY AS IN GAMBAR 2) */}
         <div
           onClick={() => onSelectZone?.('ttd')}
-          className={`mt-1.5 text-center mx-auto w-64 max-w-full text-[10.5px] text-black ${getZoneClass('ttd')}`}
+          className={`mt-2.5 text-center mx-auto w-64 max-w-full text-[10.5px] text-black ${getZoneClass('ttd')}`}
         >
-          <div className="font-medium">Pengguna Anggaran</div>
-          <div className="h-9 flex items-center justify-center" />
+          <div className="font-medium">{effectivePaJabatan || 'Pengguna Anggaran'}</div>
+          <div className="h-10 flex items-center justify-center" />
           <div className="font-bold underline">
-            {spt.namaPenandatangan || 'Hasanuddin, S.Pd, M.Si'}
+            {effectivePaNama}
           </div>
-          <div>{spt.pangkatPenandatangan || 'Pembina Tingkat I. IV/b'}</div>
-          <div>NIP. {spt.nipPenandatangan ? spt.nipPenandatangan.replace(/(\d{8})(\d{6})(\d{1})(\d{3})/, '$1 $2 $3 $4') : '19740527 200701 1 010'}</div>
+          <div>{effectivePaPangkat || 'Pembina Tingkat I. IV/b'}</div>
+          <div>
+            NIP. {formatNip(effectivePaNip)}
+          </div>
         </div>
       </div>
     </div>

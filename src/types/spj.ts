@@ -69,6 +69,8 @@ export interface KuitansiPerjalananDinas {
   lampiranDokumen?: LampiranDokumenItem[];
   statusSync: 'Tersimpan Lokal' | 'Antrean Auto-Sync' | 'Tersinkronisasi Sheets';
   updatedAt: string;
+  isArchived?: boolean;
+  archivedAt?: string;
 }
 
 export interface DokumentasiPerjalananItem {
@@ -296,6 +298,17 @@ export interface SuratPerjalananDinasData {
   selectedPegawaiId?: string;
   pengikutList?: SpdPengikutItem[];
   visumBelakang?: SpdVisumBelakangData;
+  // Pejabat 1 (Atas): Pengguna Anggaran (PA / KPA)
+  paJabatan?: string;
+  paNama?: string;
+  paNip?: string;
+  paPangkat?: string;
+  // Pejabat 2 (Bawah): Penandatangan SPT (Kepala Dinas / Plt. / Plh.)
+  pejabatSptJabatan?: string;
+  pejabatSptNama?: string;
+  pejabatSptNip?: string;
+  pejabatSptPangkat?: string;
+  syncPejabatSptWithSpt?: boolean;
 }
 
 export interface SuratPerintahTugas {
@@ -313,10 +326,13 @@ export interface SuratPerintahTugas {
   pembebananAnggaran: string;
   tempatDitetapkan: string;
   tanggalDitetapkan: string;
+  statusJabatan?: 'definitive' | 'plt' | 'plh' | 'custom';
   jabatanPenandatangan: string;
   namaPenandatangan: string;
   nipPenandatangan: string;
   pangkatPenandatangan: string;
+  urutanTtdPangkatNip?: 'pangkat-dulu' | 'nip-dulu';
+  fontSizePt?: number;
   spdData?: SuratPerjalananDinasData;
   spdVisumData?: SpdVisumBelakangData;
   updatedAt?: string;

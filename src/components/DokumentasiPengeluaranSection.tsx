@@ -31,6 +31,7 @@ import {
   PenTool,
   ZoomIn,
   ZoomOut,
+  FileDown,
 } from 'lucide-react';
 import {
   DokumentasiPengeluaranItem,
@@ -54,6 +55,7 @@ import {
 import {
   buildCleanPdfTitle,
   triggerIsolatedSpjPrint,
+  exportToDirectPdf,
 } from '../utils/printPdf';
 
 interface DokumentasiPengeluaranSectionProps {
@@ -642,6 +644,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'printSheet'>('list');
   const [showScanStudio, setShowScanStudio] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Whether we are creating a new receipt scan or editing an existing receipt card
   const [editingExistingItem, setEditingExistingItem] =
@@ -2337,30 +2340,64 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
               <strong className="text-slate-900">Lembar Cetak Bukti Pengeluaran:</strong>{' '}
               Menampilkan hasil pindai (scan) fisik nota, tiket, atau invoice pada lembar kertas {paperSize} (1 baris 1 gambar).
             </div>
-            <button
-              type="button"
-              disabled={items.length === 0}
-              onClick={() => {
-                void triggerIsolatedSpjPrint({
-                  paperSize,
-                  documentTitle: buildCleanPdfTitle({
-                    prefix: 'Bukti_Pengeluaran_SPJ',
-                    atasNama: activeKuitansi.atasNama,
-                    noSpt: activeKuitansi.noSpt,
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={items.length === 0 || isExportingPdf}
+                onClick={async () => {
+                  setIsExportingPdf(true);
+                  try {
+                    await exportToDirectPdf({
+                      paperSize,
+                      documentTitle: buildCleanPdfTitle({
+                        prefix: 'Bukti_Pengeluaran_SPJ',
+                        atasNama: activeKuitansi.atasNama,
+                        noSpt: activeKuitansi.noSpt,
+                        paperSize,
+                      }),
+                      sheetSelector: '.print-only-sheet',
+                    });
+                  } catch (err: any) {
+                    alert(err?.message || 'Gagal mengekspor PDF');
+                  } finally {
+                    setIsExportingPdf(false);
+                  }
+                }}
+                className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors ${
+                  items.length === 0 || isExportingPdf
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-sky-700 hover:bg-sky-800 text-white cursor-pointer'
+                }`}
+              >
+                <FileDown className="w-3.5 h-3.5" />
+                <span>{isExportingPdf ? 'Memproses PDF...' : 'Ekspor PDF'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={items.length === 0}
+                onClick={() => {
+                  void triggerIsolatedSpjPrint({
                     paperSize,
-                  }),
-                  sheetSelector: '.print-only-sheet',
-                });
-              }}
-              className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors ${
-                items.length === 0
-                  ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-              }`}
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Cetak Bukti ({paperSize})</span>
-            </button>
+                    documentTitle: buildCleanPdfTitle({
+                      prefix: 'Bukti_Pengeluaran_SPJ',
+                      atasNama: activeKuitansi.atasNama,
+                      noSpt: activeKuitansi.noSpt,
+                      paperSize,
+                    }),
+                    sheetSelector: '.print-only-sheet',
+                  });
+                }}
+                className={`min-h-[38px] px-4 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm transition-colors ${
+                  items.length === 0
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                }`}
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Cetak Bukti ({paperSize})</span>
+              </button>
+            </div>
           </div>
 
           <InteractivePaperViewer
