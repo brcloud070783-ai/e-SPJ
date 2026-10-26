@@ -188,7 +188,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
   return (
     <div
       className={`spd-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
-        isPrintMode ? 'pt-6 pb-2 px-0' : 'pt-7 pb-5 px-0 border border-slate-200'
+        isPrintMode ? 'pt-0 pb-2 px-0' : 'pt-0 pb-5 px-0 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
@@ -204,7 +204,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           max-width: 86%;
           margin-left: auto;
           margin-right: auto;
-          margin-top: 6px;
+          margin-top: 55px;
         }
         .spd-doc table {
           border-collapse: collapse;
@@ -248,14 +248,14 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         }
         @media print {
           .spd-doc {
-            padding-top: 18px !important;
+            padding-top: 0px !important;
           }
           .spd-doc .spd-depan-content {
             width: 86% !important;
             max-width: 86% !important;
             margin-left: auto !important;
             margin-right: auto !important;
-            margin-top: 8px !important;
+            margin-top: 40px !important;
           }
           .spd-doc td, .spd-doc th {
             font-size: 10.5px;
@@ -284,23 +284,23 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
             onClick={() => onSelectZone?.('header')}
             className={`flex items-center gap-3 pb-2 border-b-4 border-double border-black ${getZoneClass('header')}`}
           >
-            <div className="w-15 h-19 shrink-0 flex items-center justify-center">
+            <div className="w-16 h-20 shrink-0 flex items-center justify-center">
               <KaltaraEmblem
-                className="w-14 h-18"
+                className="w-15 h-19"
                 logoDataUrl={appSettings.logoPemprovDataUrl}
               />
             </div>
             <div className="flex-1 text-center pr-2 min-w-0">
-              <h2 className="text-[13.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
+              <h2 className="text-[15.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
                 {appSettings.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
               </h2>
-              <h1 className="text-[15.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
+              <h1 className="text-[17.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
                 {appSettings.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
               </h1>
-              <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+              <p className="text-[11.5px] text-black leading-[1.18] mb-[1pt] break-words">
                 {appSettings.alamatDinasBaris1}
               </p>
-              <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+              <p className="text-[11.5px] text-black leading-[1.18] mb-[1pt] break-words">
                 {appSettings.alamatDinasBaris2} | {appSettings.kontakDinas}
               </p>
             </div>

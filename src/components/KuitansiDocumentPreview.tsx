@@ -83,23 +83,23 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
       >
         {/* KOP SURAT DINAS (MENGIKUTI KOP SURAT PADA SURAT TUGAS) */}
         <div className="flex items-center gap-3 pb-2 border-b-4 border-double border-black mb-1.5">
-          <div className="w-15 h-19 shrink-0 flex items-center justify-center">
+          <div className="w-16 h-20 shrink-0 flex items-center justify-center">
             <KaltaraEmblem
-              className="w-14 h-18"
+              className="w-15 h-19"
               logoDataUrl={kuitansi.logoPemprovDataUrl}
             />
           </div>
           <div className="flex-1 text-center pr-2 min-w-0">
-            <h2 className="text-[13.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
+            <h2 className="text-[15.5px] font-bold uppercase tracking-wide text-black leading-[1.18] mb-[1.5pt]">
               {kuitansi.instansiUtama || 'PEMERINTAH PROVINSI KALIMANTAN UTARA'}
             </h2>
-            <h1 className="text-[15.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
+            <h1 className="text-[17.5px] font-extrabold uppercase tracking-tight text-black leading-[1.18] mb-[1.5pt]">
               {kuitansi.namaDinas || 'DINAS PENDIDIKAN DAN KEBUDAYAAN'}
             </h1>
-            <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+            <p className="text-[11.5px] text-black leading-[1.18] mb-[1pt] break-words">
               {kuitansi.alamatDinasBaris1}
             </p>
-            <p className="text-[10px] text-black leading-[1.18] mb-[1pt] break-words">
+            <p className="text-[11.5px] text-black leading-[1.18] mb-[1pt] break-words">
               {kuitansi.alamatDinasBaris2} | {kuitansi.kontakDinas}
             </p>
           </div>
