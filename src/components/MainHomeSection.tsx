@@ -135,7 +135,7 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
             <img
               src="/assets/aistudio/Desain_tanpa_judul__1__e6c53d2b.png"
               alt="SAPA Kaltara Logo"
-              className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover shadow-xs border border-slate-200 shrink-0"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-contain bg-white p-1 shadow-xs border border-slate-200 shrink-0"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
