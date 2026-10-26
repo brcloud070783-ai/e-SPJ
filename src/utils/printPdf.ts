@@ -234,6 +234,59 @@ async function waitForFontsAndImages(portalEl: HTMLElement): Promise<void> {
   await Promise.race([workPromise, timeoutPromise]);
 }
 
+function isSheetVisibleAndActive(sheetEl: HTMLElement): boolean {
+  if (sheetEl.closest(`#${ISOLATED_PORTAL_ID}, [data-offscreen-render="true"]`)) {
+    return false;
+  }
+
+  if (
+    sheetEl.closest('[aria-hidden="true"], [data-empty-page="true"], .spj-empty-printable-page') ||
+    sheetEl.getAttribute('data-empty-page') === 'true'
+  ) {
+    return false;
+  }
+
+  const rect = sheetEl.getBoundingClientRect();
+  if (rect.width === 0 && rect.height === 0) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(sheetEl);
+  if (style.display === 'none' || style.visibility === 'hidden') {
+    return false;
+  }
+
+  return true;
+}
+
+export function getValidPrintableSheets(params: {
+  searchRoot: ParentNode;
+  sheetSelector: string;
+  allowEmptyPlaceholderIfSingle?: boolean;
+}): HTMLElement[] {
+  const { searchRoot, sheetSelector, allowEmptyPlaceholderIfSingle = false } = params;
+
+  const rawCandidates = Array.from(
+    searchRoot.querySelectorAll<HTMLElement>(sheetSelector)
+  ).filter(isSheetVisibleAndActive);
+
+  const outermostSheets = rawCandidates.filter(
+    (el) => !rawCandidates.some((other) => other !== el && other.contains(el))
+  );
+
+  let printableSheets = outermostSheets.filter((sheet) => {
+    const textContent = (sheet.innerText || sheet.textContent || '').trim();
+    const hasImages = sheet.querySelectorAll('img').length > 0;
+    return textContent.length > 0 || hasImages;
+  });
+
+  if (printableSheets.length === 0 && allowEmptyPlaceholderIfSingle && outermostSheets.length > 0) {
+    printableSheets = [outermostSheets[0]];
+  }
+
+  return printableSheets;
+}
+
 let activeCleanupFn: (() => void) | null = null;
 
 /**
@@ -267,29 +320,11 @@ export async function triggerIsolatedSpjPrint(
   } = options;
 
   const searchRoot: ParentNode = rootElement || document;
-  const rawCandidates = Array.from(
-    searchRoot.querySelectorAll<HTMLElement>(sheetSelector)
-  );
-
-  // Deduplicate nested matches (keep outermost sheet)
-  const outermostSheets = rawCandidates.filter(
-    (el) => !rawCandidates.some((other) => other !== el && other.contains(el))
-  );
-
-  // Filter out empty placeholder pages so PDF export has zero blank pages
-  let printableSheets = outermostSheets.filter((sheet) => {
-    const wrapper = sheet.closest('[data-empty-page="true"], .spj-empty-printable-page');
-    if (wrapper || sheet.getAttribute('data-empty-page') === 'true') {
-      return false;
-    }
-    const textContent = (sheet.innerText || sheet.textContent || '').trim();
-    const hasImages = sheet.querySelectorAll('img').length > 0;
-    return textContent.length > 0 || hasImages;
+  const printableSheets = getValidPrintableSheets({
+    searchRoot,
+    sheetSelector,
+    allowEmptyPlaceholderIfSingle,
   });
-
-  if (printableSheets.length === 0 && allowEmptyPlaceholderIfSingle && outermostSheets.length > 0) {
-    printableSheets = [outermostSheets[0]];
-  }
 
   if (printableSheets.length === 0) {
     window.print();
@@ -506,27 +541,10 @@ export async function exportToDirectPdf(
   onProgress?.('Menyiapkan halaman PDF...');
 
   const searchRoot: ParentNode = rootElement || document;
-  const rawCandidates = Array.from(
-    searchRoot.querySelectorAll<HTMLElement>(sheetSelector)
-  );
-
-  const outermostSheets = rawCandidates.filter(
-    (el) => !rawCandidates.some((other) => other !== el && other.contains(el))
-  );
-
-  let printableSheets = outermostSheets.filter((sheet) => {
-    const wrapper = sheet.closest('[data-empty-page="true"], .spj-empty-printable-page');
-    if (wrapper || sheet.getAttribute('data-empty-page') === 'true') {
-      return false;
-    }
-    const textContent = (sheet.innerText || sheet.textContent || '').trim();
-    const hasImages = sheet.querySelectorAll('img').length > 0;
-    return textContent.length > 0 || hasImages;
+  const printableSheets = getValidPrintableSheets({
+    searchRoot,
+    sheetSelector,
   });
-
-  if (printableSheets.length === 0 && outermostSheets.length > 0) {
-    printableSheets = [outermostSheets[0]];
-  }
 
   if (printableSheets.length === 0) {
     throw new Error('Tidak ada lembar cetak yang dapat diekspor.');
@@ -546,6 +564,7 @@ export async function exportToDirectPdf(
 
   // Create temporary container for pristine off-screen canvas rendering
   const renderContainer = document.createElement('div');
+  renderContainer.setAttribute('data-offscreen-render', 'true');
   renderContainer.style.position = 'fixed';
   renderContainer.style.left = '-9999px';
   renderContainer.style.top = '-9999px';
@@ -612,6 +631,9 @@ export async function exportToDirectPdf(
     const filename = documentTitle.endsWith('.pdf') ? documentTitle : `${documentTitle}.pdf`;
     pdf.save(filename);
   } catch (err: any) {
+    if (document.body.contains(renderContainer)) {
+      document.body.removeChild(renderContainer);
+    }
     console.warn('Ekspor PDF langsung mengalami kendala, beralih ke dialog cetak PDF:', err);
     await triggerIsolatedSpjPrint({
       paperSize,
