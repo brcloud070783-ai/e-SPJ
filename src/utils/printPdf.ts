@@ -603,20 +603,34 @@ export async function exportToDirectPdf(
 
       await waitForFontsAndImages(renderContainer);
 
-      const canvas = await html2canvas(cloned, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: widthPx,
-        height: heightPx,
-        windowWidth: widthPx,
-        windowHeight: heightPx,
-        onclone: (clonedDoc) => {
-          sanitizeDocumentColorsForHtml2Canvas(clonedDoc);
-        },
-      });
+      const origAlert = window.alert;
+      window.alert = (msg) => {
+        if (typeof msg === 'string' && msg.includes('oklab')) {
+          console.warn('Suppressed html2canvas color warning:', msg);
+          return;
+        }
+        origAlert(msg);
+      };
+
+      let canvas: HTMLCanvasElement;
+      try {
+        canvas = await html2canvas(cloned, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          width: widthPx,
+          height: heightPx,
+          windowWidth: widthPx,
+          windowHeight: heightPx,
+          onclone: (clonedDoc) => {
+            sanitizeDocumentColorsForHtml2Canvas(clonedDoc);
+          },
+        });
+      } finally {
+        window.alert = origAlert;
+      }
 
       const imgData = canvas.toDataURL('image/png', 1.0);
 

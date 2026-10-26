@@ -24,7 +24,7 @@ export default defineConfig(() => {
           scope: '/',
           icons: [
             {
-              src: '/assets/aistudio/Desain_tanpa_judul__1__e6c53d2b.png',
+              src: '/assets/aistudio/9994effd-8e31-467b-8811-b171984eb176_a0480f98.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any maskable',
