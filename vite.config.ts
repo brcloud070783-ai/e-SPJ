@@ -14,9 +14,9 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: '/',
-          name: 'e-SPJ Kaltara — Sistem Pertanggungjawaban Perjalanan Dinas',
-          short_name: 'e-SPJ Dinas',
-          description: 'Aplikasi Mobile PWA Kuitansi Perjalanan Dinas, Dokumentasi Kegiatan, dan Pengeluaran Disdikbud Kalimantan Utara.',
+          name: 'SAPA Kaltara — Dashboard Perjalanan Dinas',
+          short_name: 'SAPA Kaltara',
+          description: 'Aplikasi PWA SAPA Kaltara untuk Kuitansi Perjalanan Dinas dan Dokumen SPJ Disdikbud Kaltara.',
           theme_color: '#0f172a',
           background_color: '#f8fafc',
           display: 'standalone',
@@ -24,22 +24,10 @@ export default defineConfig(() => {
           scope: '/',
           icons: [
             {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: '/pwa-512x512.png',
+              src: '/assets/aistudio/Desain_tanpa_judul__1__e6c53d2b.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any',
-            },
-            {
-              src: '/pwa-maskable-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
+              purpose: 'any maskable',
             },
           ],
         },
