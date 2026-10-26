@@ -16,7 +16,7 @@ import {
   Trash2,
   AlertTriangle,
   Home,
-  Briefcase,
+  FileSpreadsheet,
   Settings,
   Banknote,
   FileCheck,
@@ -76,6 +76,7 @@ import { DokumentasiPerjalananSection } from './components/DokumentasiPerjalanan
 import { DokumentasiPengeluaranSection } from './components/DokumentasiPengeluaranSection';
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { FloatingBottomNav } from './components/FloatingBottomNav';
 
 type MainMenuKey = 'home' | 'perjalanan-dinas' | 'settings';
 type SpjViewKey = 'sub-home' | SpjSubSectionKey;
@@ -1404,21 +1405,26 @@ export default function App() {
         /* 2. TOP NAVBAR UTAMA (Tampil saat di Beranda, Sub-Home SPJ, atau Pengaturan — Anti Overflow) */
         <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-8 h-14 flex items-center justify-between gap-2 sm:gap-6">
           {/* Zone 1: Brand Wordmark */}
-          <a
-            href="#beranda"
-            onClick={(e) => {
-              e.preventDefault();
-              setMainMenu('home');
-            }}
-            className="text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
-          >
-            SAPA Kaltara
-          </a>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="#beranda"
+              onClick={(e) => {
+                e.preventDefault();
+                setMainMenu('home');
+              }}
+              className="text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+            >
+              SAPA Kaltara
+            </a>
+            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200/80 hidden xs:inline-block">
+              Disdikbud Kaltara
+            </span>
+          </div>
 
-          {/* Zone 2: Menu Utama (Beranda, SPJ Dinas, Pengaturan) */}
+          {/* Zone 2: Menu Utama Desktop (Beranda: Ringkasan, SPJ Dinas: Ruang Kerja, Pengaturan: Kop & Data) */}
           <nav
             aria-label="Menu Utama"
-            className="flex items-center gap-2.5 sm:gap-6 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
+            className="hidden sm:flex items-center gap-2 sm:gap-5 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
           >
             <a
               href="#beranda"
@@ -1426,6 +1432,7 @@ export default function App() {
                 e.preventDefault();
                 setMainMenu('home');
               }}
+              title="Beranda: Dasbor ringkasan, metrik anggaran, dan status berkas"
               className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'home'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
@@ -1433,7 +1440,10 @@ export default function App() {
               }`}
             >
               <Home className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Beranda</span>
+              <div className="flex flex-col text-left leading-tight">
+                <span>Beranda</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Dasbor & Pantauan</span>
+              </div>
             </a>
             <a
               href="#perjalanan-dinas"
@@ -1442,14 +1452,18 @@ export default function App() {
                 setMainMenu('perjalanan-dinas');
                 setSpjView('sub-home');
               }}
+              title="SPJ Dinas: Ruang kerja pengelolaan berkas, arsip, dan pengisian 6 formulir dokumen"
               className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'perjalanan-dinas'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
                   : 'hover:text-slate-900'
               }`}
             >
-              <Briefcase className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>SPJ Dinas</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <div className="flex flex-col text-left leading-tight">
+                <span>SPJ Dinas</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Ruang Kerja & Formulir</span>
+              </div>
             </a>
             <a
               href="#pengaturan"
@@ -1457,6 +1471,7 @@ export default function App() {
                 e.preventDefault();
                 setMainMenu('settings');
               }}
+              title="Pengaturan: Konfigurasi nama dinas, pejabat penandatangan, dan kop surat"
               className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 mainMenu === 'settings'
                   ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
@@ -1464,21 +1479,22 @@ export default function App() {
               }`}
             >
               <Settings className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Pengaturan</span>
+              <div className="flex flex-col text-left leading-tight">
+                <span>Pengaturan</span>
+                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Data Dinas & Kop</span>
+              </div>
             </a>
           </nav>
 
           {/* Zone 3: PWA Install Button */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden lg:block">
-              <PWAInstallButton />
-            </div>
+            <PWAInstallButton />
           </div>
         </header>
       )}
 
-      {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 min-w-0 overflow-x-clip">
+      {/* Main Content Container with bottom padding for Floating Pill Bar */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 pb-28 sm:pb-32 min-w-0 overflow-x-clip">
         {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
         {mainMenu === 'home' && (
           <MainHomeSection
@@ -1844,16 +1860,26 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating Action Toast Notification */}
+      {/* Floating Action Toast Notification (offset above bottom bar on mobile) */}
       {actionToast && (
         <div
           role="status"
-          className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
         >
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{actionToast.message}</span>
         </div>
       )}
+
+      {/* Floating Pill Bottom Navigation (Expanding Pill & Elevated Island Dock) */}
+      <FloatingBottomNav
+        mainMenu={mainMenu}
+        setMainMenu={setMainMenu}
+        spjView={spjView}
+        setSpjView={setSpjView}
+        kuitansiCount={kuitansiList.length}
+        activeKuitansiTujuan={activeKuitansi?.tujuan}
+      />
 
       {/* Offline Mode Connectivity Indicator */}
       <OfflineIndicator />

@@ -35,6 +35,8 @@ import {
   ChevronUp,
   Clock,
   FileEdit,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -57,6 +59,7 @@ import {
   SpjBackupPayload,
 } from '../utils/spjBackupAndCleanup';
 import { InfoTooltip, UnifiedMediaCard } from './UiPatterns';
+import { SpjStatusBadge, SpjProgressBar } from './SpjStatusBadge';
 
 export type SpjSubSectionKey =
   | 'spt'
@@ -111,6 +114,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<SpjFilterChipKey>('semua');
   const [archiveTab, setArchiveTab] = useState<SpjArchiveTabKey>('aktif');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // Mode Pilih Banyak (Multi-Select)
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
@@ -373,17 +377,17 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
     return kuitansiList.filter((k) => k.id !== activeKuitansi.id).map((k) => k.id);
   }, [kuitansiList, activeKuitansi.id]);
 
-  // 6 Komponen Tak Terpisahkan dalam 1 Berkas SPJ Utuh (Microcopy Ringkas)
+  // 6 Komponen Tak Terpisahkan dalam 1 Berkas SPJ Utuh (Minimal Badge & Color Cues)
   const subModules = [
     {
       key: 'spt' as SpjSubSectionKey,
       step: '1',
       title: 'SPT',
       microcopy: 'Surat Tugas Resmi',
-      statusText: activeKuitansi.noSpt ? 'Tersimpan' : 'Belum Diisi',
+      statusText: activeKuitansi.noSpt ? 'Selesai' : 'Pending',
       badgeClass: activeKuitansi.noSpt
-        ? 'bg-sky-50 text-sky-800 border-sky-200'
-        : 'bg-slate-100 text-slate-600 border-slate-200',
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        : 'bg-amber-50 text-amber-800 border-amber-200',
       icon: FileCheck,
       iconColor: 'text-indigo-600 bg-indigo-50',
     },
@@ -392,7 +396,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       step: '2',
       title: 'SPD Depan',
       microcopy: 'Lembar Depan (86%)',
-      statusText: 'Format Resmi',
+      statusText: 'Tersinkron',
       badgeClass: 'bg-sky-50 text-sky-800 border-sky-200',
       icon: ClipboardList,
       iconColor: 'text-sky-600 bg-sky-50',
@@ -402,8 +406,10 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       step: '3',
       title: 'Visum',
       microcopy: 'Lembar Belakang',
-      statusText: activeKuitansi.tujuan || 'Sesuai SPT',
-      badgeClass: 'bg-teal-50 text-teal-800 border-teal-200',
+      statusText: activeKuitansi.tujuan ? 'Selesai' : 'Pending',
+      badgeClass: activeKuitansi.tujuan
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        : 'bg-amber-50 text-amber-800 border-amber-200',
       icon: Stamp,
       iconColor: 'text-teal-600 bg-teal-50',
     },
@@ -412,8 +418,11 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       step: '4',
       title: 'Kuitansi',
       microcopy: `${activeKuitansi.rincian.length} Rincian Biaya`,
-      statusText: formatRupiah(totalKuitansi),
-      badgeClass: 'bg-blue-50 text-blue-800 border-blue-200 font-mono',
+      statusText: totalKuitansi > 0 ? formatRupiah(totalKuitansi) : 'Pending',
+      badgeClass:
+        totalKuitansi > 0
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-mono'
+          : 'bg-amber-50 text-amber-800 border-amber-200',
       icon: Banknote,
       iconColor: 'text-blue-600 bg-blue-50',
     },
@@ -422,11 +431,11 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       step: '5',
       title: 'Dokumentasi',
       microcopy: 'Foto Lapangan (16:9)',
-      statusText: docPerjalanan.length > 0 ? `${docPerjalanan.length} Foto` : '0 Foto',
+      statusText: docPerjalanan.length > 0 ? `${docPerjalanan.length} Foto` : 'Pending',
       badgeClass:
         docPerjalanan.length > 0
           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          : 'bg-slate-100 text-slate-600 border-slate-200',
+          : 'bg-amber-50 text-amber-800 border-amber-200',
       icon: Camera,
       iconColor: 'text-emerald-600 bg-emerald-50',
     },
@@ -436,20 +445,18 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       title: 'Bukti Bayar',
       microcopy: 'Tiket & Nota Riil',
       statusText:
-        docPengeluaran.length === 0 && totalKuitansi > 0
-          ? 'Perlu Nota'
-          : `${docPengeluaran.length} Nota`,
+        activeReconFeedback.tone === 'emerald' ? 'Lengkap' : 'Belum Lengkap',
       badgeClass:
         activeReconFeedback.tone === 'emerald'
           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          : 'bg-amber-100 text-amber-900 border-amber-300',
+          : 'bg-amber-50 text-amber-800 border-amber-200',
       icon: Receipt,
       iconColor: 'text-amber-600 bg-amber-50',
     },
   ];
 
   return (
-    <div className="space-y-5 min-w-0 max-w-full overflow-x-hidden pb-16">
+    <div className="space-y-4 min-w-0 max-w-full overflow-x-hidden pb-16">
       {/* Hidden input untuk pemulihan file cadangan .json */}
       <input
         ref={restoreInputRef}
@@ -459,6 +466,23 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
         className="hidden"
       />
 
+      {/* 0. IDENTITAS HALAMAN RUANG KERJA SPJ DINAS */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-1 min-w-0">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+              Ruang Kerja SPJ Dinas
+            </h1>
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 shrink-0">
+              Pengelolaan &amp; Editor Formulir
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+            Pusat pengelolaan berkas perjalanan dinas, arsip, dan pengisian detail 6 formulir dokumen (SPT, SPD, Visum, Kuitansi, Dokumentasi, &amp; Bukti Riil).
+          </p>
+        </div>
+      </div>
+
       {/* 1. DAFTAR RIWAYAT BERKAS SPJ TERPADU + MANAJEMEN ARSIP & PEMBERSIHAN */}
       <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
         {/* Header Bar Ringkas */}
@@ -466,10 +490,10 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
           <div className="min-w-0 flex items-center gap-2">
             <FolderOpen className="w-4 h-4 text-sky-700 shrink-0" />
             <h2 className="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
-              Berkas SPJ
+              Daftar Semua Berkas SPJ
             </h2>
             <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 shrink-0">
-              {kuitansiList.length}
+              {kuitansiList.length} Berkas
             </span>
           </div>
 
@@ -639,44 +663,80 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                 )}
               </div>
 
-              <div
-                role="group"
-                aria-label="Filter status berkas SPJ"
-                className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xl shrink-0 overflow-x-auto"
-              >
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('semua')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                    statusFilter === 'semua'
-                      ? 'bg-white text-slate-900 shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div
+                  role="group"
+                  aria-label="Filter status berkas SPJ"
+                  className="flex items-center gap-1 p-0.5 bg-slate-100 rounded-xl shrink-0 overflow-x-auto"
                 >
-                  Semua ({countsByFilter.semua})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('belum-lengkap')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                    statusFilter === 'belum-lengkap'
-                      ? 'bg-amber-600 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('semua')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      statusFilter === 'semua'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Semua ({countsByFilter.semua})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('belum-lengkap')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      statusFilter === 'belum-lengkap'
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Belum Lengkap ({countsByFilter.belumLengkap})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter('siap-cetak')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      statusFilter === 'siap-cetak'
+                        ? 'bg-emerald-700 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Siap Cetak ({countsByFilter.siapCetak})
+                  </button>
+                </div>
+
+                {/* View Mode Switcher (Kartu vs Tabel) */}
+                <div
+                  role="group"
+                  aria-label="Mode tampilan berkas SPJ"
+                  className="hidden md:flex items-center gap-0.5 p-0.5 bg-slate-100 rounded-xl shrink-0"
                 >
-                  Belum Lengkap ({countsByFilter.belumLengkap})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('siap-cetak')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                    statusFilter === 'siap-cetak'
-                      ? 'bg-emerald-700 text-white shadow-2xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  Siap Cetak ({countsByFilter.siapCetak})
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('cards')}
+                    title="Tampilan Kartu"
+                    aria-label="Tampilan Kartu"
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      viewMode === 'cards'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    title="Tampilan Tabel"
+                    aria-label="Tampilan Tabel"
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                      viewMode === 'table'
+                        ? 'bg-white text-slate-900 shadow-2xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -709,8 +769,14 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
               </div>
             ) : (
               <>
-                {/* Tampilan Mobile (< md): Daftar Kartu Ringkas Minimalis */}
-                <div className="md:hidden space-y-3 min-w-0">
+                {/* Tampilan Kartu SPJ (Mobile selalu kartu; Desktop mengikuti viewMode) */}
+                <div
+                  className={
+                    viewMode === 'cards'
+                      ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 min-w-0'
+                      : 'md:hidden space-y-3 min-w-0'
+                  }
+                >
                   {filteredSpjRecords.map(
                     ({
                       item,
@@ -728,11 +794,11 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                       return (
                         <div
                           key={item.id}
-                          className={`rounded-2xl border bg-white p-4 sm:p-5 space-y-3.5 transition-all shadow-xs min-w-0 ${
+                          className={`rounded-2xl border bg-white p-4 sm:p-5 space-y-3.5 transition-all duration-200 ease-out shadow-xs min-w-0 hover:-translate-y-0.5 hover:shadow-md will-change-transform ${
                             isChecked
-                              ? 'border-sky-400 ring-2 ring-sky-200'
+                              ? 'border-sky-400 ring-2 ring-sky-200 shadow-sm'
                               : isActive
-                                ? 'border-sky-300 ring-1 ring-sky-100'
+                                ? 'border-sky-300 ring-1 ring-sky-100 shadow-sm'
                                 : 'border-slate-200/90 hover:border-slate-300'
                           }`}
                         >
@@ -756,18 +822,15 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                               </p>
                             </div>
 
-                            <div className="shrink-0">
-                              {isSiapCetak ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold">
-                                  <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                  <span>Siap Cetak</span>
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-bold">
-                                  <Clock className="w-3 h-3 shrink-0" />
-                                  <span>{itemProgress.progressPercent}% Selesai</span>
-                                </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {isActive && (
+                                <SpjStatusBadge tone="blue" label="Aktif" size="xs" />
                               )}
+                              <SpjStatusBadge
+                                tone={isSiapCetak ? 'green' : 'yellow'}
+                                label={isSiapCetak ? 'Siap Cetak' : 'Belum Lengkap'}
+                                size="xs"
+                              />
                             </div>
                           </div>
 
@@ -783,6 +846,17 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                 {formatRupiah(itemTotal)}
                               </span>
                             </div>
+                          </div>
+
+                          {/* Minimalist Progress Bar */}
+                          <div className="py-0.5">
+                            <SpjProgressBar
+                              percent={itemProgress.progressPercent}
+                              tone={isSiapCetak ? 'green' : 'yellow'}
+                              size="xs"
+                              showLabel
+                              labelText="Kelengkapan Berkas"
+                            />
                           </div>
 
                           {/* Progressive Disclosure Accordion: Toggle Detail SPT */}
@@ -810,8 +884,15 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                 <div className="text-slate-600">
                                   {item.nipPenerima ? `NIP: ${item.nipPenerima}` : 'NIP belum diisi'} · {period.label}
                                 </div>
-                                <div className="text-slate-500 font-mono text-[10px]">
-                                  Progress: {itemProgress.completedCount}/6 Langkah ({itemProgress.progressPercent}%) · {itemFeedback.badgeText}
+                                <div className="flex items-center gap-2 pt-0.5">
+                                  <SpjStatusBadge
+                                    tone={isSiapCetak ? 'green' : 'yellow'}
+                                    label={`${itemProgress.completedCount}/6 Selesai`}
+                                    size="xs"
+                                  />
+                                  <span className="text-slate-400 font-mono text-[10px]">
+                                    {formatRupiah(itemTotal)}
+                                  </span>
                                 </div>
                               </div>
                             )}
@@ -853,7 +934,8 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                 </div>
 
                 {/* Tampilan Desktop (md+): Tabel Riwayat Lengkap */}
-                <div className="hidden md:block overflow-x-auto min-w-0 max-w-full">
+                {viewMode === 'table' && (
+                  <div className="hidden md:block overflow-x-auto min-w-0 max-w-full">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-200 text-slate-500 font-bold bg-slate-50/75">
@@ -927,9 +1009,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                     {item.atasNama || '(Nama belum diisi)'}
                                   </p>
                                   {isActive && (
-                                    <span className="text-[10px] font-bold text-sky-700">
-                                      (Aktif)
-                                    </span>
+                                    <SpjStatusBadge tone="blue" label="Aktif" size="xs" />
                                   )}
                                 </div>
                                 <p className="text-[11px] font-mono text-slate-500 tabular-nums">
@@ -940,10 +1020,15 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                 <p className="font-mono text-red-700 font-bold truncate max-w-[220px]">
                                   {item.noSpt}
                                 </p>
-                                <p className="text-[11px] text-slate-500 font-mono">
-                                  Progress: {itemProgress.completedCount}/6 Langkah (
-                                  {itemProgress.progressPercent}%)
-                                </p>
+                                <div className="w-32 pt-1">
+                                  <SpjProgressBar
+                                    percent={itemProgress.progressPercent}
+                                    tone={isSiapCetak ? 'green' : 'yellow'}
+                                    size="xs"
+                                    showLabel
+                                    labelText={`${itemProgress.completedCount}/6 Selesai`}
+                                  />
+                                </div>
                               </td>
                               <td className="py-2.5 px-3">
                                 <p className="text-slate-800 truncate max-w-[180px]">
@@ -957,17 +1042,16 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                 </p>
                               </td>
                               <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
-                                {formatRupiah(itemTotal)}
+                                <strong className="font-mono text-slate-900 tabular-nums">
+                                  {formatRupiah(itemTotal)}
+                                </strong>
                               </td>
                               <td
                                 className="py-2.5 px-3 text-center"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 {isSiapCetak ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold whitespace-nowrap">
-                                    <CheckCircle2 className="w-3 h-3 shrink-0" />
-                                    <span>Siap Cetak 100%</span>
-                                  </span>
+                                  <SpjStatusBadge tone="green" label="Siap Cetak" size="xs" />
                                 ) : (
                                   <button
                                     type="button"
@@ -975,11 +1059,10 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                                       onSelectKuitansi(item.id);
                                       onOpenSubSection('pengeluaran');
                                     }}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-100/90 hover:bg-amber-200/80 text-amber-900 border border-amber-300 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors"
-                                    title="Ketuk untuk melengkapi nota di Langkah 6"
+                                    className="cursor-pointer"
+                                    title="Ketuk untuk melengkapi bukti"
                                   >
-                                    <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" />
-                                    <span>{itemFeedback.badgeText}</span>
+                                    <SpjStatusBadge tone="yellow" label="Belum Lengkap" size="xs" />
                                   </button>
                                 )}
                               </td>
@@ -1044,7 +1127,8 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                     </tbody>
                   </table>
                 </div>
-              </>
+              )}
+            </>
             )}
           </>
         )}
@@ -1054,28 +1138,40 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       {!isEmptyAll && (
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
           {/* Header Bar Berkas Aktif */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-slate-100 min-w-0">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2.5 border-b border-slate-100 min-w-0">
+            <div className="min-w-0 space-y-1.5 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700 truncate">
-                  Dokumen SPJ Aktif
+                  Editor 6 Dokumen SPJ Aktif
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800">
-                  {activeProgressPercent}% Lengkap
-                </span>
+                <SpjStatusBadge
+                  tone={activeProgressPercent >= 100 ? 'green' : 'yellow'}
+                  label={activeProgressPercent >= 100 ? 'Siap Cetak' : 'Belum Lengkap'}
+                  size="xs"
+                />
+                <SpjStatusBadge tone="blue" label="Tersinkron" size="xs" />
               </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
+              <p className="text-xs font-bold text-slate-800 truncate">
                 {activeKuitansi.atasNama || 'Pelaksana'} · {activeKuitansi.tujuan || 'Tujuan'}
               </p>
+              <div className="w-full max-w-xs">
+                <SpjProgressBar
+                  percent={activeProgressPercent}
+                  tone={activeProgressPercent >= 100 ? 'green' : 'yellow'}
+                  size="xs"
+                  showLabel
+                  labelText="Kelengkapan Berkas Aktif"
+                />
+              </div>
             </div>
 
             <button
               type="button"
               onClick={() => onOpenSubSection('spt')}
-              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto shrink-0"
             >
               <Pencil className="w-3.5 h-3.5 shrink-0" />
-              <span>Buka Dokumen (1–6)</span>
+              <span>Buka Formulir (1–6)</span>
             </button>
           </div>
 
@@ -1090,7 +1186,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                 key={mod.key}
                 type="button"
                 onClick={() => onOpenSubSection(mod.key)}
-                className="flex flex-col justify-between p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/60 hover:bg-white hover:border-sky-300 transition-all text-left cursor-pointer group shadow-2xs min-h-[84px]"
+                className="flex flex-col justify-between p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/60 hover:bg-white hover:border-sky-300 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md will-change-transform text-left cursor-pointer group shadow-2xs min-h-[84px]"
               >
                 <div className="flex items-center justify-between gap-1 w-full">
                   <span className="text-[10px] font-mono font-bold text-slate-400">

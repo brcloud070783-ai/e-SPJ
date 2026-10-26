@@ -30,6 +30,7 @@ import {
 import { KaltaraEmblem } from './KaltaraEmblem';
 import { InfoTooltip } from './UiPatterns';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
+import { SpjStatusBadge, SpjProgressBar } from './SpjStatusBadge';
 
 interface MainHomeSectionProps {
   settings: AppSettings;
@@ -156,13 +157,16 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               </div>
               <h1
                 id="hero-spj-title"
-                className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words flex items-center gap-2 mt-0.5"
+                className="text-lg sm:text-2xl font-extrabold text-slate-900 tracking-tight break-words flex flex-wrap items-center gap-2 mt-0.5"
               >
                 <span>SAPA Kaltara</span>
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
-                  Perjalanan Dinas
+                  Dasbor &amp; Pantauan Ringkasan
                 </span>
               </h1>
+              <p className="text-xs text-slate-500 mt-1 max-w-xl leading-relaxed">
+                Ringkasan eksekutif status seluruh berkas, monitoring anggaran kuitansi, dan daftar berkas yang perlu tindakan segera.
+              </p>
             </div>
           </div>
 
@@ -178,10 +182,11 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
             <button
               type="button"
               onClick={onEnterSpjPerjalananDinas}
+              title="Pindah ke halaman SPJ Dinas untuk mengedit 6 dokumen, arsip, dan pencetakan"
               className="flex-1 sm:flex-initial justify-center min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap shadow-2xs"
             >
               <FolderOpen className="w-4 h-4 text-sky-700 shrink-0" />
-              <span>Semua Berkas ({totalBerkasCount})</span>
+              <span>Ke Ruang Kerja SPJ ({totalBerkasCount})</span>
             </button>
           </div>
         </div>
@@ -250,22 +255,11 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
                     <span className="text-xs font-semibold text-slate-600">
                       Selisih Rekonsiliasi Bukti
                     </span>
-                    <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                        reconFeedback.tone === 'emerald'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                          : reconFeedback.tone === 'red'
-                            ? 'bg-red-50 text-red-800 border-red-200'
-                            : 'bg-amber-100/90 text-amber-900 border-amber-300'
-                      }`}
-                    >
-                      {reconFeedback.tone === 'emerald' ? (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-700 shrink-0" />
-                      ) : (
-                        <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" />
-                      )}
-                      <span>{reconFeedback.badgeText}</span>
-                    </span>
+                    <SpjStatusBadge
+                      tone={reconFeedback.tone === 'emerald' ? 'green' : 'yellow'}
+                      label={reconFeedback.tone === 'emerald' ? 'Lengkap & Sesuai' : 'Belum Lengkap'}
+                      size="xs"
+                    />
                   </div>
                 </div>
 
@@ -328,27 +322,18 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               </div>
             </div>
           ) : (
-            <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 space-y-4 shadow-sm min-w-0 overflow-hidden">
+            <div className="rounded-3xl border border-slate-200/90 bg-white p-5 sm:p-6 space-y-4 shadow-sm min-w-0 overflow-hidden transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md will-change-transform">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 min-w-0">
                 <div className="space-y-1.5 min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                       SPJ Terakhir Diedit
                     </span>
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
-                        activeStepProgress.isReadyToPrint
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          : 'bg-amber-50 text-amber-900 border border-amber-200'
-                      }`}
-                    >
-                      {activeStepProgress.isReadyToPrint ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                      ) : (
-                        <Clock className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                      )}
-                      <span>{activeStepProgress.statusLabel}</span>
-                    </span>
+                    <SpjStatusBadge
+                      tone={activeStepProgress.isReadyToPrint ? 'green' : 'yellow'}
+                      label={activeStepProgress.isReadyToPrint ? 'Siap Cetak 100%' : 'Belum Lengkap'}
+                      size="sm"
+                    />
                   </div>
 
                   <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate">
@@ -401,19 +386,14 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
               </div>
 
               {/* Minimalist Progress Bar */}
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <div className="flex items-center justify-between gap-2 text-xs font-semibold text-slate-700">
-                  <span>Kelengkapan Berkas</span>
-                  <span className="font-mono font-bold text-slate-900">{activeStepProgress.progressPercent}% Selesai</span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-200 ${
-                      activeStepProgress.isReadyToPrint ? 'bg-emerald-600' : 'bg-sky-600'
-                    }`}
-                    style={{ width: `${activeStepProgress.progressPercent}%` }}
-                  />
-                </div>
+              <div className="pt-3 border-t border-slate-100">
+                <SpjProgressBar
+                  percent={activeStepProgress.progressPercent}
+                  tone={activeStepProgress.isReadyToPrint ? 'green' : 'yellow'}
+                  showLabel
+                  labelText="Kelengkapan Berkas"
+                  size="sm"
+                />
               </div>
             </div>
           )}
@@ -461,7 +441,7 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
                   ({ item, sequenceNumber, itemTotal, itemRecon, itemFeedback, itemProgress }) => (
                     <div
                       key={item.id}
-                      className="rounded-2xl border border-slate-200 bg-white hover:border-slate-300 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 transition-all shadow-xs min-w-0"
+                      className="rounded-2xl border border-slate-200 bg-white hover:border-slate-300 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md will-change-transform shadow-xs min-w-0"
                     >
                       <div className="space-y-1.5 min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2 text-xs min-w-0">
@@ -473,10 +453,11 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
                           </span>
                           <span aria-hidden="true" className="text-slate-300">·</span>
                           <span className="text-slate-600 font-medium truncate">{item.tujuan}</span>
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-bold">
-                            <AlertTriangle className="w-3 h-3 text-amber-700 shrink-0" />
-                            <span>{itemFeedback.badgeText}</span>
-                          </span>
+                          <SpjStatusBadge
+                            tone={itemProgress.isReadyToPrint ? 'green' : 'yellow'}
+                            label={itemProgress.isReadyToPrint ? 'Lengkap' : 'Belum Lengkap'}
+                            size="xs"
+                          />
                         </div>
 
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
@@ -488,14 +469,21 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
                           </span>
                           <span aria-hidden="true" className="text-slate-300">·</span>
                           <span>
-                            Selisih Bukti:{' '}
+                            Kurang:{' '}
                             <strong className="font-mono text-amber-800 tabular-nums">
                               {formatRupiah(itemRecon.selisih)}
                             </strong>
                           </span>
                           <span aria-hidden="true" className="text-slate-300">·</span>
+                          <div className="w-20 sm:w-24 py-1">
+                            <SpjProgressBar
+                              percent={itemProgress.progressPercent}
+                              tone={itemProgress.isReadyToPrint ? 'green' : 'yellow'}
+                              size="xs"
+                            />
+                          </div>
                           <span className="font-mono text-slate-500 text-[11px]">
-                            {itemProgress.progressPercent}% Selesai
+                            {itemProgress.progressPercent}%
                           </span>
                         </div>
                       </div>
