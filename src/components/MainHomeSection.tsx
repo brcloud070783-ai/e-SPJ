@@ -128,11 +128,15 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
       className="space-y-4 sm:space-y-5 py-1.5 sm:py-3 min-w-0 max-w-full overflow-x-hidden"
     >
       {/* BERANDA ACTION CENTER CONTAINER */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5 min-w-0 max-w-full overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 space-y-5 min-w-0 max-w-full overflow-visible">
         {/* 1. HEADER IDENTITAS & TOMBOL AKSI UTAMA (+ SPJ Baru & Semua Berkas) */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3.5 border-b border-slate-100 pb-4 min-w-0">
           <div className="flex items-center gap-3 min-w-0">
-            <KaltaraEmblem className="w-9 h-11 sm:w-10 sm:h-12 shrink-0" />
+            <img
+              src="/assets/aistudio/Desain_tanpa_judul__1__e6c53d2b.png"
+              alt="SAPA Kaltara Logo"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-cover shadow-xs border border-slate-200 shrink-0"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">
@@ -140,16 +144,20 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
                 </p>
                 <InfoTooltip
                   variant="info"
-                  align="left"
+                  align="right"
+                  position="bottom"
                   title="Pejabat Penandatangan Aktif"
                   content={`PA: ${settings.namaPenggunaAnggaran} · Bendahara: ${settings.namaBendahara}`}
                 />
               </div>
               <h1
                 id="hero-spj-title"
-                className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight break-words"
+                className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight break-words flex items-center gap-2"
               >
-                Action Center SPJ Perjalanan Dinas
+                <span>SAPA Kaltara</span>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200">
+                  Perjalanan Dinas
+                </span>
               </h1>
             </div>
           </div>

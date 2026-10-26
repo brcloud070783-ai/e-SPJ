@@ -11,6 +11,7 @@ export interface InfoTooltipProps {
   content: string;
   variant?: 'question' | 'info';
   align?: 'left' | 'center' | 'right';
+  position?: 'top' | 'bottom' | 'auto';
 }
 
 export const InfoTooltip: React.FC<InfoTooltipProps> = ({
@@ -18,12 +19,41 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
   content,
   variant = 'question',
   align = 'center',
+  position = 'auto',
 }) => {
   const [open, setOpen] = useState(false);
+  const [effectivePosition, setEffectivePosition] = useState<'top' | 'bottom'>('top');
+  const [effectiveAlign, setEffectiveAlign] = useState<'left' | 'center' | 'right'>(align);
   const containerRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
+
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const winWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+
+      // Vertical auto placement
+      if (position === 'top' || position === 'bottom') {
+        setEffectivePosition(position);
+      } else {
+        if (rect.top < 180) {
+          setEffectivePosition('bottom');
+        } else {
+          setEffectivePosition('top');
+        }
+      }
+
+      // Horizontal auto placement (if near right viewport edge, anchor right-0 so it opens inward)
+      if (rect.left > winWidth * 0.5 || rect.right > winWidth - 180) {
+        setEffectiveAlign('right');
+      } else if (rect.left < 180) {
+        setEffectiveAlign('left');
+      } else {
+        setEffectiveAlign(align);
+      }
+    }
+
     const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -40,14 +70,19 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
       document.removeEventListener('touchstart', handleOutsideClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open]);
+  }, [open, position, align]);
 
   const alignClass =
-    align === 'left'
+    effectiveAlign === 'left'
       ? 'left-0'
-      : align === 'right'
+      : effectiveAlign === 'right'
         ? 'right-0'
         : 'left-1/2 -translate-x-1/2';
+
+  const positionClass =
+    effectivePosition === 'bottom'
+      ? 'top-full mt-2'
+      : 'bottom-full mb-2';
 
   return (
     <span
@@ -77,14 +112,14 @@ export const InfoTooltip: React.FC<InfoTooltipProps> = ({
       {open && (
         <span
           role="tooltip"
-          className={`absolute bottom-full mb-2 ${alignClass} z-50 w-64 sm:w-72 rounded-xl bg-slate-900 text-white p-3 shadow-lg border border-slate-700/80 text-left pointer-events-auto`}
+          className={`absolute ${positionClass} ${alignClass} z-[100] w-64 sm:w-72 max-w-[calc(100vw-2rem)] rounded-xl bg-slate-900 text-white p-3 shadow-xl border border-slate-700/80 text-left pointer-events-auto animate-in fade-in duration-100`}
         >
           {title && (
             <span className="block text-[11px] font-bold text-sky-300 mb-1">
               {title}
             </span>
           )}
-          <span className="block text-[11px] font-normal text-slate-100 leading-relaxed">
+          <span className="block text-[11px] font-normal text-slate-100 leading-relaxed break-words">
             {content}
           </span>
         </span>

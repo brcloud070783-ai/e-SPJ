@@ -24,7 +24,7 @@ export const PWAInstallButton: React.FC = () => {
         type="button"
         onClick={handleTrigger}
         className="min-h-[40px] px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-800 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-        aria-label="Instal Aplikasi PWA e-SPJ"
+        aria-label="Instal Aplikasi PWA SAPA Kaltara"
       >
         <Download className="w-3.5 h-3.5 text-sky-700 shrink-0" />
         <span>{isIOS ? 'Instal di iOS' : 'Instal Aplikasi'}</span>
@@ -45,7 +45,7 @@ export const PWAInstallButton: React.FC = () => {
                 </div>
                 <div>
                   <h3 id="pwa-install-title" className="text-base font-bold text-slate-900">
-                    Pasang e-SPJ Kaltara di Perangkat Anda
+                    Pasang SAPA Kaltara di Perangkat Anda
                   </h3>
                   <p className="text-xs text-slate-500">
                     Akses cepat dari layar utama HP &amp; dukungan mode luring (PWA)

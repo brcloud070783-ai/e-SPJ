@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana implementasi penataan penandatanganan dokumen dinas: selektor status jabatan SPT (Kepala Dinas, Plt., Plh., Kustom), format tanda tangan 2 pejabat vertikal pada SPD Lembar Depan (Pengguna Anggaran di atas dan Penandatangan SPT di bawah), serta sinkronisasi otomatis penandatangan Visum SPPD dari data pejabat SPT dengan fleksibilitas edit manual.",
-  "updatedAt":  "2026-10-26T01:22:54.003983781Z",
+  "summary":  "Implementation plan for renaming the application to SAPA Kaltara (Sistem Administrasi Perjalanan & Anggaran) across metadata.json, index.html, App.tsx, and seed data.",
+  "updatedAt":  "2026-10-26T05:21:02.622124217Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

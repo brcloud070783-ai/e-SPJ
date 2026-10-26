@@ -660,7 +660,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-sky-700">
               <Settings className="w-3.5 h-3.5" />
-              <span>Konfigurasi Sistem e-SPJ</span>
+              <span>Konfigurasi Sistem SAPA Kaltara</span>
             </div>
             <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
               Pengaturan Instansi, Pegawai, Pejabat &amp; Sistem

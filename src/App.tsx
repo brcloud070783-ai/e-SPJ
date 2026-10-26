@@ -1213,7 +1213,7 @@ export default function App() {
       : null;
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip flex flex-col bg-slate-100 text-slate-900 pb-3 sm:pb-6">
+    <div className="min-h-screen w-full max-w-full overflow-x-clip flex flex-col bg-slate-100 text-slate-900 pb-28 lg:pb-12">
       {/* 1. COMPACT STUDIO APP BAR (Tampil HANYA saat di dalam mode kerja/editor Studio — Tema Terang Bersih) */}
       {isInsideStudio ? (
         <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
@@ -1412,7 +1412,7 @@ export default function App() {
             }}
             className="text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
           >
-            e-SPJ Kaltara
+            SAPA Kaltara
           </a>
 
           {/* Zone 2: Menu Utama (Beranda, SPJ Dinas, Pengaturan) */}
@@ -1655,15 +1655,15 @@ export default function App() {
                 )}
 
                 {/* Navigasi Berurutan Antar-Halaman dalam 1 Berkas SPJ */}
-                <div className="no-print bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-2xs flex flex-wrap items-center justify-between gap-2">
-                  <div>
+                <div className="no-print bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-6 sm:mb-8">
+                  <div className="flex items-center gap-2">
                     {prevStep ? (
                       <button
                         type="button"
                         onClick={() => setSpjView(prevStep.key)}
-                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full sm:w-auto min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700" />
+                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
                         <span>
                           Sebelumnya: {prevStep.stepNum}. {prevStep.label}
                         </span>
@@ -1672,32 +1672,32 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setSpjView('sub-home')}
-                        className="min-h-[38px] px-3.5 py-1.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                        className="w-full sm:w-auto min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                       >
-                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700" />
+                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
                         <span>Ringkasan Berkas SPJ</span>
                       </button>
                     )}
                   </div>
 
-                  <div className="text-xs text-slate-500 font-semibold hidden md:block">
+                  <div className="text-xs text-slate-500 font-semibold hidden md:block text-center px-2">
                     1 Kesatuan Berkas SPJ ·{' '}
                     <span className="text-slate-900 font-bold">
-                      {activeKuitansi.atasNama} ({activeKuitansi.noSpt})
+                      {activeKuitansi.atasNama || '(Nama belum diisi)'} ({activeKuitansi.noSpt})
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 justify-end">
                     {nextStep && (
                       <button
                         type="button"
                         onClick={() => setSpjView(nextStep.key)}
-                        className="min-h-[38px] px-4 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        className="w-full sm:w-auto min-h-[40px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                       >
                         <span>
                           Selanjutnya: {nextStep.stepNum}. {nextStep.label}
                         </span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     )}
                   </div>
