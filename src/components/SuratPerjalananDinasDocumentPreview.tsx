@@ -188,7 +188,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
   return (
     <div
       className={`spd-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
-        isPrintMode ? 'py-1 px-0' : 'py-4 px-0 border border-slate-200'
+        isPrintMode ? 'pt-6 pb-2 px-0' : 'pt-7 pb-5 px-0 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
@@ -204,6 +204,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           max-width: 86%;
           margin-left: auto;
           margin-right: auto;
+          margin-top: 6px;
         }
         .spd-doc table {
           border-collapse: collapse;
@@ -246,11 +247,15 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
           text-align: left;
         }
         @media print {
+          .spd-doc {
+            padding-top: 18px !important;
+          }
           .spd-doc .spd-depan-content {
             width: 86% !important;
             max-width: 86% !important;
             margin-left: auto !important;
             margin-right: auto !important;
+            margin-top: 8px !important;
           }
           .spd-doc td, .spd-doc th {
             font-size: 10.5px;
