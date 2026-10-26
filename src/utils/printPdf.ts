@@ -409,6 +409,74 @@ export async function triggerIsolatedSpjPrint(
   window.print();
 }
 
+const testCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+if (testCanvas) {
+  testCanvas.width = 1;
+  testCanvas.height = 1;
+}
+const testCtx = testCanvas ? testCanvas.getContext('2d') : null;
+
+function convertCssColorToRgb(colorStr: string): string {
+  if (!colorStr || (!colorStr.includes('oklab') && !colorStr.includes('oklch'))) {
+    return colorStr;
+  }
+  if (!testCtx) return '#1e293b';
+  try {
+    testCtx.fillStyle = '#000000';
+    testCtx.fillStyle = colorStr;
+    const res = testCtx.fillStyle;
+    return res && res !== '#000000' ? res : '#1e293b';
+  } catch {
+    return '#1e293b';
+  }
+}
+
+export function sanitizeCssColorString(cssText: string): string {
+  if (!cssText || (!cssText.includes('oklab') && !cssText.includes('oklch'))) {
+    return cssText;
+  }
+  return cssText.replace(/(oklab|oklch)\([^)]+\)/gi, (match) => convertCssColorToRgb(match));
+}
+
+export function sanitizeDocumentColorsForHtml2Canvas(clonedDoc: Document): void {
+  try {
+    clonedDoc.querySelectorAll('style').forEach((styleEl) => {
+      if (styleEl.textContent && (styleEl.textContent.includes('oklab') || styleEl.textContent.includes('oklch'))) {
+        styleEl.textContent = sanitizeCssColorString(styleEl.textContent);
+      }
+    });
+
+    clonedDoc.querySelectorAll<HTMLElement>('*').forEach((el) => {
+      const styleAttr = el.getAttribute('style');
+      if (styleAttr && (styleAttr.includes('oklab') || styleAttr.includes('oklch'))) {
+        el.setAttribute('style', sanitizeCssColorString(styleAttr));
+      }
+
+      const colorProps = [
+        'color',
+        'backgroundColor',
+        'borderColor',
+        'borderTopColor',
+        'borderRightColor',
+        'borderBottomColor',
+        'borderLeftColor',
+        'outlineColor',
+        'fill',
+        'stroke',
+      ];
+
+      colorProps.forEach((prop) => {
+        const val = (el.style as any)[prop];
+        if (val && (val.includes('oklab') || val.includes('oklch'))) {
+          (el.style as any)[prop] = convertCssColorToRgb(val);
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('Document color sanitization completed with warning:', err);
+  }
+}
+
 export interface ExportDirectPdfOptions {
   paperSize: PaperSize;
   documentTitle: string;
@@ -420,6 +488,7 @@ export interface ExportDirectPdfOptions {
 /**
  * Direct High-Fidelity PDF File Exporter.
  * Converts active printable sheets into vector/raster PDF files with 100% exact layout, font, logo, and dimension rendering.
+ * Includes auto-sanitizer for modern oklab/oklch colors and automatic print fallback.
  */
 export async function exportToDirectPdf(
   options: ExportDirectPdfOptions
@@ -525,6 +594,9 @@ export async function exportToDirectPdf(
         height: heightPx,
         windowWidth: widthPx,
         windowHeight: heightPx,
+        onclone: (clonedDoc) => {
+          sanitizeDocumentColorsForHtml2Canvas(clonedDoc);
+        },
       });
 
       const imgData = canvas.toDataURL('image/png', 1.0);
@@ -539,6 +611,13 @@ export async function exportToDirectPdf(
     onProgress?.('Mengunduh berkas PDF...');
     const filename = documentTitle.endsWith('.pdf') ? documentTitle : `${documentTitle}.pdf`;
     pdf.save(filename);
+  } catch (err: any) {
+    console.warn('Ekspor PDF langsung mengalami kendala, beralih ke dialog cetak PDF:', err);
+    await triggerIsolatedSpjPrint({
+      paperSize,
+      documentTitle,
+      sheetSelector,
+    });
   } finally {
     if (document.body.contains(renderContainer)) {
       document.body.removeChild(renderContainer);
