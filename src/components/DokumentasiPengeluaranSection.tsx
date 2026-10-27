@@ -31,6 +31,8 @@ import {
   ZoomIn,
   ZoomOut,
   FileDown,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   DokumentasiPengeluaranItem,
@@ -740,8 +742,10 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     activeKuitansi.rincian[0]?.id || ''
   );
 
-  // CamScanner Studio Active Tool Tab
+  // CamScanner Studio Active Tool Tab & Expandable Bottom Sheet State
   const [activeToolTab, setActiveToolTab] = useState<CamScannerToolTab>('crop');
+  const [isToolSheetOpen, setIsToolSheetOpen] = useState<boolean>(false);
+  const [showAngleSlider, setShowAngleSlider] = useState<boolean>(false);
 
   // CamScanner Studio Image & Transform State
   const [rawFotoDataUrl, setRawFotoDataUrl] = useState<string>(SAMPLE_RECEIPT_TRANSPORT);
@@ -1464,7 +1468,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
       {/* ===================================================================== */}
       {showScanStudio && (
         <div
-          className="no-print fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="no-print fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="camscanner-studio-title"
@@ -1476,65 +1480,101 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
         >
           <form
             onSubmit={handleSaveScannedReceipt}
-            className="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden"
+            className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl border border-slate-200 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden"
           >
-            {/* 1. Top Studio Header Bar */}
-            <div className="px-4 sm:px-5 py-2.5 border-b border-slate-200 bg-white shrink-0">
-              <div className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-2 sm:hidden" />
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <ScanLine className="w-4 h-4" />
-                  </div>
-                  <h2
-                    id="camscanner-studio-title"
-                    className="text-xs sm:text-sm font-extrabold text-slate-900 truncate"
-                  >
-                    {editingExistingItem
-                      ? `Edit Scan: ${editingExistingItem.namaPengeluaran}`
-                      : 'Scan & Edit Nota'}
-                  </h2>
+            {/* 1. Minimalist Canva-Style Top Bar */}
+            <div className="px-4 py-2.5 border-b border-slate-200/80 bg-white flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <ScanLine className="w-3.5 h-3.5" />
+                </div>
+                <h2
+                  id="camscanner-studio-title"
+                  className="text-xs sm:text-sm font-bold text-slate-900 truncate"
+                >
+                  {editingExistingItem
+                    ? editingExistingItem.namaPengeluaran
+                    : 'Scan & Edit Nota'}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="relative min-h-[32px] px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer overflow-hidden select-none">
+                  <UploadCloud className="w-3.5 h-3.5 text-slate-600 pointer-events-none" />
+                  <span className="pointer-events-none">Ganti Foto</span>
+                  <input
+                    id="exp-file-input"
+                    type="file"
+                    accept="image/*"
+                    aria-label="Pilih Foto Galeri"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div
-                    className="relative min-h-[34px] px-3 py-1 rounded-full bg-slate-100 hover:bg-sky-50 active:bg-sky-100 text-slate-800 hover:text-sky-800 border border-slate-200 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer overflow-hidden select-none"
-                  >
-                    <UploadCloud className="w-3.5 h-3.5 text-sky-700 pointer-events-none" />
-                    <span className="pointer-events-none">Pilih Foto Galeri</span>
-                    <input
-                      id="exp-file-input"
-                      type="file"
-                      accept="image/*"
-                      aria-label="Pilih Foto Galeri"
-                      onChange={handleFileChange}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowScanStudio(false)}
-                    aria-label="Tutup studio scan"
-                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowScanStudio(false)}
+                  aria-label="Tutup studio scan"
+                  className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             </div>
 
-            {/* 2. Interactive CamScanner Canvas Stage & Active Tool Controls */}
-            <div className="p-3 sm:p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-2.5 flex-1 bg-slate-100">
-              <div className="relative w-full h-60 sm:h-72 rounded-2xl bg-slate-200/80 border border-slate-300/90 flex items-center justify-center overflow-hidden p-4 select-none">
-                {/* Badge when viewing live perspective-rectified preview */}
-                {isPerspectivePreview && (
-                  <div className="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5 bg-emerald-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Pratinjau Hasil Perspektif</span>
-                  </div>
-                )}
+            {/* 2. Spacious Canva Light Workspace Canvas Stage */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-slate-50 flex flex-col justify-between overflow-hidden select-none">
+              {/* Floating Top-Left & Top-Right Micro Controls on Canvas */}
+              <div className="absolute top-3 inset-x-3 z-30 flex items-center justify-between pointer-events-none">
+                {/* Floating Zoom Pill */}
+                <div className="pointer-events-auto inline-flex items-center gap-0.5 bg-white/95 backdrop-blur-xs border border-slate-200/90 rounded-lg px-1.5 py-1 shadow-xs text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.25))}
+                    className="w-6 h-6 rounded hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
+                    title="Perkecil"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="font-mono font-semibold text-slate-700 px-1.5 hover:text-sky-700 cursor-pointer"
+                    title="Reset Zoom"
+                  >
+                    {Math.round(zoomLevel * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel((prev) => Math.min(3, prev + 0.25))}
+                    className="w-6 h-6 rounded hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
+                    title="Perbesar"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                </div>
 
+                {/* Floating Perspective Flat Preview Toggle */}
+                {activeToolTab === 'crop' && cropMode === 'perspective' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleTogglePerspectivePreview()}
+                    data-testid="perspective-preview-btn"
+                    className={`pointer-events-auto min-h-[28px] px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1.5 border shadow-xs transition-colors cursor-pointer ${
+                      isPerspectivePreview
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white/95 text-slate-700 border-slate-200/90 hover:bg-white'
+                    }`}
+                  >
+                    <Check className="w-3 h-3 shrink-0" />
+                    <span>{isPerspectivePreview ? 'Edit Sudut' : 'Pratinjau'}</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Center Interactive Canvas Stage */}
+              <div className="flex-1 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
                 {activeToolTab === 'crop' &&
                 cropMode === 'perspective' &&
                 !isPerspectivePreview ? (
@@ -1577,7 +1617,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                       }
                     }}
                     onTouchEnd={handleEndMarkupStroke}
-                    className={`relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg ${
+                    className={`relative inline-flex items-center justify-center bg-white shadow-md rounded-lg ${
                       activeToolTab === 'markup' ? 'cursor-crosshair' : ''
                     }`}
                   >
@@ -1597,7 +1637,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                             flipH ? -1 : 1
                           }) scaleY(${flipV ? -1 : 1})`,
                         }}
-                        className="max-h-52 sm:max-h-64 w-auto object-contain transition-transform duration-150 pointer-events-none"
+                        className="max-h-60 sm:max-h-72 w-auto object-contain transition-transform duration-150 pointer-events-none"
                       />
 
                       {/* Live SVG Overlay for Eraser (Whiteout), Highlighter, and Red Pen Strokes */}
@@ -1670,144 +1710,168 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                       )}
                     </div>
 
-                  {/* Interactive 8-Point Handles for RECTANGULAR Crop Mode */}
-                  {activeToolTab === 'crop' && cropMode === 'rect' && (
-                    <>
-                      {(
-                        [
-                          {
-                            id: 'tl',
-                            style: { top: `${cropBox.top}%`, left: `${cropBox.left}%` },
-                          },
-                          {
-                            id: 'tr',
-                            style: { top: `${cropBox.top}%`, right: `${cropBox.right}%` },
-                          },
-                          {
-                            id: 'bl',
-                            style: {
-                              bottom: `${cropBox.bottom}%`,
-                              left: `${cropBox.left}%`,
+                    {/* Interactive 8-Point Handles for RECTANGULAR Crop Mode */}
+                    {activeToolTab === 'crop' && cropMode === 'rect' && (
+                      <>
+                        {(
+                          [
+                            {
+                              id: 'tl',
+                              style: { top: `${cropBox.top}%`, left: `${cropBox.left}%` },
                             },
-                          },
-                          {
-                            id: 'br',
-                            style: {
-                              bottom: `${cropBox.bottom}%`,
-                              right: `${cropBox.right}%`,
+                            {
+                              id: 'tr',
+                              style: { top: `${cropBox.top}%`, right: `${cropBox.right}%` },
                             },
-                          },
-                        ] as const
-                      ).map((h) => (
+                            {
+                              id: 'bl',
+                              style: {
+                                bottom: `${cropBox.bottom}%`,
+                                left: `${cropBox.left}%`,
+                              },
+                            },
+                            {
+                              id: 'br',
+                              style: {
+                                bottom: `${cropBox.bottom}%`,
+                                right: `${cropBox.right}%`,
+                              },
+                            },
+                          ] as const
+                        ).map((h) => (
+                          <button
+                            key={h.id}
+                            type="button"
+                            aria-label={`Titik potong sudut ${h.id}`}
+                            onMouseDown={(e) => {
+                              e.stopPropagation();
+                              setDraggingHandle(h.id);
+                            }}
+                            onTouchStart={(e) => {
+                              e.stopPropagation();
+                              setDraggingHandle(h.id);
+                            }}
+                            style={h.style}
+                            className={`absolute w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md cursor-grab active:cursor-grabbing z-20 ${
+                              h.id === 'tl'
+                                ? '-translate-x-1/2 -translate-y-1/2'
+                                : h.id === 'tr'
+                                  ? 'translate-x-1/2 -translate-y-1/2'
+                                  : h.id === 'bl'
+                                    ? '-translate-x-1/2 translate-y-1/2'
+                                    : 'translate-x-1/2 translate-y-1/2'
+                            }`}
+                          />
+                        ))}
+
                         <button
-                          key={h.id}
                           type="button"
-                          aria-label={`Titik potong sudut ${h.id}`}
+                          aria-label="Titik potong atas"
                           onMouseDown={(e) => {
                             e.stopPropagation();
-                            setDraggingHandle(h.id);
+                            setDraggingHandle('t');
                           }}
                           onTouchStart={(e) => {
                             e.stopPropagation();
-                            setDraggingHandle(h.id);
+                            setDraggingHandle('t');
                           }}
-                          style={h.style}
-                          className={`absolute w-5 h-5 rounded-full bg-emerald-500 border-2 border-white shadow-md cursor-grab active:cursor-grabbing z-20 ${
-                            h.id === 'tl'
-                              ? '-translate-x-1/2 -translate-y-1/2'
-                              : h.id === 'tr'
-                                ? 'translate-x-1/2 -translate-y-1/2'
-                                : h.id === 'bl'
-                                  ? '-translate-x-1/2 translate-y-1/2'
-                                  : 'translate-x-1/2 translate-y-1/2'
-                          }`}
+                          style={{
+                            top: `${cropBox.top}%`,
+                            left: `${50 + (cropBox.left - cropBox.right) / 2}%`,
+                          }}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-2.5 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ns-resize z-20"
                         />
-                      ))}
-
-                      <button
-                        type="button"
-                        aria-label="Titik potong atas"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('t');
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('t');
-                        }}
-                        style={{
-                          top: `${cropBox.top}%`,
-                          left: `${50 + (cropBox.left - cropBox.right) / 2}%`,
-                        }}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-2.5 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ns-resize z-20"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Titik potong bawah"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('b');
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('b');
-                        }}
-                        style={{
-                          bottom: `${cropBox.bottom}%`,
-                          left: `${50 + (cropBox.left - cropBox.right) / 2}%`,
-                        }}
-                        className="absolute -translate-x-1/2 translate-y-1/2 w-6 h-2.5 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ns-resize z-20"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Titik potong kiri"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('l');
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('l');
-                        }}
-                        style={{
-                          left: `${cropBox.left}%`,
-                          top: `${50 + (cropBox.top - cropBox.bottom) / 2}%`,
-                        }}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-2.5 h-6 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ew-resize z-20"
-                      />
-                      <button
-                        type="button"
-                        aria-label="Titik potong kanan"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('r');
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle('r');
-                        }}
-                        style={{
-                          right: `${cropBox.right}%`,
-                          top: `${50 + (cropBox.top - cropBox.bottom) / 2}%`,
-                        }}
-                        className="absolute translate-x-1/2 -translate-y-1/2 w-2.5 h-6 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ew-resize z-20"
-                      />
-                    </>
-                  )}
-                </div>
+                        <button
+                          type="button"
+                          aria-label="Titik potong bawah"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('b');
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('b');
+                          }}
+                          style={{
+                            bottom: `${cropBox.bottom}%`,
+                            left: `${50 + (cropBox.left - cropBox.right) / 2}%`,
+                          }}
+                          className="absolute -translate-x-1/2 translate-y-1/2 w-6 h-2.5 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ns-resize z-20"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Titik potong kiri"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('l');
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('l');
+                          }}
+                          style={{
+                            left: `${cropBox.left}%`,
+                            top: `${50 + (cropBox.top - cropBox.bottom) / 2}%`,
+                          }}
+                          className="absolute -translate-x-1/2 -translate-y-1/2 w-2.5 h-6 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ew-resize z-20"
+                        />
+                        <button
+                          type="button"
+                          aria-label="Titik potong kanan"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('r');
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle('r');
+                          }}
+                          style={{
+                            right: `${cropBox.right}%`,
+                            top: `${50 + (cropBox.top - cropBox.bottom) / 2}%`,
+                          }}
+                          className="absolute translate-x-1/2 -translate-y-1/2 w-2.5 h-6 rounded-full bg-white border-2 border-emerald-600 shadow-xs cursor-ew-resize z-20"
+                        />
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
 
               {/* ================================================================= */}
-              {/* 3. CONTEXTUAL SUB-TOOLBAR FOR ACTIVE CAMSCANNER TOOL              */}
+              {/* 3. PROGRESSIVE DISCLOSURE: EXPANDABLE CONTEXTUAL BOTTOM SHEET     */}
               {/* ================================================================= */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-2xs">
-                {/* TAB 1: SMART CROPPING, PERSPECTIVE CORNER-PIN & ROTATE */}
-                {activeToolTab === 'crop' && (
-                  <div className="space-y-2">
-                    {/* Crop Mode Switcher: Perspective Crop (Corner-Pin) vs Persegi */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <div className="grid grid-cols-2 gap-1 flex-1 min-w-[220px]">
+              {isToolSheetOpen && (
+                <div
+                  data-testid="contextual-tool-bottom-sheet"
+                  className="bg-white/98 backdrop-blur-md border-t border-slate-200 px-3.5 pt-2 pb-3 shadow-lg z-30 transition-all"
+                >
+                  {/* Sheet Handle & Minimal Header */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {activeToolTab === 'crop'
+                        ? 'Potong & Perspektif'
+                        : activeToolTab === 'filter'
+                          ? 'Filter Warna'
+                          : activeToolTab === 'adjust'
+                            ? 'Penyesuaian'
+                            : 'Hapus & Marka'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsToolSheetOpen(false)}
+                      aria-label="Tutup panel alat"
+                      className="w-6 h-6 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* SHEET 1: POTONG (Clean Single-Strip Iconography + Optional Straighten Slider) */}
+                  {activeToolTab === 'crop' && (
+                    <div className="space-y-2">
+                      {/* Segmented Mode & Smart Actions Row */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
                         <button
                           type="button"
                           onClick={() => {
@@ -1815,15 +1879,16 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                             setIsPerspectivePreview(false);
                           }}
                           data-testid="crop-mode-perspective-btn"
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
                             cropMode === 'perspective'
-                              ? 'bg-emerald-600 text-white shadow-2xs'
-                              : 'text-slate-700 hover:bg-white/70'
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <Crop className="w-3.5 h-3.5 shrink-0" />
-                          <span>Perspective Crop (Corner-Pin)</span>
+                          <Crop className="w-3.5 h-3.5" />
+                          <span>4 Sudut</span>
                         </button>
+
                         <button
                           type="button"
                           onClick={() => {
@@ -1832,339 +1897,194 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                             setCropBox(cornerPinsToCropBox(cornerPins));
                           }}
                           data-testid="crop-mode-rect-btn"
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
                             cropMode === 'rect'
-                              ? 'bg-sky-700 text-white shadow-2xs'
-                              : 'text-slate-700 hover:bg-white/70'
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                           }`}
                         >
-                          <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>Potong Persegi</span>
+                          <Maximize2 className="w-3.5 h-3.5" />
+                          <span>Persegi</span>
+                        </button>
+
+                        <div className="w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
+
+                        <button
+                          type="button"
+                          onClick={() => void handleRunSmartCrop('paper_and_deskew')}
+                          data-testid="smart-crop-paper-btn"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Auto-Fit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleRotateLeft90}
+                          data-testid="camscanner-rotate-left"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                          title="Putar Kiri 90°"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Kiri</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleRotateRight90}
+                          data-testid="scan-rotate-btn"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                          title="Putar Kanan 90°"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                          <span>Kanan</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFlipH((prev) => !prev)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            flipH
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                          title="Balik Horizontal"
+                        >
+                          <FlipHorizontal2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFlipV((prev) => !prev)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            flipV
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                          title="Balik Vertikal"
+                        >
+                          <FlipVertical2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAngleSlider((prev) => !prev)}
+                          data-testid="smart-deskew-btn"
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            showAngleSlider || deskewAngle !== 0
+                              ? 'bg-sky-50 border-sky-300 text-sky-800'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <span>Sudut</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
+                            setCropBox(fullBox);
+                            setCornerPins(cropBoxToCornerPins(fullBox));
+                            setIsPerspectivePreview(false);
+                            setDeskewAngle(0);
+                          }}
+                          data-testid="scan-crop-full"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <span>Reset</span>
                         </button>
                       </div>
 
-                      {cropMode === 'perspective' && (
-                        <button
-                          type="button"
-                          onClick={() => void handleTogglePerspectivePreview()}
-                          data-testid="perspective-preview-btn"
-                          className={`min-h-[32px] px-3 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
-                            isPerspectivePreview
-                              ? 'bg-amber-500 text-slate-950 border-amber-600'
-                              : 'bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300'
-                          }`}
-                        >
-                          <Check className="w-3.5 h-3.5 shrink-0" />
-                          <span>
-                            {isPerspectivePreview
-                              ? 'Edit Pin Sudut'
-                              : 'Pratinjau Perspektif'}
+                      {/* On-Demand Straighten Slider (Only shown when 'Sudut' is toggled) */}
+                      {showAngleSlider && (
+                        <div className="flex items-center gap-2.5 pt-1 border-t border-slate-100">
+                          <span className="text-[11px] font-semibold text-slate-600 shrink-0">
+                            Kemiringan
                           </span>
-                        </button>
+                          <input
+                            type="range"
+                            min={-15}
+                            max={15}
+                            step={0.5}
+                            value={deskewAngle}
+                            onChange={(e) => setDeskewAngle(Number(e.target.value))}
+                            aria-label="Slider Pelurus Kemiringan Kertas"
+                            className="w-full accent-slate-900 cursor-pointer"
+                          />
+                          <span className="font-mono text-[11px] font-bold text-slate-800 w-9 text-right shrink-0">
+                            {deskewAngle > 0 ? `+${deskewAngle}°` : `${deskewAngle}°`}
+                          </span>
+                          {deskewAngle !== 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setDeskewAngle(0)}
+                              className="text-[11px] font-semibold text-sky-700 hover:underline shrink-0 cursor-pointer"
+                            >
+                              0°
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
+                  )}
 
-                    {/* Smart Detection & Perspective Helper Presets */}
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => void handleRunSmartCrop('paper_and_deskew')}
-                        data-testid="smart-crop-paper-btn"
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
-                      >
-                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                        <span>Deteksi 4 Sudut</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleRunSmartCrop('white_only')}
-                        data-testid="smart-crop-white-only-btn"
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ScanLine className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                        <span>Kertas Putih</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleRunSmartCrop('deskew_only')}
-                        data-testid="smart-deskew-btn"
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-300 text-sky-900 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <Crop className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                        <span>Luruskan</span>
-                      </button>
-                    </div>
-
-                    {/* Corner-Pin Quick Trapezoid / Perspective Presets when in Perspective Mode */}
-                    {cropMode === 'perspective' && (
-                      <div className="bg-emerald-50/60 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="text-[10.5px] font-bold text-emerald-950">
-                          Tarik 4 titik sudut bebas di atas nota atau pilih bantu sudut:
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1">
+                  {/* SHEET 2: FILTER WARNA */}
+                  {activeToolTab === 'filter' && (
+                    <div
+                      role="group"
+                      aria-label="Filter Pemindaian CamScanner"
+                      className="grid grid-cols-3 sm:grid-cols-6 gap-2"
+                    >
+                      {CAMSCANNER_FILTERS.map((fOpt) => {
+                        const isSelected = scanFilter === fOpt.id;
+                        return (
                           <button
+                            key={fOpt.id}
                             type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              setCornerPins({
-                                tl: { x: 14, y: 6 },
-                                tr: { x: 86, y: 6 },
-                                br: { x: 95, y: 94 },
-                                bl: { x: 5, y: 94 },
-                              });
-                            }}
-                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-300 text-[10.5px] font-bold text-emerald-900 cursor-pointer"
-                          >
-                            Miring Atas
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              setCornerPins({
-                                tl: { x: 5, y: 6 },
-                                tr: { x: 95, y: 6 },
-                                br: { x: 86, y: 94 },
-                                bl: { x: 14, y: 94 },
-                              });
-                            }}
-                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-300 text-[10.5px] font-bold text-emerald-900 cursor-pointer"
-                          >
-                            Miring Bawah
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              const aligned = cropBoxToCornerPins(cropBox);
-                              setCornerPins(aligned);
-                            }}
-                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-[10.5px] font-bold text-slate-700 cursor-pointer"
-                          >
-                            Ratakan Sudut
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Compact Straighten Slider & Edge Whitening Toggle */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-2 flex-1 min-w-[180px]">
-                        <span className="text-[11px] font-bold text-slate-700 shrink-0">
-                          Luruskan
-                        </span>
-                        <input
-                          type="range"
-                          min={-15}
-                          max={15}
-                          step={0.5}
-                          value={deskewAngle}
-                          onChange={(e) => setDeskewAngle(Number(e.target.value))}
-                          aria-label="Slider Pelurus Kemiringan Kertas"
-                          className="w-full accent-emerald-600 cursor-pointer"
-                        />
-                        <span className="font-mono text-[11px] font-bold text-emerald-700 w-9 text-right shrink-0">
-                          {deskewAngle > 0 ? `+${deskewAngle}°` : `${deskewAngle}°`}
-                        </span>
-                        {deskewAngle !== 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setDeskewAngle(0)}
-                            className="text-[11px] font-bold text-sky-700 hover:underline shrink-0 cursor-pointer"
-                          >
-                            0°
-                          </button>
-                        )}
-                      </div>
-
-                      <label className="inline-flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-700 font-semibold shrink-0">
-                        <input
-                          type="checkbox"
-                          checked={cleanWhiteEdges}
-                          onChange={(e) => setCleanWhiteEdges(e.target.checked)}
-                          className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-600 w-3.5 h-3.5"
-                        />
-                        <span>Putihkan Tepi</span>
-                      </label>
-                    </div>
-
-                    {/* Zoom In / Zoom Out Controls Bar */}
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex items-center justify-between gap-3">
-                      <span className="text-[11px] font-bold text-slate-700">Zoom Tampilan</span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.25))}
-                          className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
-                          title="Perkecil (Zoom Out)"
-                        >
-                          <ZoomOut className="w-3.5 h-3.5 text-sky-700" />
-                          <span>-</span>
-                        </button>
-                        <span className="font-mono text-xs font-bold text-slate-800 w-12 text-center">
-                          {Math.round(zoomLevel * 100)}%
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setZoomLevel((prev) => Math.min(3, prev + 0.25))}
-                          className="px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
-                          title="Perbesar (Zoom In)"
-                        >
-                          <ZoomIn className="w-3.5 h-3.5 text-sky-700" />
-                          <span>+</span>
-                        </button>
-                        {zoomLevel !== 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setZoomLevel(1)}
-                            className="text-[11px] font-bold text-sky-700 hover:underline px-1 cursor-pointer"
-                          >
-                            Reset
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Bar Alat Putar 90° & Balik */}
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={handleRotateLeft90}
-                        data-testid="camscanner-rotate-left"
-                        className="min-h-[36px] px-2 py-1 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 text-slate-700 hover:text-sky-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 text-sky-700" />
-                        <span>Kiri</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={handleRotateRight90}
-                        data-testid="scan-rotate-btn"
-                        className="min-h-[36px] px-2 py-1 rounded-xl bg-slate-50 hover:bg-sky-50 border border-slate-200 text-slate-700 hover:text-sky-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <RotateCw className="w-3.5 h-3.5 text-sky-700" />
-                        <span>Kanan</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setFlipH((prev) => !prev)}
-                        className={`min-h-[36px] px-2 py-1 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
-                          flipH
-                            ? 'bg-sky-700 text-white border-sky-700'
-                            : 'bg-slate-50 hover:bg-sky-50 border-slate-200 text-slate-700'
-                        }`}
-                      >
-                        <FlipHorizontal2 className="w-3.5 h-3.5" />
-                        <span>Balik H</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setFlipV((prev) => !prev)}
-                        className={`min-h-[36px] px-2 py-1 rounded-xl border text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
-                          flipV
-                            ? 'bg-sky-700 text-white border-sky-700'
-                            : 'bg-slate-50 hover:bg-sky-50 border-slate-200 text-slate-700'
-                        }`}
-                      >
-                        <FlipVertical2 className="w-3.5 h-3.5" />
-                        <span>Balik V</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleRunSmartCrop('paper_and_deskew')}
-                        data-testid="scan-crop-auto"
-                        className="min-h-[36px] px-2 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <ScanLine className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Auto-Fit</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
-                          setCropBox(fullBox);
-                          setCornerPins(cropBoxToCornerPins(fullBox));
-                          setIsPerspectivePreview(false);
-                          setDeskewAngle(0);
-                        }}
-                        data-testid="scan-crop-full"
-                        className="min-h-[36px] px-2 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Maximize2 className="w-3.5 h-3.5 text-slate-600" />
-                        <span>Penuh</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 2: FILTER PEMINDAI CAMSCANNER */}
-                {activeToolTab === 'filter' && (
-                  <div
-                    role="group"
-                    aria-label="Filter Pemindaian CamScanner"
-                    className="grid grid-cols-3 sm:grid-cols-6 gap-2"
-                  >
-                    {CAMSCANNER_FILTERS.map((fOpt) => {
-                      const isSelected = scanFilter === fOpt.id;
-                      return (
-                        <button
-                          key={fOpt.id}
-                          type="button"
-                          onClick={() => setScanFilter(fOpt.id)}
-                          data-testid={`scan-filter-${fOpt.id}`}
-                          className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
-                            isSelected
-                              ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/30'
-                              : 'border-slate-200 bg-slate-50 hover:bg-white'
-                          }`}
-                        >
-                          <div className="w-full h-11 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center relative">
-                            <img
-                              src={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
-                              alt={fOpt.shortLabel}
-                              referrerPolicy="no-referrer"
-                              style={{
-                                filter:
-                                  fOpt.baseCssFilter !== 'none'
-                                    ? fOpt.baseCssFilter
-                                    : undefined,
-                              }}
-                              className="w-full h-full object-cover"
-                            />
-                            {isSelected && (
-                              <span className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center">
-                                <Check className="w-2.5 h-2.5" />
-                              </span>
-                            )}
-                          </div>
-                          <span
-                            className={`text-[10.5px] font-bold leading-tight ${
-                              isSelected ? 'text-emerald-900' : 'text-slate-700'
+                            onClick={() => setScanFilter(fOpt.id)}
+                            data-testid={`scan-filter-${fOpt.id}`}
+                            className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                              isSelected
+                                ? 'border-slate-900 bg-slate-900/5 ring-1 ring-slate-900'
+                                : 'border-slate-200 bg-slate-50 hover:bg-white'
                             }`}
                           >
-                            {fOpt.shortLabel}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                            <div className="w-full h-10 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                              <img
+                                src={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
+                                alt={fOpt.shortLabel}
+                                referrerPolicy="no-referrer"
+                                style={{
+                                  filter:
+                                    fOpt.baseCssFilter !== 'none'
+                                      ? fOpt.baseCssFilter
+                                      : undefined,
+                                }}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                            <span
+                              className={`text-[10.5px] font-semibold leading-tight ${
+                                isSelected ? 'text-slate-900 font-bold' : 'text-slate-600'
+                              }`}
+                            >
+                              {fOpt.shortLabel}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                {/* TAB 3: SESUAIKAN (MANUAL BRIGHTNESS, CONTRAST, CLARITY SLIDERS) */}
-                {activeToolTab === 'adjust' && (
-                  <div className="space-y-2">
+                  {/* SHEET 3: PENYESUAIAN (Kecerahan, Kontras, Ketajaman) */}
+                  {activeToolTab === 'adjust' && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 space-y-1">
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-700">Kecerahan</span>
-                          <span className="font-mono font-bold text-sky-700">
+                          <span className="font-semibold text-slate-700">Cerah</span>
+                          <span className="font-mono font-bold text-slate-800">
                             {brightness > 0 ? `+${brightness}` : brightness}
                           </span>
                         </div>
@@ -2175,14 +2095,14 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                           value={brightness}
                           onChange={(e) => setBrightness(Number(e.target.value))}
                           aria-label="Slider Kecerahan"
-                          className="w-full accent-sky-700 cursor-pointer"
+                          className="w-full accent-slate-900 cursor-pointer"
                         />
                       </div>
 
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 space-y-1">
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-semibold text-slate-700">Kontras</span>
-                          <span className="font-mono font-bold text-sky-700">
+                          <span className="font-mono font-bold text-slate-800">
                             {contrast > 0 ? `+${contrast}` : contrast}
                           </span>
                         </div>
@@ -2193,14 +2113,14 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                           value={contrast}
                           onChange={(e) => setContrast(Number(e.target.value))}
                           aria-label="Slider Kontras"
-                          className="w-full accent-sky-700 cursor-pointer"
+                          className="w-full accent-slate-900 cursor-pointer"
                         />
                       </div>
 
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 space-y-1">
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-700">Ketajaman</span>
-                          <span className="font-mono font-bold text-sky-700">
+                          <span className="font-semibold text-slate-700">Tajam</span>
+                          <span className="font-mono font-bold text-slate-800">
                             {clarity > 0 ? `+${clarity}` : clarity}
                           </span>
                         </div>
@@ -2211,122 +2131,111 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                           value={clarity}
                           onChange={(e) => setClarity(Number(e.target.value))}
                           aria-label="Slider Ketajaman Warna"
-                          className="w-full accent-sky-700 cursor-pointer"
+                          className="w-full accent-slate-900 cursor-pointer"
                         />
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* TAB 4: BERSIHKAN NODA & STABILO */}
-                {activeToolTab === 'markup' && (
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setMarkupTool('whiteout')}
-                        className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 cursor-pointer ${
-                          markupTool === 'whiteout'
-                            ? 'bg-slate-900 text-white border-slate-900'
-                            : 'bg-slate-50 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        <Eraser className="w-3.5 h-3.5" />
-                        <span>Penghapus</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setMarkupTool('highlighter')}
-                        className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 cursor-pointer ${
-                          markupTool === 'highlighter'
-                            ? 'bg-amber-400 text-slate-950 border-amber-500'
-                            : 'bg-slate-50 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        <Highlighter className="w-3.5 h-3.5" />
-                        <span>Stabilo</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setMarkupTool('redpen')}
-                        className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 cursor-pointer ${
-                          markupTool === 'redpen'
-                            ? 'bg-red-600 text-white border-red-600'
-                            : 'bg-slate-50 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        <PenTool className="w-3.5 h-3.5" />
-                        <span>Pena</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      {[
-                        { size: 8, label: 'S' },
-                        { size: 14, label: 'M' },
-                        { size: 24, label: 'L' },
-                      ].map((b) => (
+                  {/* SHEET 4: HAPUS & MARKA */}
+                  {activeToolTab === 'markup' && (
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button
-                          key={b.size}
                           type="button"
-                          onClick={() => setBrushSize(b.size)}
-                          className={`px-2.5 py-1 rounded-lg font-bold border cursor-pointer ${
-                            brushSize === b.size
-                              ? 'bg-sky-700 text-white border-sky-700'
-                              : 'bg-white text-slate-600 border-slate-200'
+                          onClick={() => setMarkupTool('whiteout')}
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                            markupTool === 'whiteout'
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
                           }`}
                         >
-                          {b.label}
+                          <Eraser className="w-3.5 h-3.5" />
+                          <span>Hapus Noda</span>
                         </button>
-                      ))}
-                      <button
-                        type="button"
-                        disabled={strokes.length === 0}
-                        onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-                        className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold inline-flex items-center gap-1 cursor-pointer"
-                      >
-                        <Undo2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={strokes.length === 0}
-                        onClick={() => setStrokes([])}
-                        className="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 font-bold cursor-pointer"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
 
-              {!editingExistingItem && isGoogleConnected && (
-                <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer px-1">
-                  <input
-                    type="checkbox"
-                    checked={uploadToDriveNow}
-                    onChange={(e) => setUploadToDriveNow(e.target.checked)}
-                    className="rounded border-slate-300 text-sky-700 focus:ring-sky-600 w-4 h-4"
-                  />
-                  <span>Simpan ke Google Drive &amp; Sheets</span>
-                </label>
+                        <button
+                          type="button"
+                          onClick={() => setMarkupTool('highlighter')}
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                            markupTool === 'highlighter'
+                              ? 'bg-amber-400 text-slate-950 border-amber-500'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          <Highlighter className="w-3.5 h-3.5" />
+                          <span>Stabilo</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setMarkupTool('redpen')}
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                            markupTool === 'redpen'
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          <PenTool className="w-3.5 h-3.5" />
+                          <span>Pena</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px]">
+                        {[
+                          { size: 8, label: 'S' },
+                          { size: 14, label: 'M' },
+                          { size: 24, label: 'L' },
+                        ].map((b) => (
+                          <button
+                            key={b.size}
+                            type="button"
+                            onClick={() => setBrushSize(b.size)}
+                            className={`w-7 h-7 rounded-lg font-bold border cursor-pointer ${
+                              brushSize === b.size
+                                ? 'bg-slate-900 text-white border-slate-900'
+                                : 'bg-white text-slate-600 border-slate-200'
+                            }`}
+                          >
+                            {b.label}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          disabled={strokes.length === 0}
+                          onClick={() => setStrokes((prev) => prev.slice(0, -1))}
+                          className="h-7 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-semibold inline-flex items-center cursor-pointer"
+                          title="Urungkan"
+                        >
+                          <Undo2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={strokes.length === 0}
+                          onClick={() => setStrokes([])}
+                          className="h-7 px-2 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 font-semibold cursor-pointer"
+                        >
+                          Bersihkan
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
-            {/* 4. Fixed CamScanner Bottom Tool Switcher & Action Footer */}
-            <div className="px-4 sm:px-5 pt-3 pb-4 border-t border-slate-200 bg-white space-y-3 shrink-0">
+            {/* 4. Clean Bottom Bar: [Potong] [Filter Warna] [Penyesuaian] [Hapus] + Primary Save */}
+            <div className="px-3 sm:px-4 py-2.5 border-t border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shrink-0">
               <div
                 role="tablist"
                 aria-label="Menu Alat Edit CamScanner"
-                className="grid grid-cols-4 gap-1.5 bg-slate-100 border border-slate-200/80 rounded-2xl p-1"
+                className="grid grid-cols-4 gap-1 bg-slate-100/90 rounded-xl p-1 flex-1"
               >
                 {(
                   [
                     { id: 'crop', label: 'Potong', icon: Crop },
-                    { id: 'filter', label: 'Filter', icon: Sparkles },
-                    { id: 'adjust', label: 'Kontras', icon: SlidersHorizontal },
+                    { id: 'filter', label: 'Filter Warna', icon: Sparkles },
+                    { id: 'adjust', label: 'Penyesuaian', icon: SlidersHorizontal },
                     { id: 'markup', label: 'Hapus', icon: Eraser },
                   ] as const
                 ).map((tab) => {
@@ -2338,26 +2247,42 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                       type="button"
                       role="tab"
                       aria-selected={active}
-                      onClick={() => setActiveToolTab(tab.id)}
+                      onClick={() => {
+                        if (activeToolTab === tab.id) {
+                          setIsToolSheetOpen((prev) => !prev);
+                        } else {
+                          setActiveToolTab(tab.id);
+                          setIsToolSheetOpen(true);
+                        }
+                      }}
                       data-testid={`camscanner-tab-${tab.id}`}
-                      className={`min-h-[42px] px-1.5 py-1 rounded-xl text-[10.5px] sm:text-xs font-bold flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
-                        active
-                          ? 'bg-emerald-600 text-white shadow-2xs'
-                          : 'text-slate-600 hover:bg-white hover:text-slate-900'
+                      className={`min-h-[40px] px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        active && isToolSheetOpen
+                          ? 'bg-white text-slate-900 shadow-xs font-bold'
+                          : active
+                            ? 'bg-white/70 text-slate-900'
+                            : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="truncate max-w-full">{tab.label}</span>
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{tab.label}</span>
+                      {active && (
+                        isToolSheetOpen ? (
+                          <ChevronDown className="w-3 h-3 text-slate-400 shrink-0 hidden sm:inline" />
+                        ) : (
+                          <ChevronUp className="w-3 h-3 text-slate-400 shrink-0 hidden sm:inline" />
+                        )
+                      )}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowScanStudio(false)}
-                  className="min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="min-h-[40px] px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
                   Batal
                 </button>
@@ -2365,15 +2290,11 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                   type="submit"
                   disabled={isUploading || isProcessingScan}
                   data-testid="submit-expense-btn"
-                  className="min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all cursor-pointer"
+                  className="min-h-[40px] px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                 >
-                  <Check className="w-4 h-4" />
+                  <Check className="w-3.5 h-3.5" />
                   <span>
-                    {isUploading || isProcessingScan
-                      ? 'Memproses...'
-                      : editingExistingItem
-                        ? 'Terapkan Perubahan Scan'
-                        : 'Simpan Hasil Scan'}
+                    {isUploading || isProcessingScan ? 'Menyimpan...' : 'Simpan'}
                   </span>
                 </button>
               </div>

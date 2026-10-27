@@ -30,6 +30,12 @@ import {
   Check,
   FileDown,
   ImagePlus,
+  ChevronDown,
+  ChevronUp,
+  FlipHorizontal2,
+  FlipVertical2,
+  Palette,
+  Eraser,
 } from 'lucide-react';
 import {
   DokumentasiPerjalananItem,
@@ -95,7 +101,7 @@ interface DokumentasiPerjalananSectionProps {
   onChangePaperSize: (size: PaperSize) => void;
 }
 
-type CamScannerToolTab = 'crop' | 'filter' | 'adjust';
+type CamScannerToolTab = 'crop' | 'filter' | 'adjust' | 'erase';
 type PrintGridMode = DocumentationPrintGridMode;
 
 /**
@@ -629,6 +635,9 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
     useState<DokumentasiPerjalananItem | null>(null);
   const [editingStagedFileId, setEditingStagedFileId] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<CamScannerToolTab>('crop');
+  const [isToolSheetOpen, setIsToolSheetOpen] = useState<boolean>(true);
+  const [showAngleSlider, setShowAngleSlider] = useState<boolean>(false);
+  const [deskewAngle, setDeskewAngle] = useState<number>(0);
   const [cropMode, setCropMode] = useState<'perspective' | 'rect'>('perspective');
   const [cornerPins, setCornerPins] = useState<CornerPinQuad>(DEFAULT_CORNER_PINS);
   const [isPerspectivePreview, setIsPerspectivePreview] = useState<boolean>(false);
@@ -1301,7 +1310,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
       {/* ===================================================================== */}
       {showScanStudio && (
         <div
-          className="no-print fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="no-print fixed inset-0 z-50 bg-slate-900/45 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="image-editor-title"
@@ -1311,81 +1320,124 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
         >
           <form
             onSubmit={handleSaveStudioEdit}
-            className="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl border border-slate-200 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden"
+            className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl border border-slate-200 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden"
           >
-            {/* Header */}
-            <div className="px-4 sm:px-5 py-2.5 border-b border-slate-200 bg-white shrink-0">
-              <div className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-2 sm:hidden" />
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-sky-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                    <Crop className="w-4 h-4" />
-                  </div>
-                  <h2
-                    id="image-editor-title"
-                    className="text-xs sm:text-sm font-extrabold text-slate-900 truncate"
-                  >
-                    Penyunting & Pemotong Gambar (Image Cropping & Editing Suite): {studioNamaFile}
-                  </h2>
+            {/* 1. Minimalist Top Bar */}
+            <div className="px-4 py-2.5 border-b border-slate-200/80 bg-white flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center shrink-0">
+                  <Crop className="w-3.5 h-3.5" />
                 </div>
+                <h2
+                  id="image-editor-title"
+                  className="text-xs sm:text-sm font-bold text-slate-900 truncate"
+                >
+                  {editingExistingItem
+                    ? editingExistingItem.judulKegiatan
+                    : 'Scan & Edit Nota'}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="relative min-h-[32px] px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-[11px] font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer overflow-hidden select-none">
+                  <UploadCloud className="w-3.5 h-3.5 text-slate-600 pointer-events-none" />
+                  <span className="pointer-events-none">Ganti Foto</span>
+                  <input
+                    id="doc-studio-file-input"
+                    type="file"
+                    accept="image/*"
+                    aria-label="Pilih Foto Galeri"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files || files.length === 0) return;
+                      const file = files[0];
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const res = typeof reader.result === 'string' ? reader.result : studioRawUrl;
+                        setStudioRawUrl(res);
+                        setStudioNamaFile(file.name);
+                        setStudioMimeType(file.type || 'image/png');
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setShowScanStudio(false)}
-                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 cursor-pointer"
+                  aria-label="Tutup studio edit"
+                  className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Canvas Stage & Tools */}
-            <div className="p-3 sm:p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-2.5 flex-1 bg-slate-100">
-              {/* Zoom Controls Toolbar Bar */}
-              <div className="flex items-center justify-between bg-white px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
-                <span className="font-semibold text-slate-700">Zoom Tampilan:</span>
-                <div className="flex items-center gap-2">
+            {/* 2. Spacious Canvas Stage */}
+            <div className="relative flex-1 min-h-[300px] sm:min-h-[380px] bg-slate-50 flex flex-col justify-between overflow-hidden select-none">
+              {/* Floating Stage Controls */}
+              <div className="absolute top-3 inset-x-3 z-30 flex items-center justify-between pointer-events-none">
+                {/* Zoom Pill */}
+                <div className="pointer-events-auto inline-flex items-center gap-0.5 bg-white/95 backdrop-blur-xs border border-slate-200/90 rounded-lg px-1.5 py-1 shadow-xs text-[11px]">
                   <button
                     type="button"
                     onClick={() => setZoomLevel((prev) => Math.max(1, prev - 0.25))}
-                    title="Perkecil (Zoom Out)"
-                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer"
+                    className="w-6 h-6 rounded hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
+                    title="Perkecil"
                   >
                     <ZoomOut className="w-3.5 h-3.5" />
                   </button>
-                  <span className="font-extrabold text-sky-800 w-12 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="font-mono font-semibold text-slate-700 px-1.5 hover:text-sky-700 cursor-pointer"
+                    title="Reset Zoom"
+                  >
                     {Math.round(zoomLevel * 100)}%
-                  </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => setZoomLevel((prev) => Math.min(3, prev + 0.25))}
-                    title="Perbesar (Zoom In)"
-                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold flex items-center justify-center cursor-pointer"
+                    className="w-6 h-6 rounded hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
+                    title="Perbesar"
                   >
                     <ZoomIn className="w-3.5 h-3.5" />
                   </button>
-                  {zoomLevel !== 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setZoomLevel(1)}
-                      className="px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 hover:bg-sky-100 font-semibold text-[11px] cursor-pointer"
-                    >
-                      Reset 100%
-                    </button>
-                  )}
                 </div>
+
+                {/* Perspective Flat Preview Toggle */}
+                {activeToolTab === 'crop' && cropMode === 'perspective' && (
+                  <button
+                    type="button"
+                    onClick={() => void handleTogglePerspectivePreview()}
+                    data-testid="doc-perspective-preview-btn"
+                    className={`pointer-events-auto min-h-[28px] px-2.5 py-1 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1.5 border shadow-xs transition-colors cursor-pointer ${
+                      isPerspectivePreview
+                        ? 'bg-emerald-600 text-white border-emerald-600'
+                        : 'bg-white/95 text-slate-700 border-slate-200/90 hover:bg-white'
+                    }`}
+                  >
+                    <Check className="w-3 h-3 shrink-0" />
+                    <span>{isPerspectivePreview ? 'Edit Sudut' : 'Pratinjau'}</span>
+                  </button>
+                )}
               </div>
 
-              <div className="relative w-full h-56 sm:h-72 rounded-2xl bg-slate-200/80 border border-slate-300/90 flex items-center justify-center overflow-hidden p-4 select-none">
+              {/* Center Interactive Canvas Stage */}
+              <div className="flex-1 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
                 {activeToolTab === 'crop' && cropMode === 'perspective' && !isPerspectivePreview ? (
                   <CanvasPerspectiveCropper
                     imageSrc={studioRawUrl}
-                    cornerPins={cornerPins}
-                    onChange={(nextPins) => {
+                    points={cornerPins}
+                    onChangePoints={(nextPins) => {
+                      setIsPerspectivePreview(false);
                       setCornerPins(nextPins);
                       setCropBox(cornerPinsToCropBox(nextPins));
                     }}
                     cssFilter={liveCssFilter}
-                    rotationDeg={rotationAngle}
+                    rotationDeg={rotationAngle + deskewAngle}
                     zoomLevel={zoomLevel}
                     flipH={flipH}
                     flipV={flipV}
@@ -1394,7 +1446,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                 ) : (
                   <div
                     ref={stageBoundsRef}
-                    className="relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg"
+                    className="relative inline-flex items-center justify-center bg-white shadow-md rounded-lg"
                   >
                     <div className="relative overflow-hidden rounded-lg flex items-center justify-center">
                       <img
@@ -1403,17 +1455,19 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                             ? perspectivePreviewUrl
                             : studioRawUrl
                         }
-                        alt={studioNamaFile}
+                        alt="Kanvas edit gambar"
                         referrerPolicy="no-referrer"
                         draggable={false}
                         style={{
                           filter: liveCssFilter,
-                          transform: `rotate(${rotationAngle}deg) scale(${zoomLevel}) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
+                          transform: `rotate(${rotationAngle + deskewAngle}deg) scale(${zoomLevel}) scaleX(${
+                            flipH ? -1 : 1
+                          }) scaleY(${flipV ? -1 : 1})`,
                         }}
-                        className="max-h-48 sm:max-h-64 w-auto object-contain transition-transform pointer-events-none"
+                        className="max-h-60 sm:max-h-72 w-auto object-contain transition-transform duration-150 pointer-events-none"
                       />
 
-                      {/* Crop Overlay */}
+                      {/* Rectangular Crop Overlay */}
                       {activeToolTab === 'crop' && cropMode === 'rect' && (
                         <div
                           className="pointer-events-none absolute border-2 border-sky-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)]"
@@ -1424,9 +1478,6 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                             bottom: `${cropBox.bottom}%`,
                           }}
                         >
-                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-sky-700/90 text-white text-[9px] font-extrabold tracking-wider uppercase">
-                            16:9 Lanskap
-                          </div>
                           <div className="w-full h-full grid grid-cols-3 grid-rows-3">
                             <div className="border-r border-b border-sky-400/40" />
                             <div className="border-r border-b border-sky-400/40" />
@@ -1441,66 +1492,319 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                         </div>
                       )}
                     </div>
-
-                    {/* Crop Handles */}
-                    {activeToolTab === 'crop' &&
-                      cropMode === 'rect' &&
-                      (
-                        [
-                          { id: 'tl', style: { top: `${cropBox.top}%`, left: `${cropBox.left}%` } },
-                          { id: 'tr', style: { top: `${cropBox.top}%`, right: `${cropBox.right}%` } },
-                          { id: 'bl', style: { bottom: `${cropBox.bottom}%`, left: `${cropBox.left}%` } },
-                          { id: 'br', style: { bottom: `${cropBox.bottom}%`, right: `${cropBox.right}%` } },
-                        ] as const
-                      ).map((h) => (
-                        <button
-                          key={h.id}
-                          type="button"
-                          aria-label={`Crop ${h.id}`}
-                          onMouseDown={(e) => {
-                            e.stopPropagation();
-                            setDraggingHandle(h.id);
-                          }}
-                          onTouchStart={(e) => {
-                            e.stopPropagation();
-                            setDraggingHandle(h.id);
-                          }}
-                          style={h.style}
-                          className={`absolute w-5 h-5 rounded-full bg-sky-600 border-2 border-white shadow-md cursor-grab z-20 ${
-                            h.id === 'tl'
-                              ? '-translate-x-1/2 -translate-y-1/2'
-                              : h.id === 'tr'
-                                ? 'translate-x-1/2 -translate-y-1/2'
-                                : h.id === 'bl'
-                                  ? '-translate-x-1/2 translate-y-1/2'
-                                  : 'translate-x-1/2 translate-y-1/2'
-                          }`}
-                        />
-                      ))}
                   </div>
                 )}
               </div>
 
-              {/* Tool Navigation Bar (No Markup Tab) */}
-              <div className="flex items-center justify-center gap-1 sm:gap-2 p-1.5 bg-white rounded-2xl border border-slate-200">
+              {/* 3. Progressive Disclosure: Expandable Contextual Bottom Sheet */}
+              {isToolSheetOpen && (
+                <div
+                  data-testid="doc-contextual-tool-bottom-sheet"
+                  className="bg-white/98 backdrop-blur-md border-t border-slate-200 px-3.5 pt-2 pb-3 shadow-lg z-30 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      {activeToolTab === 'crop'
+                        ? 'Potong & Perspektif'
+                        : activeToolTab === 'filter'
+                          ? 'Filter Warna'
+                          : activeToolTab === 'adjust'
+                            ? 'Penyesuaian'
+                            : 'Hapus Noda'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsToolSheetOpen(false)}
+                      aria-label="Tutup panel alat"
+                      className="w-6 h-6 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* SHEET 1: POTONG */}
+                  {activeToolTab === 'crop' && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('perspective');
+                            setIsPerspectivePreview(false);
+                          }}
+                          data-testid="doc-crop-mode-perspective-btn"
+                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
+                            cropMode === 'perspective'
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Crop className="w-3.5 h-3.5" />
+                          <span>4 Sudut</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('rect');
+                            setIsPerspectivePreview(false);
+                            setCropBox(cornerPinsToCropBox(cornerPins));
+                          }}
+                          data-testid="doc-crop-mode-rect-btn"
+                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
+                            cropMode === 'rect'
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <Maximize2 className="w-3.5 h-3.5" />
+                          <span>Persegi</span>
+                        </button>
+
+                        <div className="w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
+
+                        <button
+                          type="button"
+                          onClick={() => void handleRunSmartCrop()}
+                          data-testid="doc-smart-crop-btn"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Auto-Fit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setRotationAngle((prev) => ((prev - 90) % 360 + 360) % 360)}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                          title="Putar Kiri 90°"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Kiri</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setRotationAngle((prev) => getNextRotationAngle(prev))}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                          title="Putar Kanan 90°"
+                        >
+                          <RotateCw className="w-3.5 h-3.5" />
+                          <span>Kanan</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFlipH((prev) => !prev)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            flipH
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                          title="Balik Horizontal"
+                        >
+                          <FlipHorizontal2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setFlipV((prev) => !prev)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            flipV
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                          title="Balik Vertikal"
+                        >
+                          <FlipVertical2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowAngleSlider((prev) => !prev)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                            showAngleSlider || deskewAngle !== 0
+                              ? 'bg-sky-50 border-sky-300 text-sky-800'
+                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                          }`}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                          <span>Sudut</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
+                            setCropBox(fullBox);
+                            setCornerPins(cropBoxToCornerPins(fullBox));
+                            setIsPerspectivePreview(false);
+                            setDeskewAngle(0);
+                          }}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                        >
+                          <span>Reset</span>
+                        </button>
+                      </div>
+
+                      {showAngleSlider && (
+                        <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200 text-xs">
+                          <span className="font-semibold text-slate-700 shrink-0">Luruskan Sudut:</span>
+                          <input
+                            type="range"
+                            min="-15"
+                            max="15"
+                            step="0.5"
+                            value={deskewAngle}
+                            onChange={(e) => setDeskewAngle(Number(e.target.value))}
+                            className="flex-1 accent-sky-700 cursor-pointer"
+                          />
+                          <span className="font-mono text-slate-900 font-bold w-10 text-right shrink-0">
+                            {deskewAngle > 0 ? `+${deskewAngle}°` : `${deskewAngle}°`}
+                          </span>
+                          {deskewAngle !== 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setDeskewAngle(0)}
+                              className="text-[10px] text-sky-700 font-bold hover:underline shrink-0"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* SHEET 2: FILTER WARNA */}
+                  {activeToolTab === 'filter' && (
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                      {CAMSCANNER_FILTERS.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => setScanFilter(f.id)}
+                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold shrink-0 border transition-all cursor-pointer ${
+                            scanFilter === f.id
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {f.shortLabel}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* SHEET 3: PENYESUAIAN */}
+                  {activeToolTab === 'adjust' && (
+                    <div className="grid grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                          <span>Kecerahan</span>
+                          <span className="font-mono font-bold text-slate-900">{brightness}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          value={brightness}
+                          onChange={(e) => setBrightness(Number(e.target.value))}
+                          className="w-full accent-sky-700 cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                          <span>Kontras</span>
+                          <span className="font-mono font-bold text-slate-900">{contrast}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          value={contrast}
+                          onChange={(e) => setContrast(Number(e.target.value))}
+                          className="w-full accent-sky-700 cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold text-slate-600 mb-1">
+                          <span>Clarity</span>
+                          <span className="font-mono font-bold text-slate-900">{clarity}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="-50"
+                          max="50"
+                          value={clarity}
+                          onChange={(e) => setClarity(Number(e.target.value))}
+                          className="w-full accent-sky-700 cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SHEET 4: HAPUS */}
+                  {activeToolTab === 'erase' && (
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-slate-600">
+                        Reset semua penyesuaian &amp; filter ke gambar asli:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setScanFilter('original');
+                          setBrightness(0);
+                          setContrast(0);
+                          setClarity(0);
+                          setRotationAngle(0);
+                          setDeskewAngle(0);
+                          setFlipH(false);
+                          setFlipV(false);
+                          setCornerPins(DEFAULT_CORNER_PINS);
+                          setCropBox({ top: 4, left: 4, right: 4, bottom: 4 });
+                          triggerToast('Semua filter & penyesuaian telah direset');
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold shrink-0 cursor-pointer"
+                      >
+                        Reset Semua Perubahan
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Streamlined Main Bottom Toolbar & Action Bar */}
+            <div className="px-3 sm:px-4 py-2 border-t border-slate-200/80 bg-white flex items-center justify-between gap-2 shrink-0">
+              {/* Primary Tool Icons Pill Bar */}
+              <div className="inline-flex items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/80">
                 {(
                   [
-                    { id: 'crop', label: 'Perspective Crop & Rotasi', icon: Crop },
-                    { id: 'filter', label: 'Filter Scan', icon: Sparkles },
-                    { id: 'adjust', label: 'Cerah/Kontras', icon: SlidersHorizontal },
+                    { id: 'crop', label: 'Potong', icon: Crop },
+                    { id: 'filter', label: 'Filter Warna', icon: Palette },
+                    { id: 'adjust', label: 'Penyesuaian', icon: SlidersHorizontal },
+                    { id: 'erase', label: 'Hapus', icon: Eraser },
                   ] as const
                 ).map((t) => {
                   const IconComp = t.icon;
-                  const isActive = activeToolTab === t.id;
+                  const isActive = activeToolTab === t.id && isToolSheetOpen;
                   return (
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setActiveToolTab(t.id)}
-                      className={`min-h-[36px] px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      onClick={() => {
+                        if (activeToolTab === t.id && isToolSheetOpen) {
+                          setIsToolSheetOpen(false);
+                        } else {
+                          setActiveToolTab(t.id);
+                          setIsToolSheetOpen(true);
+                        }
+                      }}
+                      className={`min-h-[34px] px-2.5 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer ${
                         isActive
-                          ? 'bg-sky-700 text-white shadow-xs'
-                          : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-700 hover:bg-white/80'
                       }`}
                     >
                       <IconComp className="w-3.5 h-3.5 shrink-0" />
@@ -1510,341 +1814,25 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                 })}
               </div>
 
-              {/* Tool Panels */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4 space-y-3">
-                {activeToolTab === 'crop' && (
-                  <div className="space-y-3">
-                    {/* Crop Mode Switcher: Perspective Crop (Corner-Pin) vs Potong 16:9 */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <div className="grid grid-cols-2 gap-1 flex-1 min-w-[220px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCropMode('perspective');
-                            setIsPerspectivePreview(false);
-                          }}
-                          data-testid="doc-crop-mode-perspective-btn"
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            cropMode === 'perspective'
-                              ? 'bg-emerald-600 text-white shadow-2xs'
-                              : 'text-slate-700 hover:bg-white/70'
-                          }`}
-                        >
-                          <Crop className="w-3.5 h-3.5 shrink-0" />
-                          <span>Perspective Crop (Corner-Pin)</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCropMode('rect');
-                            setIsPerspectivePreview(false);
-                            setCropBox(cornerPinsToCropBox(cornerPins));
-                          }}
-                          data-testid="doc-crop-mode-rect-btn"
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            cropMode === 'rect'
-                              ? 'bg-sky-700 text-white shadow-2xs'
-                              : 'text-slate-700 hover:bg-white/70'
-                          }`}
-                        >
-                          <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-                          <span>Bingkai 16:9 Lanskap</span>
-                        </button>
-                      </div>
+              {/* Primary Form Save Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowScanStudio(false)}
+                  className="min-h-[36px] px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer"
+                >
+                  Batal
+                </button>
 
-                      <div className="flex items-center gap-1.5">
-                        {cropMode === 'perspective' && (
-                          <button
-                            type="button"
-                            onClick={() => void handleTogglePerspectivePreview()}
-                            data-testid="doc-perspective-preview-btn"
-                            className={`min-h-[32px] px-3 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
-                              isPerspectivePreview
-                                ? 'bg-amber-500 text-slate-950 border-amber-600'
-                                : 'bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300'
-                            }`}
-                          >
-                            <Check className="w-3.5 h-3.5 shrink-0" />
-                            <span>
-                              {isPerspectivePreview
-                                ? 'Edit 4 Handle Sudut'
-                                : 'Pratinjau Perspektif'}
-                            </span>
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => void handleRunSmartCrop()}
-                          className="min-h-[32px] px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <ScanLine className="w-3.5 h-3.5" />
-                          <span>Deteksi 4 Sudut</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {cropMode === 'perspective' && (
-                      <div className="bg-emerald-50/60 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-1.5">
-                        <span className="text-[10.5px] font-bold text-emerald-950">
-                          Tarik 4 handle sudut (TL, TR, BR, BL) untuk meluruskan perspektif dokumen:
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              setCornerPins({
-                                tl: { x: 14, y: 6 },
-                                tr: { x: 86, y: 6 },
-                                br: { x: 96, y: 94 },
-                                bl: { x: 4, y: 94 },
-                              });
-                              triggerToast('Preset trapesium atas diterapkan');
-                            }}
-                            className="px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 border border-emerald-300 text-[10px] font-bold text-emerald-900 cursor-pointer"
-                          >
-                            Atas Sempit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              setCornerPins({
-                                tl: { x: 4, y: 6 },
-                                tr: { x: 96, y: 6 },
-                                br: { x: 86, y: 94 },
-                                bl: { x: 14, y: 94 },
-                              });
-                              triggerToast('Preset trapesium bawah diterapkan');
-                            }}
-                            className="px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 border border-emerald-300 text-[10px] font-bold text-emerald-900 cursor-pointer"
-                          >
-                            Bawah Sempit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPerspectivePreview(false);
-                              setCornerPins(DEFAULT_CORNER_PINS);
-                              setCropBox({ top: 4, left: 4, right: 4, bottom: 4 });
-                              triggerToast('4 titik sudut direset');
-                            }}
-                            className="px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 cursor-pointer"
-                          >
-                            Reset 4 Sudut
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <span className="font-semibold text-slate-700">
-                          Preset Posisi Framing 16:9 Lanskap:
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => apply16to9Crop(-10, 0)}
-                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
-                          >
-                            Fokus Atas
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => apply16to9Crop(0, 0)}
-                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
-                          >
-                            Tengah
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => apply16to9Crop(10, 0)}
-                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
-                          >
-                            Fokus Bawah
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => apply16to9Crop(0, -10)}
-                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
-                          >
-                            Fokus Kiri
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => apply16to9Crop(0, 10)}
-                            className="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer"
-                          >
-                            Fokus Kanan
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
-                        <div>
-                          <div className="flex justify-between text-[11px] font-semibold text-slate-700 mb-1">
-                            <span>Geser Framing Vertikal (Atas ↔ Bawah)</span>
-                            <span className="font-mono text-sky-700 font-bold">{panShiftY > 0 ? `+${panShiftY}%` : `${panShiftY}%`}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="-20"
-                            max="20"
-                            value={panShiftY}
-                            onChange={(e) => apply16to9Crop(Number(e.target.value), panShiftX)}
-                            className="w-full accent-sky-700 cursor-pointer"
-                          />
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-[11px] font-semibold text-slate-700 mb-1">
-                            <span>Geser Framing Horizontal (Kiri ↔ Kanan)</span>
-                            <span className="font-mono text-sky-700 font-bold">{panShiftX > 0 ? `+${panShiftX}%` : `${panShiftX}%`}</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="-20"
-                            max="20"
-                            value={panShiftX}
-                            onChange={(e) => apply16to9Crop(panShiftY, Number(e.target.value))}
-                            className="w-full accent-sky-700 cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-[10.5px] text-slate-500 italic">
-                        * Gunakan Perspective Crop (4 handle sudut) untuk meratakan dokumen miring menjadi persegi panjang datar.
-                      </p>
-                    </div>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setRotationAngle((prev) => ((prev - 90) % 360 + 360) % 360)}
-                          className="min-h-[34px] px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5 text-sky-700" />
-                          <span>Putar Kiri 90°</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRotationAngle((prev) => getNextRotationAngle(prev))}
-                          className="min-h-[34px] px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <RotateCw className="w-3.5 h-3.5 text-sky-700" />
-                          <span>Putar Kanan 90°</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setFlipH(!flipH)}
-                          className={`min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                            flipH ? 'bg-sky-50 border-sky-300 text-sky-800' : 'bg-slate-50 border-slate-200 text-slate-700'
-                          }`}
-                        >
-                          Flip Horiz
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFlipV(!flipV)}
-                          className={`min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                            flipV ? 'bg-sky-50 border-sky-300 text-sky-800' : 'bg-slate-50 border-slate-200 text-slate-700'
-                          }`}
-                        >
-                          Flip Vert
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeToolTab === 'filter' && (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {CAMSCANNER_FILTERS.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => setScanFilter(f.id)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                          scanFilter === f.id
-                            ? 'bg-sky-50 border-sky-600 text-sky-900 font-bold shadow-2xs'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="text-xs font-bold">{f.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {activeToolTab === 'adjust' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                        <span>Kecerahan</span>
-                        <span>{brightness}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={brightness}
-                        onChange={(e) => setBrightness(Number(e.target.value))}
-                        className="w-full accent-sky-700"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                        <span>Kontras</span>
-                        <span>{contrast}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={contrast}
-                        onChange={(e) => setContrast(Number(e.target.value))}
-                        className="w-full accent-sky-700"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold text-slate-700 mb-1">
-                        <span>Kejenuhan / Clarity</span>
-                        <span>{clarity}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="-50"
-                        max="50"
-                        value={clarity}
-                        onChange={(e) => setClarity(Number(e.target.value))}
-                        className="w-full accent-sky-700"
-                      />
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="submit"
+                  disabled={isProcessingStudio}
+                  className="min-h-[36px] px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{isProcessingStudio ? 'Memproses...' : 'Terapkan & Simpan Foto'}</span>
+                </button>
               </div>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="px-4 sm:px-5 py-3 border-t border-slate-200 bg-white flex items-center justify-end gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowScanStudio(false)}
-                className="min-h-[40px] px-4 py-2 rounded-xl border border-slate-300 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isProcessingStudio}
-                className="min-h-[40px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 disabled:opacity-60 text-white text-xs font-bold flex items-center gap-2 shadow-sm cursor-pointer"
-              >
-                <Check className="w-4 h-4" />
-                <span>{isProcessingStudio ? 'Memproses...' : 'Terapkan & Simpan Foto'}</span>
-              </button>
             </div>
           </form>
         </div>
