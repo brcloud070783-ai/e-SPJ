@@ -57,6 +57,14 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
+import {
+  CanvasPerspectiveCropper,
+  CornerPinQuad,
+  DEFAULT_CORNER_PINS,
+  cropBoxToCornerPins,
+  cornerPinsToCropBox,
+  warpPerspectiveImageToCanvas,
+} from './CanvasPerspectiveCropper';
 
 interface StagedDocFile {
   id: string;
@@ -69,6 +77,7 @@ interface StagedDocFile {
   scanFilter?: ReceiptScanFilter;
   cropPercent?: number;
   zoomLevel?: number;
+  cornerPins?: CornerPinQuad;
 }
 
 interface DokumentasiPerjalananSectionProps {
@@ -385,6 +394,8 @@ async function detectSmartPaperCropAndSkew(
 async function renderCamScannerOutputCanvas(params: {
   sourceDataUrl: string;
   cropBox: CropBoxPercent;
+  cornerPins?: CornerPinQuad;
+  cropMode?: 'perspective' | 'rect';
   rotationAngle: number;
   zoomLevel: number;
   flipH: boolean;
@@ -398,6 +409,8 @@ async function renderCamScannerOutputCanvas(params: {
   const {
     sourceDataUrl,
     cropBox,
+    cornerPins,
+    cropMode = 'rect',
     rotationAngle,
     zoomLevel = 1,
     flipH,
@@ -424,21 +437,38 @@ async function renderCamScannerOutputCanvas(params: {
           return;
         }
 
-        const zoomInset = zoomLevel > 1 ? (1 - 1 / zoomLevel) * 50 : 0;
-        const effectiveTop = Math.max(0, cropBox.top + zoomInset);
-        const effectiveLeft = Math.max(0, cropBox.left + zoomInset);
-        const effectiveRight = Math.max(0, cropBox.right + zoomInset);
-        const effectiveBottom = Math.max(0, cropBox.bottom + zoomInset);
+        let sourceElement: HTMLImageElement | HTMLCanvasElement = img;
+        let sx = 0;
+        let sy = 0;
+        let sw = rawW;
+        let sh = rawH;
 
-        const leftRatio = Math.max(0, Math.min(0.48, effectiveLeft / 100));
-        const topRatio = Math.max(0, Math.min(0.48, effectiveTop / 100));
-        const rightRatio = Math.max(0, Math.min(0.48, effectiveRight / 100));
-        const bottomRatio = Math.max(0, Math.min(0.48, effectiveBottom / 100));
+        if (cropMode === 'perspective' && cornerPins) {
+          const warped = warpPerspectiveImageToCanvas(img, cornerPins);
+          if (warped) {
+            sourceElement = warped;
+            sx = 0;
+            sy = 0;
+            sw = warped.width;
+            sh = warped.height;
+          }
+        } else {
+          const zoomInset = zoomLevel > 1 ? (1 - 1 / zoomLevel) * 50 : 0;
+          const effectiveTop = Math.max(0, cropBox.top + zoomInset);
+          const effectiveLeft = Math.max(0, cropBox.left + zoomInset);
+          const effectiveRight = Math.max(0, cropBox.right + zoomInset);
+          const effectiveBottom = Math.max(0, cropBox.bottom + zoomInset);
 
-        const sx = Math.round(rawW * leftRatio);
-        const sy = Math.round(rawH * topRatio);
-        const sw = Math.max(16, Math.round(rawW * (1 - leftRatio - rightRatio)));
-        const sh = Math.max(16, Math.round(rawH * (1 - topRatio - bottomRatio)));
+          const leftRatio = Math.max(0, Math.min(0.48, effectiveLeft / 100));
+          const topRatio = Math.max(0, Math.min(0.48, effectiveTop / 100));
+          const rightRatio = Math.max(0, Math.min(0.48, effectiveRight / 100));
+          const bottomRatio = Math.max(0, Math.min(0.48, effectiveBottom / 100));
+
+          sx = Math.round(rawW * leftRatio);
+          sy = Math.round(rawH * topRatio);
+          sw = Math.max(16, Math.round(rawW * (1 - leftRatio - rightRatio)));
+          sh = Math.max(16, Math.round(rawH * (1 - topRatio - bottomRatio)));
+        }
 
         const normAngle = ((Math.round((rotationAngle || 0) / 90) * 90) % 360 + 360) % 360;
         const swapDims = normAngle === 90 || normAngle === 270;
@@ -472,7 +502,7 @@ async function renderCamScannerOutputCanvas(params: {
           ctx.rotate((normAngle * Math.PI) / 180);
         }
         ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
-        ctx.drawImage(img, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
+        ctx.drawImage(sourceElement, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
         ctx.restore();
 
         const outMime =
@@ -599,6 +629,10 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
     useState<DokumentasiPerjalananItem | null>(null);
   const [editingStagedFileId, setEditingStagedFileId] = useState<string | null>(null);
   const [activeToolTab, setActiveToolTab] = useState<CamScannerToolTab>('crop');
+  const [cropMode, setCropMode] = useState<'perspective' | 'rect'>('perspective');
+  const [cornerPins, setCornerPins] = useState<CornerPinQuad>(DEFAULT_CORNER_PINS);
+  const [isPerspectivePreview, setIsPerspectivePreview] = useState<boolean>(false);
+  const [perspectivePreviewUrl, setPerspectivePreviewUrl] = useState<string | null>(null);
   const [studioRawUrl, setStudioRawUrl] = useState<string>(SAMPLE_DOC_PHOTO_1);
   const [studioNamaFile, setStudioNamaFile] = useState<string>('dokumentasi.png');
   const [studioMimeType, setStudioMimeType] = useState<string>('image/png');
@@ -735,7 +769,26 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
         shiftX
       );
       setCropBox(box);
+      setCornerPins(cropBoxToCornerPins(box));
+      setIsPerspectivePreview(false);
       triggerToast('Preset rasio 16:9 lanskap diterapkan');
+    };
+    img.src = studioRawUrl;
+  };
+
+  const handleTogglePerspectivePreview = async () => {
+    if (isPerspectivePreview) {
+      setIsPerspectivePreview(false);
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      const warped = warpPerspectiveImageToCanvas(img, cornerPins);
+      if (warped) {
+        setPerspectivePreviewUrl(warped.toDataURL('image/jpeg', 0.92));
+        setIsPerspectivePreview(true);
+        triggerToast('Pratinjau dokumen datar (Perspective Crop) ditampilkan');
+      }
     };
     img.src = studioRawUrl;
   };
@@ -758,13 +811,18 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
     setPanShiftY(0);
     setPanShiftX(0);
     setActiveToolTab('crop');
+    setCropMode('perspective');
+    setIsPerspectivePreview(false);
+    setPerspectivePreviewUrl(null);
 
-    // Auto-calculate exact 16:9 landscape crop
     const img = new Image();
     img.onload = () => {
-      setCropBox(
-        calculate16to9CropBox(img.naturalWidth || img.width, img.naturalHeight || img.height)
+      const box = calculate16to9CropBox(
+        img.naturalWidth || img.width,
+        img.naturalHeight || img.height
       );
+      setCropBox(box);
+      setCornerPins(staged.cornerPins || cropBoxToCornerPins(box));
     };
     img.src = rawUrl;
 
@@ -790,13 +848,18 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
     setPanShiftY(0);
     setPanShiftX(0);
     setActiveToolTab('crop');
+    setCropMode('perspective');
+    setIsPerspectivePreview(false);
+    setPerspectivePreviewUrl(null);
 
-    // Auto-calculate exact 16:9 landscape crop
     const img = new Image();
     img.onload = () => {
-      setCropBox(
-        calculate16to9CropBox(img.naturalWidth || img.width, img.naturalHeight || img.height)
+      const box = calculate16to9CropBox(
+        img.naturalWidth || img.width,
+        img.naturalHeight || img.height
       );
+      setCropBox(box);
+      setCornerPins(cropBoxToCornerPins(box));
     };
     img.src = rawUrl;
 
@@ -835,6 +898,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
       const rotated = await renderCamScannerOutputCanvas({
         sourceDataUrl: item.fotoDataUrl,
         cropBox: { top: 0, left: 0, right: 0, bottom: 0 },
+        cropMode: 'rect',
         rotationAngle: 90,
         zoomLevel: 1,
         flipH: false,
@@ -863,9 +927,13 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
     e.preventDefault();
     setIsProcessingStudio(true);
     try {
+      const effectiveCropBox =
+        cropMode === 'perspective' ? cornerPinsToCropBox(cornerPins) : cropBox;
       const processed = await renderCamScannerOutputCanvas({
         sourceDataUrl: studioRawUrl,
-        cropBox,
+        cropBox: effectiveCropBox,
+        cornerPins,
+        cropMode,
         rotationAngle,
         zoomLevel,
         flipH,
@@ -878,7 +946,13 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
       });
 
       const finalUrl = processed ? processed.processedDataUrl : studioRawUrl;
-      const avgCrop = Math.round((cropBox.top + cropBox.left + cropBox.right + cropBox.bottom) / 4);
+      const avgCrop = Math.round(
+        (effectiveCropBox.top +
+          effectiveCropBox.left +
+          effectiveCropBox.right +
+          effectiveCropBox.bottom) /
+          4
+      );
 
       if (editingStagedFileId) {
         setStagedFiles((prev) =>
@@ -892,12 +966,13 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                   zoomLevel,
                   scanFilter,
                   cropPercent: avgCrop,
+                  cornerPins,
                 }
               : f
           )
         );
         setShowScanStudio(false);
-        triggerToast('Penyuntingan foto berhasil diterapkan');
+        triggerToast('Perspective Crop & penyuntingan foto berhasil diterapkan');
       } else if (editingExistingItem && onUpdateItem) {
         onUpdateItem({
           ...editingExistingItem,
@@ -909,7 +984,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
         });
         setShowScanStudio(false);
         setEditingExistingItem(null);
-        triggerToast('Perubahan dokumentasi berhasil disimpan');
+        triggerToast('Perubahan Perspective Crop dokumentasi berhasil disimpan');
       }
     } finally {
       setIsProcessingStudio(false);
@@ -917,18 +992,12 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
   };
 
   const handleRunSmartCrop = async () => {
-    const img = new Image();
-    img.onload = () => {
-      const box = calculate16to9CropBox(
-        img.naturalWidth || img.width,
-        img.naturalHeight || img.height,
-        0
-      );
-      setCropBox(box);
-      setZoomLevel(1);
-      triggerToast('Crop rasio 16:9 landscape presisi diterapkan');
-    };
-    img.src = studioRawUrl;
+    const detected = await detectSmartPaperCropAndSkew(studioRawUrl);
+    setCropBox(detected.cropBox);
+    setCornerPins(cropBoxToCornerPins(detected.cropBox));
+    setIsPerspectivePreview(false);
+    setZoomLevel(1);
+    triggerToast('Deteksi 4 sudut otomatis diterapkan');
   };
 
   const handleRetrySync = async (item: DokumentasiPerjalananItem) => {
@@ -1307,94 +1376,116 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
               </div>
 
               <div className="relative w-full h-56 sm:h-72 rounded-2xl bg-slate-200/80 border border-slate-300/90 flex items-center justify-center overflow-hidden p-4 select-none">
-                <div
-                  ref={stageBoundsRef}
-                  className="relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg"
-                >
-                  <div className="relative overflow-hidden rounded-lg flex items-center justify-center">
-                    <img
-                      src={studioRawUrl}
-                      alt={studioNamaFile}
-                      referrerPolicy="no-referrer"
-                      draggable={false}
-                      style={{
-                        filter: liveCssFilter,
-                        transform: `rotate(${rotationAngle}deg) scale(${zoomLevel}) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
-                      }}
-                      className="max-h-48 sm:max-h-64 w-auto object-contain transition-transform pointer-events-none"
-                    />
-
-                    {/* Crop Overlay */}
-                    {activeToolTab === 'crop' && (
-                      <div
-                        className="pointer-events-none absolute border-2 border-sky-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)]"
+                {activeToolTab === 'crop' && cropMode === 'perspective' && !isPerspectivePreview ? (
+                  <CanvasPerspectiveCropper
+                    imageSrc={studioRawUrl}
+                    cornerPins={cornerPins}
+                    onChange={(nextPins) => {
+                      setCornerPins(nextPins);
+                      setCropBox(cornerPinsToCropBox(nextPins));
+                    }}
+                    cssFilter={liveCssFilter}
+                    rotationDeg={rotationAngle}
+                    zoomLevel={zoomLevel}
+                    flipH={flipH}
+                    flipV={flipV}
+                    showHandles={true}
+                  />
+                ) : (
+                  <div
+                    ref={stageBoundsRef}
+                    className="relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg"
+                  >
+                    <div className="relative overflow-hidden rounded-lg flex items-center justify-center">
+                      <img
+                        src={
+                          isPerspectivePreview && perspectivePreviewUrl
+                            ? perspectivePreviewUrl
+                            : studioRawUrl
+                        }
+                        alt={studioNamaFile}
+                        referrerPolicy="no-referrer"
+                        draggable={false}
                         style={{
-                          top: `${cropBox.top}%`,
-                          left: `${cropBox.left}%`,
-                          right: `${cropBox.right}%`,
-                          bottom: `${cropBox.bottom}%`,
+                          filter: liveCssFilter,
+                          transform: `rotate(${rotationAngle}deg) scale(${zoomLevel}) scaleX(${flipH ? -1 : 1}) scaleY(${flipV ? -1 : 1})`,
                         }}
-                      >
-                        <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-sky-700/90 text-white text-[9px] font-extrabold tracking-wider uppercase">
-                          16:9 Lanskap
-                        </div>
-                        <div className="w-full h-full grid grid-cols-3 grid-rows-3">
-                          <div className="border-r border-b border-sky-400/40" />
-                          <div className="border-r border-b border-sky-400/40" />
-                          <div className="border-b border-sky-400/40" />
-                          <div className="border-r border-b border-sky-400/40" />
-                          <div className="border-r border-b border-sky-400/40" />
-                          <div className="border-b border-sky-400/40" />
-                          <div className="border-r border-sky-400/40" />
-                          <div className="border-r border-sky-400/40" />
-                          <div />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Crop Handles */}
-                  {activeToolTab === 'crop' &&
-                    (
-                      [
-                        { id: 'tl', style: { top: `${cropBox.top}%`, left: `${cropBox.left}%` } },
-                        { id: 'tr', style: { top: `${cropBox.top}%`, right: `${cropBox.right}%` } },
-                        { id: 'bl', style: { bottom: `${cropBox.bottom}%`, left: `${cropBox.left}%` } },
-                        { id: 'br', style: { bottom: `${cropBox.bottom}%`, right: `${cropBox.right}%` } },
-                      ] as const
-                    ).map((h) => (
-                      <button
-                        key={h.id}
-                        type="button"
-                        aria-label={`Crop ${h.id}`}
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle(h.id);
-                        }}
-                        onTouchStart={(e) => {
-                          e.stopPropagation();
-                          setDraggingHandle(h.id);
-                        }}
-                        style={h.style}
-                        className={`absolute w-5 h-5 rounded-full bg-sky-600 border-2 border-white shadow-md cursor-grab z-20 ${
-                          h.id === 'tl'
-                            ? '-translate-x-1/2 -translate-y-1/2'
-                            : h.id === 'tr'
-                              ? 'translate-x-1/2 -translate-y-1/2'
-                              : h.id === 'bl'
-                                ? '-translate-x-1/2 translate-y-1/2'
-                                : 'translate-x-1/2 translate-y-1/2'
-                        }`}
+                        className="max-h-48 sm:max-h-64 w-auto object-contain transition-transform pointer-events-none"
                       />
-                    ))}
-                </div>
+
+                      {/* Crop Overlay */}
+                      {activeToolTab === 'crop' && cropMode === 'rect' && (
+                        <div
+                          className="pointer-events-none absolute border-2 border-sky-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)]"
+                          style={{
+                            top: `${cropBox.top}%`,
+                            left: `${cropBox.left}%`,
+                            right: `${cropBox.right}%`,
+                            bottom: `${cropBox.bottom}%`,
+                          }}
+                        >
+                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-sky-700/90 text-white text-[9px] font-extrabold tracking-wider uppercase">
+                            16:9 Lanskap
+                          </div>
+                          <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                            <div className="border-r border-b border-sky-400/40" />
+                            <div className="border-r border-b border-sky-400/40" />
+                            <div className="border-b border-sky-400/40" />
+                            <div className="border-r border-b border-sky-400/40" />
+                            <div className="border-r border-b border-sky-400/40" />
+                            <div className="border-b border-sky-400/40" />
+                            <div className="border-r border-sky-400/40" />
+                            <div className="border-r border-sky-400/40" />
+                            <div />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Crop Handles */}
+                    {activeToolTab === 'crop' &&
+                      cropMode === 'rect' &&
+                      (
+                        [
+                          { id: 'tl', style: { top: `${cropBox.top}%`, left: `${cropBox.left}%` } },
+                          { id: 'tr', style: { top: `${cropBox.top}%`, right: `${cropBox.right}%` } },
+                          { id: 'bl', style: { bottom: `${cropBox.bottom}%`, left: `${cropBox.left}%` } },
+                          { id: 'br', style: { bottom: `${cropBox.bottom}%`, right: `${cropBox.right}%` } },
+                        ] as const
+                      ).map((h) => (
+                        <button
+                          key={h.id}
+                          type="button"
+                          aria-label={`Crop ${h.id}`}
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle(h.id);
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation();
+                            setDraggingHandle(h.id);
+                          }}
+                          style={h.style}
+                          className={`absolute w-5 h-5 rounded-full bg-sky-600 border-2 border-white shadow-md cursor-grab z-20 ${
+                            h.id === 'tl'
+                              ? '-translate-x-1/2 -translate-y-1/2'
+                              : h.id === 'tr'
+                                ? 'translate-x-1/2 -translate-y-1/2'
+                                : h.id === 'bl'
+                                  ? '-translate-x-1/2 translate-y-1/2'
+                                  : 'translate-x-1/2 translate-y-1/2'
+                          }`}
+                        />
+                      ))}
+                  </div>
+                )}
               </div>
 
               {/* Tool Navigation Bar (No Markup Tab) */}
               <div className="flex items-center justify-center gap-1 sm:gap-2 p-1.5 bg-white rounded-2xl border border-slate-200">
                 {(
                   [
-                    { id: 'crop', label: 'Crop & Rotasi', icon: Crop },
+                    { id: 'crop', label: 'Perspective Crop & Rotasi', icon: Crop },
                     { id: 'filter', label: 'Filter Scan', icon: Sparkles },
                     { id: 'adjust', label: 'Cerah/Kontras', icon: SlidersHorizontal },
                   ] as const
@@ -1423,26 +1514,128 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
               <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4 space-y-3">
                 {activeToolTab === 'crop' && (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-700 text-white text-xs font-bold shadow-xs">
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Rasio 16:9 Lanskap (Grid Cetak)</span>
-                        </span>
-                        <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                          Format baku untuk seluruh kotak grid dokumentasi
-                        </span>
+                    {/* Crop Mode Switcher: Perspective Crop (Corner-Pin) vs Potong 16:9 */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <div className="grid grid-cols-2 gap-1 flex-1 min-w-[220px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('perspective');
+                            setIsPerspectivePreview(false);
+                          }}
+                          data-testid="doc-crop-mode-perspective-btn"
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            cropMode === 'perspective'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'text-slate-700 hover:bg-white/70'
+                          }`}
+                        >
+                          <Crop className="w-3.5 h-3.5 shrink-0" />
+                          <span>Perspective Crop (Corner-Pin)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('rect');
+                            setIsPerspectivePreview(false);
+                            setCropBox(cornerPinsToCropBox(cornerPins));
+                          }}
+                          data-testid="doc-crop-mode-rect-btn"
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            cropMode === 'rect'
+                              ? 'bg-sky-700 text-white shadow-2xs'
+                              : 'text-slate-700 hover:bg-white/70'
+                          }`}
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Bingkai 16:9 Lanskap</span>
+                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleRunSmartCrop}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <ScanLine className="w-3.5 h-3.5" />
-                        <span>Reset ke 16:9 Presisi</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {cropMode === 'perspective' && (
+                          <button
+                            type="button"
+                            onClick={() => void handleTogglePerspectivePreview()}
+                            data-testid="doc-perspective-preview-btn"
+                            className={`min-h-[32px] px-3 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
+                              isPerspectivePreview
+                                ? 'bg-amber-500 text-slate-950 border-amber-600'
+                                : 'bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300'
+                            }`}
+                          >
+                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            <span>
+                              {isPerspectivePreview
+                                ? 'Edit 4 Handle Sudut'
+                                : 'Pratinjau Perspektif'}
+                            </span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => void handleRunSmartCrop()}
+                          className="min-h-[32px] px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <ScanLine className="w-3.5 h-3.5" />
+                          <span>Deteksi 4 Sudut</span>
+                        </button>
+                      </div>
                     </div>
+
+                    {cropMode === 'perspective' && (
+                      <div className="bg-emerald-50/60 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="text-[10.5px] font-bold text-emerald-950">
+                          Tarik 4 handle sudut (TL, TR, BR, BL) untuk meluruskan perspektif dokumen:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              setCornerPins({
+                                tl: { x: 14, y: 6 },
+                                tr: { x: 86, y: 6 },
+                                br: { x: 96, y: 94 },
+                                bl: { x: 4, y: 94 },
+                              });
+                              triggerToast('Preset trapesium atas diterapkan');
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 border border-emerald-300 text-[10px] font-bold text-emerald-900 cursor-pointer"
+                          >
+                            Atas Sempit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              setCornerPins({
+                                tl: { x: 4, y: 6 },
+                                tr: { x: 96, y: 6 },
+                                br: { x: 86, y: 94 },
+                                bl: { x: 14, y: 94 },
+                              });
+                              triggerToast('Preset trapesium bawah diterapkan');
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-white hover:bg-emerald-100 border border-emerald-300 text-[10px] font-bold text-emerald-900 cursor-pointer"
+                          >
+                            Bawah Sempit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              setCornerPins(DEFAULT_CORNER_PINS);
+                              setCropBox({ top: 4, left: 4, right: 4, bottom: 4 });
+                              triggerToast('4 titik sudut direset');
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 border border-slate-300 text-[10px] font-bold text-slate-700 cursor-pointer"
+                          >
+                            Reset 4 Sudut
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1519,7 +1712,7 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                         </div>
                       </div>
                       <p className="text-[10.5px] text-slate-500 italic">
-                        * Menggeser posisi bingkai tanpa merusak proporsi rasio 16:9 lanskap.
+                        * Gunakan Perspective Crop (4 handle sudut) untuk meratakan dokumen miring menjadi persegi panjang datar.
                       </p>
                     </div>
 
@@ -1869,10 +2062,10 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                                 <button
                                   type="button"
                                   onClick={() => isImage && handleOpenStudioForStaged(file)}
-                                  className="absolute bottom-1 left-1 right-1 px-1 py-0.5 rounded-md bg-sky-700/90 hover:bg-sky-800 text-white text-[9.5px] font-bold truncate flex items-center justify-center gap-1 cursor-pointer"
+                                  className="absolute bottom-1 left-1 right-1 px-1 py-0.5 rounded-md bg-emerald-700/95 hover:bg-emerald-800 text-white text-[9.5px] font-bold truncate flex items-center justify-center gap-1 cursor-pointer"
                                 >
                                   <Crop className="w-2.5 h-2.5" />
-                                  <span>#{idx + 1} Crop 16:9</span>
+                                  <span>#{idx + 1} Perspective Crop</span>
                                 </button>
                                 <button
                                   type="button"

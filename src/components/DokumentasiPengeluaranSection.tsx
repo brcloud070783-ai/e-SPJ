@@ -22,7 +22,6 @@ import {
   SlidersHorizontal,
   Eraser,
   Highlighter,
-  Stamp,
   FlipHorizontal2,
   FlipVertical2,
   Maximize2,
@@ -57,6 +56,15 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
+import {
+  CanvasPerspectiveCropper,
+  CornerPinPoint,
+  CornerPinQuad,
+  CropBoxPercent,
+  cropBoxToCornerPins,
+  cornerPinsToCropBox,
+  warpPerspectiveImageToCanvas,
+} from './CanvasPerspectiveCropper';
 
 interface DokumentasiPengeluaranSectionProps {
   items: DokumentasiPengeluaranItem[];
@@ -73,14 +81,10 @@ interface DokumentasiPengeluaranSectionProps {
   onChangePaperSize: (size: PaperSize) => void;
 }
 
-type CamScannerToolTab = 'crop' | 'filter' | 'adjust' | 'markup' | 'stamp';
+type CamScannerToolTab = 'crop' | 'filter' | 'adjust' | 'markup';
+type CropMode = 'perspective' | 'rect';
 
-interface CropBoxPercent {
-  top: number; // 0..40 (%)
-  left: number; // 0..40 (%)
-  right: number; // 0..40 (% inset from right)
-  bottom: number; // 0..40 (% inset from bottom)
-}
+export type { CornerPinPoint, CornerPinQuad };
 
 interface MarkupStroke {
   tool: 'whiteout' | 'highlighter' | 'redpen';
@@ -155,10 +159,11 @@ export function buildCombinedScanCssFilter(
 }
 
 /**
- * Smart Paper Boundary & Auto-Deskew Detector (CamScanner AI-style):
+ * Smart Paper Boundary, 4-Corner Pin & Auto-Deskew Detector (CamScanner AI-style):
  * 1) Analyzes image pixels to isolate the white/bright receipt paper region from darker/colored backgrounds
  *    (wooden tables, dark surfaces, borders, or shadows).
- * 2) Computes horizontal projection profile variance & paper edge slope across -12°..+12° to detect
+ * 2) Detects 4 extremal corner pins (tl, tr, br, bl) for perspective cropping.
+ * 3) Computes horizontal projection profile variance & paper edge slope across -12°..+12° to detect
  *    document skew/tilt and return the exact straightening angle (`deskewAngle`) so the receipt is level.
  */
 async function detectSmartPaperCropAndSkew(
@@ -166,13 +171,16 @@ async function detectSmartPaperCropAndSkew(
   mode: 'paper_and_deskew' | 'white_only' | 'deskew_only' = 'paper_and_deskew'
 ): Promise<{
   cropBox: CropBoxPercent;
+  cornerPins: CornerPinQuad;
   deskewAngle: number;
   summary: string;
 }> {
+  const defaultBox = { top: 6, left: 6, right: 6, bottom: 6 };
   const fallback = {
-    cropBox: { top: 6, left: 6, right: 6, bottom: 6 },
+    cropBox: defaultBox,
+    cornerPins: cropBoxToCornerPins(defaultBox),
     deskewAngle: 0,
-    summary: 'Area kertas putih terdeteksi & diluruskan otomatis.',
+    summary: 'Area kertas putih & 4 titik sudut terdeteksi otomatis.',
   };
 
   if (typeof document === 'undefined' || !sourceDataUrl.startsWith('data:image/')) {
@@ -374,6 +382,57 @@ async function detectSmartPaperCropAndSkew(
           bottom: Math.max(0, Math.min(40, bottomPct + skewMargin)),
         };
 
+        // Detect 4 corner pins within the bounded paper region for Perspective Crop
+        let tlPin = { x: finalCrop.left, y: finalCrop.top };
+        let trPin = { x: 100 - finalCrop.right, y: finalCrop.top };
+        let brPin = { x: 100 - finalCrop.right, y: 100 - finalCrop.bottom };
+        let blPin = { x: finalCrop.left, y: 100 - finalCrop.bottom };
+
+        let minSum = Infinity;
+        let maxSum = -Infinity;
+        let minDiff = Infinity; // y - x (Top-Right)
+        let maxDiff = -Infinity; // y - x (Bottom-Left)
+
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            if (!paperMask[y * w + x]) continue;
+            const nx = (x / (w - 1)) * 100;
+            const ny = (y / (h - 1)) * 100;
+            const sum = nx + ny;
+            const diff = ny - nx;
+            if (sum < minSum) {
+              minSum = sum;
+              tlPin = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+            }
+            if (sum > maxSum) {
+              maxSum = sum;
+              brPin = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+            }
+            if (diff < minDiff) {
+              minDiff = diff;
+              trPin = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+            }
+            if (diff > maxDiff) {
+              maxDiff = diff;
+              blPin = { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 };
+            }
+          }
+        }
+
+        // Clamp detected pins to reasonable bounds if the paper fills the whole frame
+        if (
+          tlPin.x <= 2 &&
+          tlPin.y <= 2 &&
+          brPin.x >= 98 &&
+          brPin.y >= 98
+        ) {
+          const fallbackPins = cropBoxToCornerPins(finalCrop);
+          tlPin = fallbackPins.tl;
+          trPin = fallbackPins.tr;
+          brPin = fallbackPins.br;
+          blPin = fallbackPins.bl;
+        }
+
         const skewLabel =
           finalDeskew === 0
             ? 'Posisi kertas sudah tegak lurus (0°)'
@@ -381,8 +440,9 @@ async function detectSmartPaperCropAndSkew(
 
         resolve({
           cropBox: finalCrop,
+          cornerPins: { tl: tlPin, tr: trPin, br: brPin, bl: blPin },
           deskewAngle: finalDeskew,
-          summary: `Smart Crop: Kertas putih dipotong otomatis · ${skewLabel}`,
+          summary: `Smart Crop: 4 sudut kertas terdeteksi · ${skewLabel}`,
         });
       } catch {
         resolve(fallback);
@@ -395,7 +455,8 @@ async function detectSmartPaperCropAndSkew(
 
 /**
  * Full CamScanner Canvas Compositor:
- * 1) Applies custom 4-edge CropBox (top, left, right, bottom %)
+ * 1) Applies 4-Point Perspective Homography Warp (when cornerPins / perspective mode is used)
+ *    OR custom 4-edge CropBox (top, left, right, bottom %)
  * 2) Applies Rotation (0°, 90°, 180°, 270°), Fine Straightening (deskewAngle), and Flip
  * 3) Cleans non-paper dark perimeter pixels to pure white (#FFFFFF) when cleanWhiteEdges is active
  * 4) Applies CamScanner Filter + Manual Brightness/Contrast/Clarity adjustments
@@ -405,6 +466,8 @@ async function detectSmartPaperCropAndSkew(
 async function renderCamScannerOutputCanvas(params: {
   sourceDataUrl: string;
   cropBox: CropBoxPercent;
+  cornerPins?: CornerPinQuad;
+  cropMode?: CropMode;
   rotationAngle: number;
   deskewAngle?: number;
   cleanWhiteEdges?: boolean;
@@ -421,6 +484,8 @@ async function renderCamScannerOutputCanvas(params: {
   const {
     sourceDataUrl,
     cropBox,
+    cornerPins,
+    cropMode = 'rect',
     rotationAngle,
     deskewAngle = 0,
     cleanWhiteEdges = true,
@@ -450,15 +515,35 @@ async function renderCamScannerOutputCanvas(params: {
           return;
         }
 
-        const leftRatio = Math.max(0, Math.min(0.45, cropBox.left / 100));
-        const topRatio = Math.max(0, Math.min(0.45, cropBox.top / 100));
-        const rightRatio = Math.max(0, Math.min(0.45, cropBox.right / 100));
-        const bottomRatio = Math.max(0, Math.min(0.45, cropBox.bottom / 100));
+        // Step 1: Determine cropped/rectified source drawable (either 4-point Perspective Homography or Rectangular Crop)
+        let sourceDrawable: HTMLImageElement | HTMLCanvasElement = img;
+        let sx = 0;
+        let sy = 0;
+        let sw = rawW;
+        let sh = rawH;
 
-        const sx = Math.round(rawW * leftRatio);
-        const sy = Math.round(rawH * topRatio);
-        const sw = Math.max(16, Math.round(rawW * (1 - leftRatio - rightRatio)));
-        const sh = Math.max(16, Math.round(rawH * (1 - topRatio - bottomRatio)));
+        const warpedCanvas =
+          cropMode === 'perspective' && cornerPins
+            ? warpPerspectiveImageToCanvas(img, cornerPins)
+            : null;
+
+        if (warpedCanvas) {
+          sourceDrawable = warpedCanvas;
+          sx = 0;
+          sy = 0;
+          sw = warpedCanvas.width;
+          sh = warpedCanvas.height;
+        } else {
+          const leftRatio = Math.max(0, Math.min(0.45, cropBox.left / 100));
+          const topRatio = Math.max(0, Math.min(0.45, cropBox.top / 100));
+          const rightRatio = Math.max(0, Math.min(0.45, cropBox.right / 100));
+          const bottomRatio = Math.max(0, Math.min(0.45, cropBox.bottom / 100));
+
+          sx = Math.round(rawW * leftRatio);
+          sy = Math.round(rawH * topRatio);
+          sw = Math.max(16, Math.round(rawW * (1 - leftRatio - rightRatio)));
+          sh = Math.max(16, Math.round(rawH * (1 - topRatio - bottomRatio)));
+        }
 
         const normAngle = ((Math.round((rotationAngle || 0) / 90) * 90) % 360 + 360) % 360;
         const swapDims = normAngle === 90 || normAngle === 270;
@@ -501,7 +586,7 @@ async function renderCamScannerOutputCanvas(params: {
           (flipH ? -1 : 1) * deskewScale,
           (flipV ? -1 : 1) * deskewScale
         );
-        ctx.drawImage(img, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
+        ctx.drawImage(sourceDrawable, sx, sy, sw, sh, -sw / 2, -sh / 2, sw, sh);
         ctx.restore();
 
         // Optional White-Paper Perimeter Cleanup: whiten any dark non-paper background pixels near outer edges
@@ -666,13 +751,19 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     'Foto Nota/Tiket' | 'Dokumen Invoice (PDF/Berkas)'
   >('Foto Nota/Tiket');
 
-  // 1. Smart Crop, Auto-Deskew & Rotate Tools State
+  // 1. Smart Crop, Perspective Corner-Pin, Auto-Deskew & Rotate Tools State
+  const [cropMode, setCropMode] = useState<CropMode>('perspective');
   const [cropBox, setCropBox] = useState<CropBoxPercent>({
     top: 5,
     left: 5,
     right: 5,
     bottom: 5,
   });
+  const [cornerPins, setCornerPins] = useState<CornerPinQuad>(() =>
+    cropBoxToCornerPins({ top: 5, left: 5, right: 5, bottom: 5 })
+  );
+  const [isPerspectivePreview, setIsPerspectivePreview] = useState<boolean>(false);
+  const [perspectivePreviewUrl, setPerspectivePreviewUrl] = useState<string | null>(null);
   const [draggingHandle, setDraggingHandle] = useState<
     null | 'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r'
   >(null);
@@ -771,7 +862,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     };
   }, [openMenuItemId]);
 
-  // Handle interactive dragging of Crop Box handles (mouse + touch)
+  // Handle interactive dragging of Corner-Pin Perspective handles or Rectangular Crop handles (mouse + touch)
   useEffect(() => {
     if (!draggingHandle) return;
 
@@ -783,6 +874,58 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
 
       const relX = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
       const relY = Math.max(0, Math.min(100, ((clientY - rect.top) / rect.height) * 100));
+
+      if (cropMode === 'perspective') {
+        setIsPerspectivePreview(false);
+        setCornerPins((prev) => {
+          const next: CornerPinQuad = {
+            tl: { ...prev.tl },
+            tr: { ...prev.tr },
+            br: { ...prev.br },
+            bl: { ...prev.bl },
+          };
+          const clampX = (v: number) => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10;
+          const clampY = (v: number) => Math.round(Math.max(0, Math.min(100, v)) * 10) / 10;
+
+          if (draggingHandle === 'tl') {
+            next.tl.x = clampX(Math.min(relX, prev.tr.x - 8));
+            next.tl.y = clampY(Math.min(relY, prev.bl.y - 8));
+          } else if (draggingHandle === 'tr') {
+            next.tr.x = clampX(Math.max(relX, prev.tl.x + 8));
+            next.tr.y = clampY(Math.min(relY, prev.br.y - 8));
+          } else if (draggingHandle === 'br') {
+            next.br.x = clampX(Math.max(relX, prev.bl.x + 8));
+            next.br.y = clampY(Math.max(relY, prev.tr.y + 8));
+          } else if (draggingHandle === 'bl') {
+            next.bl.x = clampX(Math.min(relX, prev.br.x - 8));
+            next.bl.y = clampY(Math.max(relY, prev.tl.y + 8));
+          } else if (draggingHandle === 't') {
+            const maxY = Math.min(prev.bl.y, prev.br.y) - 8;
+            const newY = clampY(Math.min(relY, maxY));
+            next.tl.y = newY;
+            next.tr.y = newY;
+          } else if (draggingHandle === 'b') {
+            const minY = Math.max(prev.tl.y, prev.tr.y) + 8;
+            const newY = clampY(Math.max(relY, minY));
+            next.bl.y = newY;
+            next.br.y = newY;
+          } else if (draggingHandle === 'l') {
+            const maxX = Math.min(prev.tr.x, prev.br.x) - 8;
+            const newX = clampX(Math.min(relX, maxX));
+            next.tl.x = newX;
+            next.bl.x = newX;
+          } else if (draggingHandle === 'r') {
+            const minX = Math.max(prev.tl.x, prev.bl.x) + 8;
+            const newX = clampX(Math.max(relX, minX));
+            next.tr.x = newX;
+            next.br.x = newX;
+          }
+
+          setCropBox(cornerPinsToCropBox(next));
+          return next;
+        });
+        return;
+      }
 
       setCropBox((prev) => {
         const next = { ...prev };
@@ -807,6 +950,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
             Math.max(0, Math.min(40, Math.min(maxBottom, 100 - relY)))
           );
         }
+        setCornerPins(cropBoxToCornerPins(next));
         return next;
       });
     };
@@ -817,6 +961,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 0) {
+        if (e.cancelable) e.preventDefault();
         updateCropFromClientXY(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
@@ -832,19 +977,40 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
       window.removeEventListener('touchmove', onTouchMove);
       window.removeEventListener('touchend', onEnd);
     };
-  }, [draggingHandle]);
+  }, [draggingHandle, cropMode]);
 
   const filteredItems = items;
 
-  // Run Smart Cropping & Auto-Deskew on current image
+  // Toggle live perspective-flattened preview on the canvas
+  const handleTogglePerspectivePreview = async () => {
+    if (isPerspectivePreview) {
+      setIsPerspectivePreview(false);
+      return;
+    }
+    const sourceUrl = rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT;
+    const img = new Image();
+    img.onload = () => {
+      const warped = warpPerspectiveImageToCanvas(img, cornerPins);
+      if (warped) {
+        setPerspectivePreviewUrl(warped.toDataURL('image/jpeg', 0.92));
+        setIsPerspectivePreview(true);
+        triggerToast('Pratinjau hasil potong perspektif 4-sudut aktif');
+      }
+    };
+    img.src = sourceUrl;
+  };
+
+  // Run Smart Cropping, 4-Corner Pin Detection & Auto-Deskew on current image
   const handleRunSmartCrop = async (
     mode: 'paper_and_deskew' | 'white_only' | 'deskew_only',
     customUrl?: string
   ) => {
+    setIsPerspectivePreview(false);
     const targetUrl = customUrl || rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT;
     const detected = await detectSmartPaperCropAndSkew(targetUrl, mode);
     if (mode !== 'deskew_only') {
       setCropBox(detected.cropBox);
+      setCornerPins(detected.cornerPins);
     }
     if (mode === 'white_only') {
       setCleanWhiteEdges(true);
@@ -863,7 +1029,12 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     setRawFotoDataUrl(SAMPLE_RECEIPT_TRANSPORT);
     setNamaFile('scan_nota_perjalanan.png');
     setScanFilter('magic');
-    setCropBox({ top: 5, left: 5, right: 5, bottom: 5 });
+    const initialBox = { top: 5, left: 5, right: 5, bottom: 5 };
+    setCropMode('perspective');
+    setCropBox(initialBox);
+    setCornerPins(cropBoxToCornerPins(initialBox));
+    setIsPerspectivePreview(false);
+    setPerspectivePreviewUrl(null);
     setRotationAngle(0);
     setDeskewAngle(0);
     setCleanWhiteEdges(true);
@@ -887,7 +1058,12 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     setMimeType(exp.mimeType || 'image/jpeg');
     setScanFilter(exp.scanFilter || 'magic');
     const c = exp.cropPercent ?? 5;
-    setCropBox({ top: c, left: c, right: c, bottom: c });
+    const initialBox = { top: c, left: c, right: c, bottom: c };
+    setCropMode('perspective');
+    setCropBox(initialBox);
+    setCornerPins(cropBoxToCornerPins(initialBox));
+    setIsPerspectivePreview(false);
+    setPerspectivePreviewUrl(null);
     setRotationAngle(exp.rotationAngle || 0);
     setDeskewAngle(0);
     setCleanWhiteEdges(true);
@@ -912,6 +1088,8 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     setFlipH(false);
     setFlipV(false);
     setStrokes([]);
+    setIsPerspectivePreview(false);
+    setPerspectivePreviewUrl(null);
     const isPdf =
       file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     if (isPdf) {
@@ -1004,6 +1182,8 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
           ? await renderCamScannerOutputCanvas({
               sourceDataUrl: sourceUrl,
               cropBox,
+              cornerPins,
+              cropMode,
               rotationAngle,
               deskewAngle,
               cleanWhiteEdges,
@@ -1020,8 +1200,14 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
           : null;
 
       const finalPhoto = scanned ? scanned.processedDataUrl : sourceUrl;
+      const effectiveBox =
+        cropMode === 'perspective' ? cornerPinsToCropBox(cornerPins) : cropBox;
       const avgCrop = Math.round(
-        (cropBox.top + cropBox.left + cropBox.right + cropBox.bottom) / 4
+        (effectiveBox.top +
+          effectiveBox.left +
+          effectiveBox.right +
+          effectiveBox.bottom) /
+          4
       );
 
       // If editing an existing card, update it in place
@@ -1192,6 +1378,18 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
     (cropBox.top + cropBox.left + cropBox.right + cropBox.bottom) / 4
   );
 
+  // Active corner coordinate for live precision badge when dragging in perspective mode
+  const activePinCoord =
+    draggingHandle === 'tl'
+      ? { label: 'Sudut Kiri Atas (TL)', pt: cornerPins.tl }
+      : draggingHandle === 'tr'
+        ? { label: 'Sudut Kanan Atas (TR)', pt: cornerPins.tr }
+        : draggingHandle === 'br'
+          ? { label: 'Sudut Kanan Bawah (BR)', pt: cornerPins.br }
+          : draggingHandle === 'bl'
+            ? { label: 'Sudut Kiri Bawah (BL)', pt: cornerPins.bl }
+            : null;
+
   return (
     <div className="space-y-2.5 sm:space-y-4 relative">
       {/* Instant Visual Toast Feedback */}
@@ -1214,8 +1412,8 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
           iconBgClass="bg-amber-600 text-white"
           label="3. Foto/Scan Bukti Pengeluaran"
           tooltipVariant="info"
-          tooltipTitle="CamScanner Smart Crop & Deskew Studio"
-          tooltipContent="Dilengkapi Smart Cropping yang otomatis memotong bagian kertas putih saja dan meluruskan kemiringan gambar (anti mencang-mencong), ditambah 6 Filter Scan, Penghapus Noda, dan Stabilo."
+          tooltipTitle="CamScanner Smart Crop & Perspective Corner-Pin Studio"
+          tooltipContent="Dilengkapi Corner-Pin Perspective Cropping (4 titik sudut bebas untuk meluruskan foto nota yang miring/trapesium), Smart Cropping kertas putih, 6 Filter Scan, dan Penghapus Noda."
         />
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1328,121 +1526,152 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
 
             {/* 2. Interactive CamScanner Canvas Stage & Active Tool Controls */}
             <div className="p-3 sm:p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-2.5 flex-1 bg-slate-100">
-              <div className="relative w-full h-56 sm:h-72 rounded-2xl bg-slate-200/80 border border-slate-300/90 flex items-center justify-center overflow-hidden p-4 select-none">
-                <div
-                  ref={stageBoundsRef}
-                  onMouseDown={(e) => handleStartMarkupStroke(e.clientX, e.clientY)}
-                  onMouseMove={(e) => handleMoveMarkupStroke(e.clientX, e.clientY)}
-                  onMouseUp={handleEndMarkupStroke}
-                  onMouseLeave={handleEndMarkupStroke}
-                  onTouchStart={(e) => {
-                    if (e.touches.length === 1) {
-                      handleStartMarkupStroke(
-                        e.touches[0].clientX,
-                        e.touches[0].clientY
-                      );
-                    }
-                  }}
-                  onTouchMove={(e) => {
-                    if (e.touches.length === 1) {
-                      handleMoveMarkupStroke(
-                        e.touches[0].clientX,
-                        e.touches[0].clientY
-                      );
-                    }
-                  }}
-                  onTouchEnd={handleEndMarkupStroke}
-                  className={`relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg ${
-                    activeToolTab === 'markup' ? 'cursor-crosshair' : ''
-                  }`}
-                >
-                  <div className="relative overflow-hidden rounded-lg flex items-center justify-center">
-                    <img
-                      src={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
-                      alt="Kanvas edit pindaian nota"
-                      referrerPolicy="no-referrer"
-                      draggable={false}
-                      style={{
-                        filter: liveCssFilter,
-                        transform: `rotate(${rotationAngle + deskewAngle}deg) scale(${zoomLevel}) scaleX(${
-                          flipH ? -1 : 1
-                        }) scaleY(${flipV ? -1 : 1})`,
-                      }}
-                      className="max-h-48 sm:max-h-64 w-auto object-contain transition-transform duration-150 pointer-events-none"
-                    />
-
-                    {/* Live SVG Overlay for Eraser (Whiteout), Highlighter, and Red Pen Strokes */}
-                    {strokes.length > 0 && (
-                      <svg
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="none"
-                        className="pointer-events-none absolute inset-0 w-full h-full"
-                      >
-                        {strokes.map((st, sIdx) => {
-                          const d = st.points
-                            .map(
-                              (p, pIdx) =>
-                                `${pIdx === 0 ? 'M' : 'L'} ${(p.x * 100).toFixed(2)} ${(
-                                  p.y * 100
-                                ).toFixed(2)}`
-                            )
-                            .join(' ');
-                          const strokeColor =
-                            st.tool === 'whiteout'
-                              ? '#FFFFFF'
-                              : st.tool === 'highlighter'
-                                ? 'rgba(250, 204, 21, 0.45)'
-                                : 'rgba(220, 38, 38, 0.9)';
-                          return (
-                            <path
-                              key={sIdx}
-                              d={d}
-                              fill="none"
-                              stroke={strokeColor}
-                              strokeWidth={st.size / 3.5}
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          );
-                        })}
-                      </svg>
-                    )}
-
-                    {/* Live Official Stamp Preview */}
-                    {stampText.trim() && (
-                      <div className="pointer-events-none absolute bottom-3 right-3 -rotate-6 px-2.5 py-1 rounded-md border-2 border-emerald-700 bg-white/90 text-emerald-800 text-[10px] font-extrabold tracking-wider uppercase shadow-xs">
-                        {stampText}
-                      </div>
-                    )}
-
-                    {/* Dimmed Mask Outside Crop Box */}
-                    {activeToolTab === 'crop' && (
-                      <div
-                        className="pointer-events-none absolute border-2 border-emerald-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)] transition-all duration-75"
-                        style={{
-                          top: `${cropBox.top}%`,
-                          left: `${cropBox.left}%`,
-                          right: `${cropBox.right}%`,
-                          bottom: `${cropBox.bottom}%`,
-                        }}
-                      >
-                        <div className="w-full h-full grid grid-cols-3 grid-rows-3">
-                          <div className="border-r border-b border-emerald-400/45" />
-                          <div className="border-r border-b border-emerald-400/45" />
-                          <div className="border-b border-emerald-400/45" />
-                          <div className="border-r border-b border-emerald-400/45" />
-                          <div className="border-r border-b border-emerald-400/45" />
-                          <div className="border-b border-emerald-400/45" />
-                          <div className="border-r border-emerald-400/45" />
-                          <div className="border-r border-emerald-400/45" />
-                          <div />
-                        </div>
-                      </div>
-                    )}
+              <div className="relative w-full h-60 sm:h-72 rounded-2xl bg-slate-200/80 border border-slate-300/90 flex items-center justify-center overflow-hidden p-4 select-none">
+                {/* Badge when viewing live perspective-rectified preview */}
+                {isPerspectivePreview && (
+                  <div className="absolute top-2.5 right-2.5 z-30 flex items-center gap-1.5 bg-emerald-700 text-white px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Pratinjau Hasil Perspektif</span>
                   </div>
+                )}
 
-                  {/* Interactive 8-Point CamScanner Smart Crop Handles (Unclipped) */}
-                  {activeToolTab === 'crop' && (
+                {activeToolTab === 'crop' &&
+                cropMode === 'perspective' &&
+                !isPerspectivePreview ? (
+                  <CanvasPerspectiveCropper
+                    imageSrc={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
+                    points={cornerPins}
+                    onChangePoints={(nextPins) => {
+                      setIsPerspectivePreview(false);
+                      setCornerPins(nextPins);
+                      setCropBox(cornerPinsToCropBox(nextPins));
+                    }}
+                    cssFilter={liveCssFilter}
+                    rotationDeg={rotationAngle + deskewAngle}
+                    zoomLevel={zoomLevel}
+                    flipH={flipH}
+                    flipV={flipV}
+                    showHandles={true}
+                  />
+                ) : (
+                  <div
+                    ref={stageBoundsRef}
+                    onMouseDown={(e) => handleStartMarkupStroke(e.clientX, e.clientY)}
+                    onMouseMove={(e) => handleMoveMarkupStroke(e.clientX, e.clientY)}
+                    onMouseUp={handleEndMarkupStroke}
+                    onMouseLeave={handleEndMarkupStroke}
+                    onTouchStart={(e) => {
+                      if (e.touches.length === 1) {
+                        handleStartMarkupStroke(
+                          e.touches[0].clientX,
+                          e.touches[0].clientY
+                        );
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      if (e.touches.length === 1) {
+                        handleMoveMarkupStroke(
+                          e.touches[0].clientX,
+                          e.touches[0].clientY
+                        );
+                      }
+                    }}
+                    onTouchEnd={handleEndMarkupStroke}
+                    className={`relative inline-flex items-center justify-center bg-white shadow-lg rounded-lg ${
+                      activeToolTab === 'markup' ? 'cursor-crosshair' : ''
+                    }`}
+                  >
+                    <div className="relative overflow-hidden rounded-lg flex items-center justify-center">
+                      <img
+                        src={
+                          isPerspectivePreview && perspectivePreviewUrl
+                            ? perspectivePreviewUrl
+                            : rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT
+                        }
+                        alt="Kanvas edit pindaian nota"
+                        referrerPolicy="no-referrer"
+                        draggable={false}
+                        style={{
+                          filter: liveCssFilter,
+                          transform: `rotate(${rotationAngle + deskewAngle}deg) scale(${zoomLevel}) scaleX(${
+                            flipH ? -1 : 1
+                          }) scaleY(${flipV ? -1 : 1})`,
+                        }}
+                        className="max-h-52 sm:max-h-64 w-auto object-contain transition-transform duration-150 pointer-events-none"
+                      />
+
+                      {/* Live SVG Overlay for Eraser (Whiteout), Highlighter, and Red Pen Strokes */}
+                      {strokes.length > 0 && (
+                        <svg
+                          viewBox="0 0 100 100"
+                          preserveAspectRatio="none"
+                          className="pointer-events-none absolute inset-0 w-full h-full"
+                        >
+                          {strokes.map((st, sIdx) => {
+                            const d = st.points
+                              .map(
+                                (p, pIdx) =>
+                                  `${pIdx === 0 ? 'M' : 'L'} ${(p.x * 100).toFixed(2)} ${(
+                                    p.y * 100
+                                  ).toFixed(2)}`
+                              )
+                              .join(' ');
+                            const strokeColor =
+                              st.tool === 'whiteout'
+                                ? '#FFFFFF'
+                                : st.tool === 'highlighter'
+                                  ? 'rgba(250, 204, 21, 0.45)'
+                                  : 'rgba(220, 38, 38, 0.9)';
+                            return (
+                              <path
+                                key={sIdx}
+                                d={d}
+                                fill="none"
+                                stroke={strokeColor}
+                                strokeWidth={st.size / 3.5}
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            );
+                          })}
+                        </svg>
+                      )}
+
+                      {/* Live Official Stamp Preview */}
+                      {stampText.trim() && (
+                        <div className="pointer-events-none absolute bottom-3 right-3 -rotate-6 px-2.5 py-1 rounded-md border-2 border-emerald-700 bg-white/90 text-emerald-800 text-[10px] font-extrabold tracking-wider uppercase shadow-xs">
+                          {stampText}
+                        </div>
+                      )}
+
+                      {/* MODE B: RECTANGULAR CROP BOX OVERLAY */}
+                      {activeToolTab === 'crop' && cropMode === 'rect' && (
+                        <div
+                          className="pointer-events-none absolute border-2 border-emerald-500 shadow-[0_0_0_9999px_rgba(15,23,42,0.38)] transition-all duration-75"
+                          style={{
+                            top: `${cropBox.top}%`,
+                            left: `${cropBox.left}%`,
+                            right: `${cropBox.right}%`,
+                            bottom: `${cropBox.bottom}%`,
+                          }}
+                        >
+                          <div className="w-full h-full grid grid-cols-3 grid-rows-3">
+                            <div className="border-r border-b border-emerald-400/45" />
+                            <div className="border-r border-b border-emerald-400/45" />
+                            <div className="border-b border-emerald-400/45" />
+                            <div className="border-r border-b border-emerald-400/45" />
+                            <div className="border-r border-b border-emerald-400/45" />
+                            <div className="border-b border-emerald-400/45" />
+                            <div className="border-r border-emerald-400/45" />
+                            <div className="border-r border-emerald-400/45" />
+                            <div />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                  {/* Interactive 8-Point Handles for RECTANGULAR Crop Mode */}
+                  {activeToolTab === 'crop' && cropMode === 'rect' && (
                     <>
                       {(
                         [
@@ -1566,15 +1795,76 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                     </>
                   )}
                 </div>
+                )}
               </div>
 
               {/* ================================================================= */}
               {/* 3. CONTEXTUAL SUB-TOOLBAR FOR ACTIVE CAMSCANNER TOOL              */}
               {/* ================================================================= */}
               <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-2xs">
-                {/* TAB 1: SMART CROPPING & ROTATE */}
+                {/* TAB 1: SMART CROPPING, PERSPECTIVE CORNER-PIN & ROTATE */}
                 {activeToolTab === 'crop' && (
                   <div className="space-y-2">
+                    {/* Crop Mode Switcher: Perspective Crop (Corner-Pin) vs Persegi */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <div className="grid grid-cols-2 gap-1 flex-1 min-w-[220px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('perspective');
+                            setIsPerspectivePreview(false);
+                          }}
+                          data-testid="crop-mode-perspective-btn"
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            cropMode === 'perspective'
+                              ? 'bg-emerald-600 text-white shadow-2xs'
+                              : 'text-slate-700 hover:bg-white/70'
+                          }`}
+                        >
+                          <Crop className="w-3.5 h-3.5 shrink-0" />
+                          <span>Perspective Crop (Corner-Pin)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCropMode('rect');
+                            setIsPerspectivePreview(false);
+                            setCropBox(cornerPinsToCropBox(cornerPins));
+                          }}
+                          data-testid="crop-mode-rect-btn"
+                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            cropMode === 'rect'
+                              ? 'bg-sky-700 text-white shadow-2xs'
+                              : 'text-slate-700 hover:bg-white/70'
+                          }`}
+                        >
+                          <Maximize2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Potong Persegi</span>
+                        </button>
+                      </div>
+
+                      {cropMode === 'perspective' && (
+                        <button
+                          type="button"
+                          onClick={() => void handleTogglePerspectivePreview()}
+                          data-testid="perspective-preview-btn"
+                          className={`min-h-[32px] px-3 py-1 rounded-lg text-[11px] font-extrabold flex items-center justify-center gap-1.5 border transition-colors cursor-pointer ${
+                            isPerspectivePreview
+                              ? 'bg-amber-500 text-slate-950 border-amber-600'
+                              : 'bg-white hover:bg-emerald-50 text-emerald-800 border-emerald-300'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5 shrink-0" />
+                          <span>
+                            {isPerspectivePreview
+                              ? 'Edit Pin Sudut'
+                              : 'Pratinjau Perspektif'}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Smart Detection & Perspective Helper Presets */}
                     <div className="grid grid-cols-3 gap-1.5">
                       <button
                         type="button"
@@ -1583,7 +1873,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                         className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
                       >
                         <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                        <span>Smart Crop</span>
+                        <span>Deteksi 4 Sudut</span>
                       </button>
 
                       <button
@@ -1606,6 +1896,58 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                         <span>Luruskan</span>
                       </button>
                     </div>
+
+                    {/* Corner-Pin Quick Trapezoid / Perspective Presets when in Perspective Mode */}
+                    {cropMode === 'perspective' && (
+                      <div className="bg-emerald-50/60 border border-emerald-200/90 rounded-xl px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="text-[10.5px] font-bold text-emerald-950">
+                          Tarik 4 titik sudut bebas di atas nota atau pilih bantu sudut:
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              setCornerPins({
+                                tl: { x: 14, y: 6 },
+                                tr: { x: 86, y: 6 },
+                                br: { x: 95, y: 94 },
+                                bl: { x: 5, y: 94 },
+                              });
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-300 text-[10.5px] font-bold text-emerald-900 cursor-pointer"
+                          >
+                            Miring Atas
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              setCornerPins({
+                                tl: { x: 5, y: 6 },
+                                tr: { x: 95, y: 6 },
+                                br: { x: 86, y: 94 },
+                                bl: { x: 14, y: 94 },
+                              });
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-300 text-[10.5px] font-bold text-emerald-900 cursor-pointer"
+                          >
+                            Miring Bawah
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPerspectivePreview(false);
+                              const aligned = cropBoxToCornerPins(cropBox);
+                              setCornerPins(aligned);
+                            }}
+                            className="px-2 py-0.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-[10.5px] font-bold text-slate-700 cursor-pointer"
+                          >
+                            Ratakan Sudut
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Compact Straighten Slider & Edge Whitening Toggle */}
                     <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 flex flex-wrap items-center gap-3">
@@ -1746,7 +2088,10 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                       <button
                         type="button"
                         onClick={() => {
-                          setCropBox({ top: 0, left: 0, right: 0, bottom: 0 });
+                          const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
+                          setCropBox(fullBox);
+                          setCornerPins(cropBoxToCornerPins(fullBox));
+                          setIsPerspectivePreview(false);
                           setDeskewAngle(0);
                         }}
                         data-testid="scan-crop-full"
@@ -1955,69 +2300,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                     </div>
                   </div>
                 )}
-
-                {/* TAB 5: CAP / WATERMARK RESMI SPJ */}
-                {activeToolTab === 'stamp' && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { label: 'Tanpa Cap', value: '' },
-                      { label: 'BUKTI ASLI SPPD', value: 'BUKTI ASLI SPPD' },
-                      { label: 'LUNAS / TERVERIFIKASI', value: 'LUNAS / TERVERIFIKASI' },
-                      { label: 'SESUAI BUKTI RIIL', value: 'SESUAI BUKTI RIIL' },
-                    ].map((preset) => {
-                      const active = stampText === preset.value;
-                      return (
-                        <button
-                          key={preset.label}
-                          type="button"
-                          onClick={() => setStampText(preset.value)}
-                          className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                            active
-                              ? 'bg-emerald-700 text-white border-emerald-700'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-white'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
-
-              {/* Pilihan 1-Ketuk Komponen Rincian Kuitansi (Hanya Saat Scan Baru) */}
-              {!editingExistingItem && activeKuitansi.rincian.length > 0 && (
-                <div className="bg-white border border-slate-200 rounded-2xl p-2.5 flex flex-wrap gap-1.5">
-                  {activeKuitansi.rincian.map((rItem) => {
-                    const rTotal = calculateRincianRowTotal(
-                      rItem.nominalSatuan,
-                      rItem.kuantitas
-                    );
-                    const isSelected = selectedRincianId === rItem.id;
-                    return (
-                      <button
-                        key={rItem.id}
-                        type="button"
-                        onClick={() => setSelectedRincianId(rItem.id)}
-                        className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer text-left ${
-                          isSelected
-                            ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
-                            : 'bg-slate-50 hover:bg-sky-50 text-slate-700 border-slate-200'
-                        }`}
-                      >
-                        <span>{rItem.uraian}</span>{' '}
-                        <strong
-                          className={`font-mono ${
-                            isSelected ? 'text-sky-100' : 'text-sky-700'
-                          }`}
-                        >
-                          ({formatRupiah(rTotal)})
-                        </strong>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
 
               {!editingExistingItem && isGoogleConnected && (
                 <label className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer px-1">
@@ -2037,7 +2320,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
               <div
                 role="tablist"
                 aria-label="Menu Alat Edit CamScanner"
-                className="grid grid-cols-5 gap-1.5 bg-slate-100 border border-slate-200/80 rounded-2xl p-1"
+                className="grid grid-cols-4 gap-1.5 bg-slate-100 border border-slate-200/80 rounded-2xl p-1"
               >
                 {(
                   [
@@ -2045,7 +2328,6 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                     { id: 'filter', label: 'Filter', icon: Sparkles },
                     { id: 'adjust', label: 'Kontras', icon: SlidersHorizontal },
                     { id: 'markup', label: 'Hapus', icon: Eraser },
-                    { id: 'stamp', label: 'Cap SPJ', icon: Stamp },
                   ] as const
                 ).map((tab) => {
                   const Icon = tab.icon;
