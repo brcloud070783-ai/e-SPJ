@@ -1,17 +1,126 @@
-import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
+
+export type HapticStyle =
+  | 'light'
+  | 'medium'
+  | 'heavy'
+  | 'success'
+  | 'warning'
+  | 'error';
 
 /**
- * Triggers subtle native haptic feedback on supported mobile devices.
+ * Distinct Web Vibration API patterns (in ms) modeled after native mobile haptics:
+ * - light: 8ms subtle tick for tab switches & secondary controls
+ * - medium: 15ms crisp tap for primary action buttons (Simpan, PDF, Cetak, + SPJ Baru)
+ * - heavy: 25ms firm thud for destructive actions or mode shifts
+ * - success: [12, 45, 22] double-pulse celebratory confirmation on successful document save
+ * - warning: [18, 40, 18] double alert tap
+ * - error: [28, 45, 28, 45, 35] triple alert buzz on validation errors
  */
-export function triggerHaptic(style: 'light' | 'medium' | 'heavy' = 'light'): void {
+const HAPTIC_PATTERNS: Record<HapticStyle, number | number[]> = {
+  light: 8,
+  medium: 15,
+  heavy: 25,
+  success: [12, 45, 22],
+  warning: [18, 40, 18],
+  error: [28, 45, 28, 45, 35],
+};
+
+let lastTapHapticTimestamp = 0;
+
+/**
+ * Triggers native haptic feedback via the Web Vibration API (`navigator.vibrate`)
+ * on supported mobile devices.
+ */
+export function triggerHaptic(style: HapticStyle = 'light'): boolean {
   try {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      const duration = style === 'heavy' ? 20 : style === 'medium' ? 12 : 7;
-      navigator.vibrate(duration);
+    if (
+      typeof navigator === 'undefined' ||
+      typeof navigator.vibrate !== 'function'
+    ) {
+      return false;
     }
+
+    const now = performance.now();
+    const isPattern =
+      style === 'success' || style === 'warning' || style === 'error';
+
+    // Prevent duplicate single-tap vibrations within 55ms when global & local handlers both fire
+    if (!isPattern && now - lastTapHapticTimestamp < 55) {
+      return false;
+    }
+
+    if (!isPattern) {
+      lastTapHapticTimestamp = now;
+    }
+
+    const pattern = HAPTIC_PATTERNS[style] ?? HAPTIC_PATTERNS.light;
+    return navigator.vibrate(pattern);
   } catch {
     // Ignore on unsupported browsers or restricted contexts
+    return false;
   }
+}
+
+/**
+ * Global hook that provides automatic tactile Vibration API feedback
+ * whenever the user taps primary action buttons or interactive controls.
+ */
+export function useGlobalButtonHaptics(): void {
+  useEffect(() => {
+    const handlePointerDown = (e: PointerEvent) => {
+      // Only trigger on touch or primary pointer
+      if (e.button !== 0 && e.pointerType === 'mouse') return;
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      const interactive = target.closest(
+        'button, [role="button"], [role="tab"], a[href]'
+      ) as HTMLElement | null;
+      if (!interactive || interactive.hasAttribute('disabled')) return;
+
+      const explicitHaptic = interactive.getAttribute(
+        'data-haptic'
+      ) as HapticStyle | null;
+      if (explicitHaptic && HAPTIC_PATTERNS[explicitHaptic]) {
+        triggerHaptic(explicitHaptic);
+        return;
+      }
+
+      const cls = interactive.className || '';
+      const isSubmit = interactive.getAttribute('type') === 'submit';
+      const isDestructive =
+        cls.includes('bg-red-600') || cls.includes('text-red-700');
+      const isPrimaryAction =
+        isSubmit ||
+        cls.includes('bg-sky-700') ||
+        cls.includes('bg-emerald-600') ||
+        cls.includes('bg-emerald-700') ||
+        cls.includes('bg-slate-900');
+
+      if (isDestructive) {
+        triggerHaptic('heavy');
+      } else if (isPrimaryAction) {
+        triggerHaptic('medium');
+      } else {
+        triggerHaptic('light');
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, {
+      passive: true,
+    });
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, []);
 }
 
 /**

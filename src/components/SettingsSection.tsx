@@ -43,6 +43,7 @@ import {
   parsePegawaiCsv,
   mergePegawaiList,
 } from '../utils/spjCalculations';
+import { triggerHaptic } from '../utils/nativeMobile';
 
 interface SettingsSectionProps {
   settings: AppSettings;
@@ -225,6 +226,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   };
 
   const showToastBanner = (msg: string) => {
+    triggerHaptic(msg.toLowerCase().includes('gagal') ? 'error' : 'success');
     setSavedMessage(msg);
     setTimeout(() => setSavedMessage(null), 4500);
   };

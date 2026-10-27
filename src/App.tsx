@@ -74,7 +74,11 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { NativeBottomSheet } from './components/NativeBottomSheet';
-import { MobileFocusModeContext, triggerHaptic } from './utils/nativeMobile';
+import {
+  MobileFocusModeContext,
+  triggerHaptic,
+  useGlobalButtonHaptics,
+} from './utils/nativeMobile';
 
 type MainMenuKey = 'home' | 'perjalanan-dinas' | 'settings';
 type SpjViewKey = 'sub-home' | SpjSubSectionKey;
@@ -109,6 +113,8 @@ const STORAGE_KEYS = {
 };
 
 export default function App() {
+  useGlobalButtonHaptics();
+
   const [mainMenu, setMainMenu] = useState<MainMenuKey>('home');
   const [spjView, setSpjView] = useState<SpjViewKey>('sub-home');
   const [isSpjSwitcherOpen, setIsSpjSwitcherOpen] = useState<boolean>(false);
@@ -290,6 +296,7 @@ export default function App() {
   } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    triggerHaptic(type === 'error' ? 'error' : type === 'info' ? 'medium' : 'success');
     setActionToast({ message, type });
     setTimeout(() => {
       setActionToast((curr) => (curr?.message === message ? null : curr));
@@ -1012,6 +1019,7 @@ export default function App() {
       }
     }
     setDokumentasiPerjalanan((prev) => [finalItem, ...prev]);
+    triggerHaptic('success');
   };
 
   const handleUpdateDokumentasiPerjalanan = (
@@ -1020,6 +1028,7 @@ export default function App() {
     setDokumentasiPerjalanan((prev) =>
       prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
     );
+    triggerHaptic('success');
   };
 
   const handleRetrySyncDokumentasiPerjalanan = async (
@@ -1050,8 +1059,10 @@ export default function App() {
             : curr
         )
       );
+      triggerHaptic('success');
     } catch (err) {
       console.error('Retry upload ke Drive gagal:', err);
+      triggerHaptic('error');
       setDokumentasiPerjalanan((prev) =>
         prev.map((curr) =>
           curr.id === item.id
@@ -1080,6 +1091,7 @@ export default function App() {
       }
     }
     setDokumentasiPerjalanan((prev) => prev.filter((i) => i.id !== target.id));
+    triggerHaptic('medium');
   };
 
   const handleAddDokumentasiPengeluaran = async (
@@ -1117,6 +1129,7 @@ export default function App() {
       }
     }
     setDokumentasiPengeluaran((prev) => [finalItem, ...prev]);
+    triggerHaptic('success');
   };
 
   const handleUpdateDokumentasiPengeluaran = (
@@ -1125,6 +1138,7 @@ export default function App() {
     setDokumentasiPengeluaran((prev) =>
       prev.map((item) => (item.id === updatedItem.id ? updatedItem : item))
     );
+    triggerHaptic('success');
   };
 
   const handleRetrySyncDokumentasiPengeluaran = async (

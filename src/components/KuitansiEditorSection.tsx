@@ -509,11 +509,13 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       allErrors.push('Kode & Nama Sub Kegiatan wajib diisi pada form kuitansi.');
     }
     if (allErrors.length > 0) {
+      triggerHaptic('error');
       setValidationErrors(allErrors);
       setSaveBanner(null);
       setFormTab('utama');
       return;
     }
+    triggerHaptic('success');
     setValidationErrors([]);
     const committed = { ...draft, updatedAt: new Date().toISOString() };
     setDraft(committed);

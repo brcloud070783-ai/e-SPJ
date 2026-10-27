@@ -478,12 +478,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     }
 
     if (errors.length > 0) {
+      triggerHaptic('error');
       setValidationErrors(errors);
       setSaveBanner(null);
       setFormTab('header');
       return;
     }
 
+    triggerHaptic('success');
     setValidationErrors([]);
     const finalSaved = { ...draft, updatedAt: new Date().toISOString() };
     setDraft(finalSaved);
