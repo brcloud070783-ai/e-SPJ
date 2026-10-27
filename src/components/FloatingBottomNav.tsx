@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutGrid, FileText, SlidersHorizontal, ArrowLeft } from 'lucide-react';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
+import { triggerHaptic } from '../utils/nativeMobile';
 
 export type MainMenuKey = 'home' | 'perjalanan-dinas' | 'settings';
 export type SpjViewKey = 'sub-home' | SpjSubSectionKey;
@@ -36,6 +37,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
       iconActiveColor: 'text-emerald-300',
       tooltip: 'Beranda: Dasbor ringkasan & statistik',
       action: () => {
+        triggerHaptic('light');
         setMainMenu('home');
       },
     },
@@ -49,6 +51,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
         ? 'SPJ Dinas: Mode Formulir (Ketuk untuk kembali ke Daftar Berkas)'
         : 'SPJ Dinas: Kelola berkas & dokumen perjalanan dinas',
       action: () => {
+        triggerHaptic('light');
         setMainMenu('perjalanan-dinas');
         // Jika sudah di menu SPJ dan sedang berada di dalam editor formulir, klik kembali ke daftar berkas
         if (mainMenu === 'perjalanan-dinas' && spjView !== 'sub-home') {
@@ -63,6 +66,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
       iconActiveColor: 'text-sky-300',
       tooltip: 'Pengaturan: Data dinas, pejabat & kop surat',
       action: () => {
+        triggerHaptic('light');
         setMainMenu('settings');
       },
     },
@@ -71,11 +75,11 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
   return (
     <aside
       aria-label="Navigasi Utama Mengambang"
-      className={`no-print fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-24px)] select-none pointer-events-auto transition-all duration-300 ${
+      className={`no-print fixed bottom-[max(0.875rem,env(safe-area-inset-bottom))] sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-24px)] select-none pointer-events-auto transition-all duration-300 ${
         isInsideStudio ? 'hidden lg:block' : 'block'
       }`}
     >
-      <nav className="flex items-center gap-1 sm:gap-1.5 p-1.5 bg-white/95 backdrop-blur-xl border border-slate-200/90 shadow-[0_12px_36px_rgba(15,23,42,0.16),0_2px_6px_rgba(15,23,42,0.06)] rounded-3xl ring-1 ring-slate-900/5 transition-all duration-300 ease-out">
+      <nav className="flex items-center gap-1 sm:gap-1.5 p-1.5 bg-white/88 backdrop-blur-xl border border-slate-200/90 shadow-[0_12px_36px_rgba(15,23,42,0.16),0_2px_6px_rgba(15,23,42,0.06)] rounded-3xl ring-1 ring-slate-900/5 transition-all duration-300 ease-out">
         {navItems.map((item) => {
           const isActive = mainMenu === item.id;
           const Icon = item.icon;

@@ -1,6 +1,6 @@
 {
-  "summary":  "Restrukturisasi tata letak navigasi atas (Layout & Navigation Cleanup) pada ruang kerja SPJ: merampingkan lapisan navigasi menjadi satu baris utama dengan horizontal scrollable pills, menghapus tombol sub-menu kedua yang berlebihan, dan memperluas whitespace ruang kerja dokumen pratinjau A4/F4 bergaya Canva Light Workspace.",
-  "updatedAt":  "2026-10-26T12:39:46.519308479Z",
+  "summary":  "Rencana implementasi menyeluruh untuk mengubah pengalaman web e-SPJ Kaltara menjadi setara aplikasi mobile native bergaya iOS/iPadOS, mencakup Fixed App Shell (100dvh & kunci overscroll), animasi transisi pegas antar tampilan, umpan balik taktil & haptik sentuhan, bottom sheet interaktif dengan gestur tarik-tutup, serta Mode Fokus Penuh pada lembar kerja dokumen SPJ.",
+  "updatedAt":  "2026-10-27T15:05:54.664827471Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

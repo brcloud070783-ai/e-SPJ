@@ -73,9 +73,28 @@ import { DokumentasiPengeluaranSection } from './components/DokumentasiPengeluar
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
+import { NativeBottomSheet } from './components/NativeBottomSheet';
+import { MobileFocusModeContext, triggerHaptic } from './utils/nativeMobile';
 
 type MainMenuKey = 'home' | 'perjalanan-dinas' | 'settings';
 type SpjViewKey = 'sub-home' | SpjSubSectionKey;
+
+const MAIN_MENU_ORDER: Record<MainMenuKey, number> = {
+  home: 0,
+  'perjalanan-dinas': 1,
+  settings: 2,
+};
+
+const SPJ_STEP_ORDER: Record<string, number> = {
+  'sub-home': 0,
+  spt: 1,
+  'surat-tugas': 1,
+  spd: 2,
+  visum: 3,
+  kuitansi: 4,
+  dokumentasi: 5,
+  pengeluaran: 6,
+};
 
 const STORAGE_KEYS = {
   KUITANSI: 'espj_kaltara_kuitansi_v2',
@@ -93,6 +112,46 @@ export default function App() {
   const [mainMenu, setMainMenu] = useState<MainMenuKey>('home');
   const [spjView, setSpjView] = useState<SpjViewKey>('sub-home');
   const [isSpjSwitcherOpen, setIsSpjSwitcherOpen] = useState<boolean>(false);
+  const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const [viewTransitionClass, setViewTransitionClass] = useState<string>('ios-view-enter-fade');
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+  const prevNavRef = useRef<{ menu: MainMenuKey; view: SpjViewKey }>({
+    menu: 'home',
+    view: 'sub-home',
+  });
+
+  // Reset Focus Mode when leaving the SPJ Studio workspace
+  useEffect(() => {
+    if (mainMenu !== 'perjalanan-dinas' || spjView === 'sub-home') {
+      setIsFocusMode(false);
+    }
+  }, [mainMenu, spjView]);
+
+  // Compute directional iOS spring transition class & reset scroll container on navigation
+  useEffect(() => {
+    const prev = prevNavRef.current;
+    if (prev.menu !== mainMenu) {
+      const prevIdx = MAIN_MENU_ORDER[prev.menu] ?? 0;
+      const nextIdx = MAIN_MENU_ORDER[mainMenu] ?? 0;
+      setViewTransitionClass(
+        nextIdx > prevIdx ? 'ios-view-enter-right' : 'ios-view-enter-left'
+      );
+    } else if (prev.view !== spjView) {
+      const prevStep = SPJ_STEP_ORDER[prev.view] ?? 0;
+      const nextStep = SPJ_STEP_ORDER[spjView] ?? 0;
+      if (prev.view === 'sub-home' || spjView === 'sub-home') {
+        setViewTransitionClass('ios-view-enter-fade');
+      } else {
+        setViewTransitionClass(
+          nextStep >= prevStep ? 'ios-view-enter-right' : 'ios-view-enter-left'
+        );
+      }
+    }
+    prevNavRef.current = { menu: mainMenu, view: spjView };
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
+  }, [mainMenu, spjView]);
 
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
     try {
@@ -1208,707 +1267,665 @@ export default function App() {
         : spjView;
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip flex flex-col bg-slate-100 text-slate-900 pb-28 lg:pb-12">
-      {/* 1. STUDIO APP BAR (Bersih, Rapi, & Ergonomis di Mobile mau pun Desktop) */}
-      {isInsideStudio ? (
-        <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
-          {/* DESKTOP (lg+): Baris tunggal yang proporsional */}
-          <div className="hidden lg:flex max-w-7xl mx-auto px-4 sm:px-6 h-16 items-center justify-between gap-4 min-w-0">
-            {/* Zone 1: Kembali & Pemilih SPJ */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSpjSwitcherOpen(false);
-                  setSpjView('sub-home');
-                }}
-                title="Kembali ke Daftar Berkas SPJ"
-                className="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
-              >
-                <ArrowLeft className="w-4 h-4 text-sky-700 shrink-0" />
-                <span>Daftar SPJ</span>
-              </button>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setIsSpjSwitcherOpen((prev) => !prev)}
-                  aria-expanded={isSpjSwitcherOpen}
-                  aria-label="Ganti berkas SPJ aktif"
-                  className="max-w-[220px] h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
-                >
-                  <span className="truncate">
-                    #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </button>
-                {isSpjSwitcherOpen && (
-                  <div
-                    role="menu"
-                    className="absolute top-full mt-1.5 left-0 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
-                  >
-                    <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                      <span>Pilih Berkas SPJ</span>
-                      <span>{kuitansiList.length} Berkas</span>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto space-y-1">
-                      {kuitansiList.map((k, idx) => {
-                        const isSelected = k.id === activeKuitansi.id;
-                        return (
-                          <div
-                            key={k.id}
-                            className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
-                              isSelected
-                                ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveKuitansiId(k.id);
-                                setIsSpjSwitcherOpen(false);
-                              }}
-                              className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate">
-                                  SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
-                                </p>
-                                <p className="text-[11px] font-mono text-slate-500 truncate">
-                                  {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
-                                </p>
-                              </div>
-                              {isSelected && (
-                                <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              data-testid={`delete-kuitansi-${k.id}`}
-                              title="Hapus berkas SPJ ini"
-                              aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsSpjSwitcherOpen(false);
-                                promptDeleteKuitansi(k);
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSpjSwitcherOpen(false);
-                          handleDuplicateActiveKuitansi();
-                        }}
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>+ Duplikat</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSpjSwitcherOpen(false);
-                          handleCreateNewKuitansi();
-                        }}
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ SPJ Baru</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Zone 2: 6 Tab Dokumen Desktop (Menyesuaikan proporsional mengisi ruang setelah ikon copy dihapus) */}
-            <nav
-              aria-label="Navigasi Dokumen SPJ"
-              className="flex-1 max-w-2xl grid grid-cols-6 gap-2"
-            >
-              {studioSteps.map((step) => {
-                const StepIcon = step.icon;
-                const isActive = normalizedActiveStepKey === step.key;
-                return (
-                  <button
-                    key={step.key}
-                    type="button"
-                    onClick={() => {
-                      setIsSpjSwitcherOpen(false);
-                      setSpjView(step.key);
-                    }}
-                    className={`w-full py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-sky-700 text-white shadow-xs font-bold'
-                        : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 font-semibold'
-                    }`}
-                  >
-                    <StepIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                    <span className="text-xs leading-none truncate max-w-full">{step.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* MOBILE (<lg): Tanpa ikon copy di kanan, tombol kembali & pemilih berkas SPJ menyesuaikan proporsional */}
-          <div className="lg:hidden flex flex-col">
-            {/* Mobile Baris 1: Tombol Kembali & Dropdown Pemilih SPJ mengisi penuh secara proporsional */}
-            <div className="px-2.5 h-10 flex items-center justify-between gap-2 border-b border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSpjSwitcherOpen(false);
-                  setSpjView('sub-home');
-                }}
-                className="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200/80"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                <span>Daftar SPJ</span>
-              </button>
-
-              <div className="relative min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setIsSpjSwitcherOpen((prev) => !prev)}
-                  aria-expanded={isSpjSwitcherOpen}
-                  className="w-full h-8 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
-                >
-                  <span className="truncate">
-                    #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                </button>
-                {isSpjSwitcherOpen && (
-                  <div
-                    role="menu"
-                    className="absolute top-full mt-1.5 right-0 w-72 sm:w-80 max-w-[calc(100vw-1.25rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
-                  >
-                    <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                      <span>Pilih Berkas SPJ</span>
-                      <span>{kuitansiList.length} Berkas</span>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto space-y-1">
-                      {kuitansiList.map((k, idx) => {
-                        const isSelected = k.id === activeKuitansi.id;
-                        return (
-                          <div
-                            key={k.id}
-                            className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
-                              isSelected
-                                ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
-                                : 'hover:bg-slate-50 text-slate-700'
-                            }`}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActiveKuitansiId(k.id);
-                                setIsSpjSwitcherOpen(false);
-                              }}
-                              className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
-                            >
-                              <div className="min-w-0">
-                                <p className="truncate">
-                                  SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
-                                </p>
-                                <p className="text-[11px] font-mono text-slate-500 truncate">
-                                  {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
-                                </p>
-                              </div>
-                              {isSelected && (
-                                <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
-                              )}
-                            </button>
-
-                            <button
-                              type="button"
-                              data-testid={`delete-kuitansi-mobile-${k.id}`}
-                              title="Hapus berkas SPJ ini"
-                              aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setIsSpjSwitcherOpen(false);
-                                promptDeleteKuitansi(k);
-                              }}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSpjSwitcherOpen(false);
-                          handleDuplicateActiveKuitansi();
-                        }}
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>+ Duplikat</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSpjSwitcherOpen(false);
-                          handleCreateNewKuitansi();
-                        }}
-                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>+ SPJ Baru</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile Baris 2: 6 TAB DOKUMEN PROPORSIONAL DALAM GRID 6-KOLOM */}
-            <nav
-              aria-label="Navigasi Dokumen SPJ Mobile"
-              className="w-full px-2 py-1.5 grid grid-cols-6 gap-1.5 bg-slate-50/90 border-t border-slate-100"
-            >
-              {studioSteps.map((step) => {
-                const StepIcon = step.icon;
-                const isActive = normalizedActiveStepKey === step.key;
-                return (
-                  <button
-                    key={step.key}
-                    type="button"
-                    onClick={() => {
-                      setIsSpjSwitcherOpen(false);
-                      setSpjView(step.key);
-                    }}
-                    className={`h-11 w-full py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-sky-700 text-white shadow-2xs font-bold'
-                        : 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 font-semibold'
-                    }`}
-                  >
-                    <StepIcon
-                      className={`w-4 h-4 shrink-0 ${
-                        isActive ? 'text-white' : 'text-slate-500'
-                      }`}
-                    />
-                    <span className="text-[10px] leading-none text-center truncate max-w-full block">
-                      {step.shortLabel}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </header>
-      ) : (
-        /* 2. TOP NAVBAR UTAMA (Tampil saat di Beranda, Sub-Home SPJ, atau Pengaturan — Anti Overflow) */
-        <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-8 h-14 flex items-center justify-between gap-2 sm:gap-6">
-          {/* Zone 1: Brand Wordmark */}
-          <div className="flex items-center gap-2 shrink-0">
-            <a
-              href="#beranda"
-              onClick={(e) => {
-                e.preventDefault();
-                setMainMenu('home');
-              }}
-              className="inline-flex items-center gap-2 text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
-            >
-              <img
-                src="/icon.svg"
-                alt="Ikon SAPA Kaltara"
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain shrink-0 shadow-xs"
-              />
-              <span>SAPA Kaltara</span>
-            </a>
-            <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200/80 hidden xs:inline-block">
-              Disdikbud Kaltara
-            </span>
-          </div>
-
-          {/* Zone 2: Menu Utama Desktop (Beranda: Ringkasan, SPJ Dinas: Ruang Kerja, Pengaturan: Kop & Data) */}
-          <nav
-            aria-label="Menu Utama"
-            className="hidden sm:flex items-center gap-2 sm:gap-5 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
+    <MobileFocusModeContext.Provider
+      value={{
+        isFocusMode,
+        setIsFocusMode,
+        toggleFocusMode: () => setIsFocusMode((prev) => !prev),
+      }}
+    >
+      <div className="native-app-shell w-full max-w-full bg-slate-100 text-slate-900">
+        {/* 1. STUDIO APP BAR (Bersih, Rapi, & Ergonomis di Mobile mau pun Desktop; mendukung Mode Fokus Penuh di HP) */}
+        {isInsideStudio ? (
+          <header
+            className={`no-print shrink-0 z-30 w-full max-w-full bg-white/88 text-slate-900 backdrop-blur-xl border-b border-slate-200/90 shadow-2xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+              isFocusMode
+                ? 'max-lg:max-h-0 max-lg:opacity-0 max-lg:overflow-hidden max-lg:border-b-0 max-lg:pointer-events-none'
+                : 'max-lg:max-h-32 max-lg:opacity-100'
+            }`}
           >
-            <a
-              href="#beranda"
-              onClick={(e) => {
-                e.preventDefault();
-                setMainMenu('home');
-              }}
-              title="Beranda: Dasbor ringkasan, metrik anggaran, dan status berkas"
-              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                mainMenu === 'home'
-                  ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
-                  : 'hover:text-slate-900'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <div className="flex flex-col text-left leading-tight">
-                <span>Beranda</span>
-                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Dasbor & Pantauan</span>
-              </div>
-            </a>
-            <a
-              href="#perjalanan-dinas"
-              onClick={(e) => {
-                e.preventDefault();
-                setMainMenu('perjalanan-dinas');
-                setSpjView('sub-home');
-              }}
-              title="SPJ Dinas: Ruang kerja pengelolaan berkas, arsip, dan pengisian 6 formulir dokumen"
-              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                mainMenu === 'perjalanan-dinas'
-                  ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
-                  : 'hover:text-slate-900'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <div className="flex flex-col text-left leading-tight">
-                <span>SPJ Dinas</span>
-                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Ruang Kerja & Formulir</span>
-              </div>
-            </a>
-            <a
-              href="#pengaturan"
-              onClick={(e) => {
-                e.preventDefault();
-                setMainMenu('settings');
-              }}
-              title="Pengaturan: Konfigurasi nama dinas, pejabat penandatangan, dan kop surat"
-              className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                mainMenu === 'settings'
-                  ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
-                  : 'hover:text-slate-900'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <div className="flex flex-col text-left leading-tight">
-                <span>Pengaturan</span>
-                <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Data Dinas & Kop</span>
-              </div>
-            </a>
-          </nav>
+            {/* DESKTOP (lg+): Baris tunggal yang proporsional */}
+            <div className="hidden lg:flex max-w-7xl mx-auto px-4 sm:px-6 h-16 items-center justify-between gap-4 min-w-0">
+              {/* Zone 1: Kembali & Pemilih SPJ */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setIsSpjSwitcherOpen(false);
+                    setSpjView('sub-home');
+                  }}
+                  title="Kembali ke Daftar Berkas SPJ"
+                  className="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
+                >
+                  <ArrowLeft className="w-4 h-4 text-sky-700 shrink-0" />
+                  <span>Daftar SPJ</span>
+                </button>
 
-          {/* Zone 3: PWA Install Button */}
-          <div className="flex items-center gap-2 shrink-0">
-            <PWAInstallButton />
-          </div>
-        </header>
-      )}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setIsSpjSwitcherOpen((prev) => !prev);
+                    }}
+                    aria-expanded={isSpjSwitcherOpen}
+                    aria-label="Ganti berkas SPJ aktif"
+                    className="max-w-[220px] h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
+                  >
+                    <span className="truncate">
+                      #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </button>
+                  {isSpjSwitcherOpen && (
+                    <div
+                      role="menu"
+                      className="absolute top-full mt-1.5 left-0 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
+                    >
+                      <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                        <span>Pilih Berkas SPJ</span>
+                        <span>{kuitansiList.length} Berkas</span>
+                      </div>
+                      <div className="max-h-60 overflow-y-auto space-y-1">
+                        {kuitansiList.map((k, idx) => {
+                          const isSelected = k.id === activeKuitansi.id;
+                          return (
+                            <div
+                              key={k.id}
+                              className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
+                                isSelected
+                                  ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
+                                  : 'hover:bg-slate-50 text-slate-700'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  triggerHaptic('light');
+                                  setActiveKuitansiId(k.id);
+                                  setIsSpjSwitcherOpen(false);
+                                }}
+                                className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate">
+                                    SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
+                                  </p>
+                                  <p className="text-[11px] font-mono text-slate-500 truncate">
+                                    {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
+                                  </p>
+                                </div>
+                                {isSelected && (
+                                  <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
+                                )}
+                              </button>
 
-      {/* Main Content Container with bottom padding for Floating Pill Bar */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-20 sm:pb-28 min-w-0 overflow-x-clip">
-        {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
-        {mainMenu === 'home' && (
-          <MainHomeSection
-            settings={appSettings}
-            kuitansiList={kuitansiList}
-            activeKuitansi={activeKuitansi}
-            activeSpt={activeSpt}
-            docPerjalananCount={activeDocPerjalanan.length}
-            docPengeluaranList={activeDocPengeluaran}
-            allDocPerjalanan={dokumentasiPerjalanan}
-            allDocPengeluaran={dokumentasiPengeluaran}
-            sptList={sptList}
-            isCloudSynced={isCloudSynced}
-            onEnterSpjPerjalananDinas={() => {
-              setMainMenu('perjalanan-dinas');
-              setSpjView('sub-home');
-            }}
-            onOpenStudioModule={(sub) => {
-              setMainMenu('perjalanan-dinas');
-              setSpjView(sub);
-            }}
-            onCreateNewKuitansi={() => {
-              handleCreateNewKuitansi();
-            }}
-            onSelectKuitansi={setActiveKuitansiId}
-          />
+                              <button
+                                type="button"
+                                data-testid={`delete-kuitansi-${k.id}`}
+                                title="Hapus berkas SPJ ini"
+                                aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setIsSpjSwitcherOpen(false);
+                                  promptDeleteKuitansi(k);
+                                }}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSpjSwitcherOpen(false);
+                            handleDuplicateActiveKuitansi();
+                          }}
+                          className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>+ Duplikat</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSpjSwitcherOpen(false);
+                            handleCreateNewKuitansi();
+                          }}
+                          className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ SPJ Baru</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Zone 2: 6 Tab Dokumen Desktop */}
+              <nav
+                aria-label="Navigasi Dokumen SPJ"
+                className="flex-1 max-w-2xl grid grid-cols-6 gap-2"
+              >
+                {studioSteps.map((step) => {
+                  const StepIcon = step.icon;
+                  const isActive = normalizedActiveStepKey === step.key;
+                  return (
+                    <button
+                      key={step.key}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setIsSpjSwitcherOpen(false);
+                        setSpjView(step.key);
+                      }}
+                      className={`w-full py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-sky-700 text-white shadow-xs font-bold'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 font-semibold'
+                      }`}
+                    >
+                      <StepIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                      <span className="text-xs leading-none truncate max-w-full">{step.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* MOBILE (<lg): Baris Kemudi Ringkas + Strip Tab 6-Kolom Bergaya iOS */}
+            <div className="lg:hidden flex flex-col">
+              {/* Mobile Baris 1: Tombol Kembali & Trigger Bottom Sheet Pemilih Berkas SPJ */}
+              <div className="px-2.5 h-9 flex items-center justify-between gap-2 border-b border-slate-100/90">
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setIsSpjSwitcherOpen(false);
+                    setSpjView('sub-home');
+                  }}
+                  className="h-7 px-2.5 rounded-lg bg-slate-100/90 hover:bg-slate-200 text-slate-700 text-[11px] font-bold inline-flex items-center gap-1 shrink-0 cursor-pointer border border-slate-200/80"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                  <span>Daftar SPJ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    triggerHaptic('light');
+                    setIsSpjSwitcherOpen(true);
+                  }}
+                  aria-expanded={isSpjSwitcherOpen}
+                  className="min-w-0 flex-1 h-7 px-2.5 rounded-lg bg-slate-50/90 hover:bg-slate-100 border border-slate-200/90 text-[11px] font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
+                >
+                  <span className="truncate">
+                    #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </button>
+              </div>
+
+              {/* Mobile Baris 2: 6 TAB DOKUMEN PROPORSIONAL DALAM GRID 6-KOLOM */}
+              <nav
+                aria-label="Navigasi Dokumen SPJ Mobile"
+                className="w-full px-2 py-1 grid grid-cols-6 gap-1 bg-slate-50/80"
+              >
+                {studioSteps.map((step) => {
+                  const StepIcon = step.icon;
+                  const isActive = normalizedActiveStepKey === step.key;
+                  return (
+                    <button
+                      key={step.key}
+                      type="button"
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setIsSpjSwitcherOpen(false);
+                        setSpjView(step.key);
+                      }}
+                      className={`h-10 w-full py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-sky-700 text-white shadow-2xs font-bold'
+                          : 'bg-white/90 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 font-semibold'
+                      }`}
+                    >
+                      <StepIcon
+                        className={`w-3.5 h-3.5 shrink-0 ${
+                          isActive ? 'text-white' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="text-[9.5px] leading-none text-center truncate max-w-full block">
+                        {step.shortLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </header>
+        ) : (
+          /* 2. TOP NAVBAR UTAMA (Tampil saat di Beranda, Sub-Home SPJ, atau Pengaturan — Anti Overflow) */
+          <header className="no-print shrink-0 z-30 w-full max-w-full bg-white/88 backdrop-blur-xl border-b border-slate-200/90 px-3 sm:px-8 h-13 sm:h-14 flex items-center justify-between gap-2 sm:gap-6">
+            {/* Zone 1: Brand Wordmark */}
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href="#beranda"
+                onClick={(e) => {
+                  e.preventDefault();
+                  triggerHaptic('light');
+                  setMainMenu('home');
+                }}
+                className="inline-flex items-center gap-2 text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+              >
+                <img
+                  src="/icon.svg"
+                  alt="Ikon SAPA Kaltara"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain shrink-0 shadow-xs"
+                />
+                <span>SAPA Kaltara</span>
+              </a>
+              <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200/80 hidden xs:inline-block">
+                Disdikbud Kaltara
+              </span>
+            </div>
+
+            {/* Zone 2: Menu Utama Desktop */}
+            <nav
+              aria-label="Menu Utama"
+              className="hidden sm:flex items-center gap-2 sm:gap-5 text-xs sm:text-sm font-medium text-slate-600 min-w-0"
+            >
+              <a
+                href="#beranda"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMainMenu('home');
+                }}
+                title="Beranda: Dasbor ringkasan, metrik anggaran, dan status berkas"
+                className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
+                  mainMenu === 'home'
+                    ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                <div className="flex flex-col text-left leading-tight">
+                  <span>Beranda</span>
+                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Dasbor & Pantauan</span>
+                </div>
+              </a>
+              <a
+                href="#perjalanan-dinas"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMainMenu('perjalanan-dinas');
+                  setSpjView('sub-home');
+                }}
+                title="SPJ Dinas: Ruang kerja pengelolaan berkas, arsip, dan pengisian 6 formulir dokumen"
+                className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
+                  mainMenu === 'perjalanan-dinas'
+                    ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                <div className="flex flex-col text-left leading-tight">
+                  <span>SPJ Dinas</span>
+                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Ruang Kerja & Formulir</span>
+                </div>
+              </a>
+              <a
+                href="#pengaturan"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMainMenu('settings');
+                }}
+                title="Pengaturan: Konfigurasi nama dinas, pejabat penandatangan, dan kop surat"
+                className={`inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 py-1 ${
+                  mainMenu === 'settings'
+                    ? 'text-slate-900 font-bold underline underline-offset-8 decoration-2 decoration-sky-700'
+                    : 'hover:text-slate-900'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                <div className="flex flex-col text-left leading-tight">
+                  <span>Pengaturan</span>
+                  <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Data Dinas & Kop</span>
+                </div>
+              </a>
+            </nav>
+
+            {/* Zone 3: PWA Install Button */}
+            <div className="flex items-center gap-2 shrink-0">
+              <PWAInstallButton />
+            </div>
+          </header>
         )}
 
-        {/* 2. SECTION PERJALANAN DINAS: Sub-Home & Ruang Kerja Berurutan 1 Berkas SPJ Utuh */}
-        {mainMenu === 'perjalanan-dinas' && (
-          <div className="space-y-3 sm:space-y-4 min-w-0 max-w-full">
-            {spjView === 'sub-home' ? (
-              <SpjPerjalananSubHome
+        {/* Main Isolated Scroll Container with Momentum Scroll & Directional Spring Transitions */}
+        <main
+          ref={mainScrollRef}
+          className="native-scroll-container w-full min-w-0"
+        >
+          <div
+            key={`${mainMenu}-${spjView}`}
+            className={`w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-24 sm:pb-28 min-w-0 ${viewTransitionClass}`}
+          >
+            {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
+            {mainMenu === 'home' && (
+              <MainHomeSection
+                settings={appSettings}
                 kuitansiList={kuitansiList}
                 activeKuitansi={activeKuitansi}
                 activeSpt={activeSpt}
-                sptList={sptList}
-                onSelectKuitansi={setActiveKuitansiId}
-                onCreateNewKuitansi={handleCreateNewKuitansi}
-                onDuplicateKuitansi={handleDuplicateActiveKuitansi}
-                onDeleteKuitansi={promptDeleteKuitansi}
-                onDeleteKuitansiBatch={handleDeleteKuitansiBatch}
-                onArchiveKuitansiBatch={handleArchiveKuitansiBatch}
-                onRestoreBackupPayload={handleRestoreBackupPayload}
-                docPerjalanan={activeDocPerjalanan}
-                docPengeluaran={activeDocPengeluaran}
+                docPerjalananCount={activeDocPerjalanan.length}
+                docPengeluaranList={activeDocPengeluaran}
                 allDocPerjalanan={dokumentasiPerjalanan}
                 allDocPengeluaran={dokumentasiPengeluaran}
-                onOpenSubSection={(sub) => setSpjView(sub)}
+                sptList={sptList}
+                isCloudSynced={isCloudSynced}
+                onEnterSpjPerjalananDinas={() => {
+                  triggerHaptic('light');
+                  setMainMenu('perjalanan-dinas');
+                  setSpjView('sub-home');
+                }}
+                onOpenStudioModule={(sub) => {
+                  triggerHaptic('light');
+                  setMainMenu('perjalanan-dinas');
+                  setSpjView(sub);
+                }}
+                onCreateNewKuitansi={() => {
+                  triggerHaptic('medium');
+                  handleCreateNewKuitansi();
+                }}
+                onSelectKuitansi={setActiveKuitansiId}
               />
-            ) : (
-              <div className="min-w-0 max-w-full space-y-4">
-                {spjView === 'kuitansi' && (
-                  <KuitansiEditorSection
+            )}
+
+            {/* 2. SECTION PERJALANAN DINAS: Sub-Home & Ruang Kerja Berurutan 1 Berkas SPJ Utuh */}
+            {mainMenu === 'perjalanan-dinas' && (
+              <div className="space-y-3 sm:space-y-4 min-w-0 max-w-full">
+                {spjView === 'sub-home' ? (
+                  <SpjPerjalananSubHome
                     kuitansiList={kuitansiList}
-                    activeKuitansiId={activeKuitansi.id}
+                    activeKuitansi={activeKuitansi}
+                    activeSpt={activeSpt}
+                    sptList={sptList}
                     onSelectKuitansi={setActiveKuitansiId}
-                    onSaveKuitansi={handleSaveKuitansi}
                     onCreateNewKuitansi={handleCreateNewKuitansi}
-                    onDeleteKuitansi={() => promptDeleteKuitansi(activeKuitansi)}
-                    onOpenSyncModal={() => {}}
-                    customFields={customFields}
-                    onAddCustomField={handleAddCustomField}
-                    onUpdateCustomField={handleUpdateCustomField}
-                    onRemoveCustomField={handleRemoveCustomField}
-                    onUploadLampiranToDrive={handleUploadLampiranToDrive}
-                    onDeleteLampiran={handleDeleteLampiran}
-                    isGoogleConnected={hasValidToken && !!workspaceConfig}
-                    isUploading={isUploading}
-                    autoSyncEnabled={workspaceConfig?.autoSyncEnabled ?? true}
-                    paperSize={paperSize}
-                    onChangePaperSize={(size) => {
-                      setPaperSize(size);
-                      try {
-                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                      } catch {
-                        // ignore
-                      }
+                    onDuplicateKuitansi={handleDuplicateActiveKuitansi}
+                    onDeleteKuitansi={promptDeleteKuitansi}
+                    onDeleteKuitansiBatch={handleDeleteKuitansiBatch}
+                    onArchiveKuitansiBatch={handleArchiveKuitansiBatch}
+                    onRestoreBackupPayload={handleRestoreBackupPayload}
+                    docPerjalanan={activeDocPerjalanan}
+                    docPengeluaran={activeDocPengeluaran}
+                    allDocPerjalanan={dokumentasiPerjalanan}
+                    allDocPengeluaran={dokumentasiPengeluaran}
+                    onOpenSubSection={(sub) => {
+                      triggerHaptic('light');
+                      setSpjView(sub);
                     }}
-                    logoPemprovDataUrl={appSettings.logoPemprovDataUrl}
-                    daftarPegawai={daftarPegawai}
-                    sptList={sptList}
-                    activeSptId={activeSpt.id}
                   />
-                )}
+                ) : (
+                  <div className="min-w-0 max-w-full space-y-4">
+                    {spjView === 'kuitansi' && (
+                      <KuitansiEditorSection
+                        kuitansiList={kuitansiList}
+                        activeKuitansiId={activeKuitansi.id}
+                        onSelectKuitansi={setActiveKuitansiId}
+                        onSaveKuitansi={handleSaveKuitansi}
+                        onCreateNewKuitansi={handleCreateNewKuitansi}
+                        onDeleteKuitansi={() => promptDeleteKuitansi(activeKuitansi)}
+                        onOpenSyncModal={() => {}}
+                        customFields={customFields}
+                        onAddCustomField={handleAddCustomField}
+                        onUpdateCustomField={handleUpdateCustomField}
+                        onRemoveCustomField={handleRemoveCustomField}
+                        onUploadLampiranToDrive={handleUploadLampiranToDrive}
+                        onDeleteLampiran={handleDeleteLampiran}
+                        isGoogleConnected={hasValidToken && !!workspaceConfig}
+                        isUploading={isUploading}
+                        autoSyncEnabled={workspaceConfig?.autoSyncEnabled ?? true}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        logoPemprovDataUrl={appSettings.logoPemprovDataUrl}
+                        daftarPegawai={daftarPegawai}
+                        sptList={sptList}
+                        activeSptId={activeSpt.id}
+                      />
+                    )}
 
-                {(spjView === 'spt' ||
-                  spjView === 'spd' ||
-                  spjView === 'visum' ||
-                  spjView === 'surat-tugas') && (
-                  <SuratTugasEditorSection
-                    sptList={sptList}
-                    activeSptId={activeSpt.id}
-                    onSelectSpt={setActiveSptId}
-                    onSaveSpt={handleSaveSpt}
-                    onCreateNewSpt={handleCreateNewSpt}
-                    onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
-                    appSettings={appSettings}
-                    daftarPegawai={daftarPegawai}
-                    paperSize={paperSize}
-                    onChangePaperSize={(size) => {
-                      setPaperSize(size);
-                      try {
-                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                    activeDocType={
-                      spjView === 'spt' || spjView === 'surat-tugas'
-                        ? 'spt'
-                        : spjView === 'visum'
-                          ? 'spd-belakang'
-                          : 'spd'
-                    }
-                    onChangeDocType={(dt) => {
-                      setSpjView(
-                        dt === 'spt'
-                          ? 'spt'
-                          : dt === 'spd-belakang'
-                            ? 'visum'
-                            : 'spd'
-                      );
-                    }}
-                  />
-                )}
+                    {(spjView === 'spt' ||
+                      spjView === 'spd' ||
+                      spjView === 'visum' ||
+                      spjView === 'surat-tugas') && (
+                      <SuratTugasEditorSection
+                        sptList={sptList}
+                        activeSptId={activeSpt.id}
+                        onSelectSpt={setActiveSptId}
+                        onSaveSpt={handleSaveSpt}
+                        onCreateNewSpt={handleCreateNewSpt}
+                        onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
+                        appSettings={appSettings}
+                        daftarPegawai={daftarPegawai}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        activeDocType={
+                          spjView === 'spt' || spjView === 'surat-tugas'
+                            ? 'spt'
+                            : spjView === 'visum'
+                              ? 'spd-belakang'
+                              : 'spd'
+                        }
+                        onChangeDocType={(dt) => {
+                          setSpjView(
+                            dt === 'spt'
+                              ? 'spt'
+                              : dt === 'spd-belakang'
+                                ? 'visum'
+                                : 'spd'
+                          );
+                        }}
+                      />
+                    )}
 
-                {spjView === 'dokumentasi' && (
-                  <DokumentasiPerjalananSection
-                    items={activeDocPerjalanan}
-                    kuitansiList={kuitansiList}
-                    activeKuitansi={activeKuitansi}
-                    onAddItem={handleAddDokumentasiPerjalanan}
-                    onUpdateItem={handleUpdateDokumentasiPerjalanan}
-                    onRetrySyncItem={handleRetrySyncDokumentasiPerjalanan}
-                    onDeleteItem={handleDeleteDokumentasiPerjalanan}
-                    isGoogleConnected={hasValidToken && !!workspaceConfig}
-                    isUploading={isUploading}
-                    onOpenSyncModal={() => {}}
-                    paperSize={paperSize}
-                    onChangePaperSize={(size) => {
-                      setPaperSize(size);
-                      try {
-                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                  />
-                )}
+                    {spjView === 'dokumentasi' && (
+                      <DokumentasiPerjalananSection
+                        items={activeDocPerjalanan}
+                        kuitansiList={kuitansiList}
+                        activeKuitansi={activeKuitansi}
+                        onAddItem={handleAddDokumentasiPerjalanan}
+                        onUpdateItem={handleUpdateDokumentasiPerjalanan}
+                        onRetrySyncItem={handleRetrySyncDokumentasiPerjalanan}
+                        onDeleteItem={handleDeleteDokumentasiPerjalanan}
+                        isGoogleConnected={hasValidToken && !!workspaceConfig}
+                        isUploading={isUploading}
+                        onOpenSyncModal={() => {}}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                      />
+                    )}
 
-                {spjView === 'pengeluaran' && (
-                  <DokumentasiPengeluaranSection
-                    items={activeDocPengeluaran}
-                    kuitansiList={kuitansiList}
-                    activeKuitansi={activeKuitansi}
-                    onAddItem={handleAddDokumentasiPengeluaran}
-                    onUpdateItem={handleUpdateDokumentasiPengeluaran}
-                    onRetrySyncItem={handleRetrySyncDokumentasiPengeluaran}
-                    onDeleteItem={handleDeleteDokumentasiPengeluaran}
-                    isGoogleConnected={hasValidToken && !!workspaceConfig}
-                    isUploading={isUploading}
-                    onOpenSyncModal={() => {}}
-                    paperSize={paperSize}
-                    onChangePaperSize={(size) => {
-                      setPaperSize(size);
-                      try {
-                        localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                      } catch {
-                        // ignore
-                      }
-                    }}
-                  />
+                    {spjView === 'pengeluaran' && (
+                      <DokumentasiPengeluaranSection
+                        items={activeDocPengeluaran}
+                        kuitansiList={kuitansiList}
+                        activeKuitansi={activeKuitansi}
+                        onAddItem={handleAddDokumentasiPengeluaran}
+                        onUpdateItem={handleUpdateDokumentasiPengeluaran}
+                        onRetrySyncItem={handleRetrySyncDokumentasiPengeluaran}
+                        onDeleteItem={handleDeleteDokumentasiPengeluaran}
+                        isGoogleConnected={hasValidToken && !!workspaceConfig}
+                        isUploading={isUploading}
+                        onOpenSyncModal={() => {}}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             )}
+
+            {/* 3. MENU PENGATURAN (SETTINGS) */}
+            {mainMenu === 'settings' && (
+              <SettingsSection
+                settings={appSettings}
+                daftarPegawai={daftarPegawai}
+                onUpdateDaftarPegawai={handleUpdateDaftarPegawai}
+                paperSize={paperSize}
+                onSaveSettings={handleSaveSettings}
+                onChangePaperSize={(size) => {
+                  setPaperSize(size);
+                  try {
+                    localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                  } catch {
+                    // ignore
+                  }
+                }}
+                onOpenWorkspaceModal={() => {}}
+                isGoogleConnected={hasValidToken && !!workspaceConfig}
+              />
+            )}
           </div>
-        )}
+        </main>
 
-        {/* 3. MENU PENGATURAN (SETTINGS) */}
-        {mainMenu === 'settings' && (
-          <SettingsSection
-            settings={appSettings}
-            daftarPegawai={daftarPegawai}
-            onUpdateDaftarPegawai={handleUpdateDaftarPegawai}
-            paperSize={paperSize}
-            onSaveSettings={handleSaveSettings}
-            onChangePaperSize={(size) => {
-              setPaperSize(size);
-              try {
-                localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-              } catch {
-                // ignore
-              }
-            }}
-            onOpenWorkspaceModal={() => {}}
-            isGoogleConnected={hasValidToken && !!workspaceConfig}
-          />
-        )}
-      </main>
-
-      {/* Modal Dialog Konfirmasi Hapus Berkas SPJ */}
-      {kuitansiToDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="delete-modal-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4">
-            <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 id="delete-modal-title" className="text-base font-extrabold text-slate-900">
-                  Hapus Berkas SPJ?
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Tindakan ini permanen. Seluruh rincian biaya kuitansi serta foto dan bukti pengeluaran yang terhubung akan ikut dibersihkan.
-                </p>
-              </div>
-            </div>
-
-            {/* Rincian Berkas SPJ yang Akan Dihapus */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Nomor SPT:</span>
-                <span className="font-mono font-bold text-red-700">{kuitansiToDelete.noSpt}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Pelaksana:</span>
-                <span className="font-bold text-slate-900">
-                  {kuitansiToDelete.atasNama || '(Nama Belum Diisi)'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">NIP Pelaksana:</span>
-                <span className="font-mono text-slate-700">{kuitansiToDelete.nipPenerima || '-'}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Tujuan:</span>
-                <span className="text-slate-800 truncate max-w-[200px]">{kuitansiToDelete.tujuan}</span>
-              </div>
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-bold">
-                <span className="text-slate-700">Total Kuitansi:</span>
-                <span className="font-mono text-emerald-800 text-sm">
-                  {formatRupiah(calculateKuitansiTotal(kuitansiToDelete.rincian))}
-                </span>
-              </div>
-              {(() => {
-                const relatedPhotos = dokumentasiPerjalanan.filter(
-                  (d) => d.kuitansiId === kuitansiToDelete.id
-                ).length;
-                const relatedExpenses = dokumentasiPengeluaran.filter(
-                  (e) => e.kuitansiId === kuitansiToDelete.id
-                ).length;
-                if (relatedPhotos > 0 || relatedExpenses > 0) {
-                  return (
-                    <div className="pt-2 border-t border-slate-200 text-[11px] text-amber-800 bg-amber-50/70 p-2 rounded-xl flex items-center gap-1.5 font-medium">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span>
-                        {relatedPhotos} Foto Kegiatan &amp; {relatedExpenses} Bukti Nota terkait akan ikut dihapus.
-                      </span>
-                    </div>
-                  );
-                }
-                return null;
-              })()}
-            </div>
-
-            {/* Opsi Unduh Cadangan 1-Klik Sebelum Hapus */}
-            <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-sky-950">
-                Simpan cadangan berkas ini sebelum dihapus?
-              </span>
+        {/* Mobile Interactive Bottom Sheet: Pilih Berkas SPJ (Swipe-to-Dismiss) */}
+        <NativeBottomSheet
+          isOpen={isInsideStudio && isSpjSwitcherOpen}
+          onClose={() => setIsSpjSwitcherOpen(false)}
+          title={`Pilih Berkas SPJ (${kuitansiList.length} Berkas)`}
+          subtitle="Tarik ke bawah untuk menutup atau ketuk berkas untuk beralih"
+          footer={
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  downloadSpjBackupJson({
-                    kuitansiItems: [kuitansiToDelete],
-                    allSptList: sptList,
-                    allDocPerjalanan: dokumentasiPerjalanan,
-                    allDocPengeluaran: dokumentasiPengeluaran,
-                    filenamePrefix: 'Cadangan_1_Berkas_SPJ',
-                  })
-                }
-                className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-sky-100 border border-sky-300 text-sky-900 text-[11px] font-bold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  setIsSpjSwitcherOpen(false);
+                  handleDuplicateActiveKuitansi();
+                }}
+                className="min-h-[42px] px-3 py-2 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5 text-sky-700" />
-                <span>Unduh .JSON</span>
+                <Copy className="w-3.5 h-3.5" />
+                <span>+ Duplikat</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic('medium');
+                  setIsSpjSwitcherOpen(false);
+                  handleCreateNewKuitansi();
+                }}
+                className="min-h-[42px] px-3 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ SPJ Baru</span>
               </button>
             </div>
+          }
+        >
+          <div className="space-y-1.5">
+            {kuitansiList.map((k, idx) => {
+              const isSelected = k.id === activeKuitansi.id;
+              return (
+                <div
+                  key={k.id}
+                  className={`w-full text-left px-3 py-2.5 rounded-2xl text-xs flex items-center justify-between gap-2 transition-colors ${
+                    isSelected
+                      ? 'bg-sky-50 text-sky-950 font-bold border border-sky-200 shadow-2xs'
+                      : 'bg-slate-50/70 hover:bg-slate-100 text-slate-700 border border-slate-200/70'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerHaptic('light');
+                      setActiveKuitansiId(k.id);
+                      setIsSpjSwitcherOpen(false);
+                    }}
+                    className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold">
+                        SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'}
+                      </p>
+                      <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                        {k.tujuan}
+                      </p>
+                      <p className="text-[10.5px] font-mono text-slate-500 truncate mt-0.5">
+                        {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
+                      </p>
+                    </div>
+                    {isSelected && (
+                      <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
+                    )}
+                  </button>
 
-            {/* Tombol Aksi */}
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    data-testid={`delete-kuitansi-mobile-${k.id}`}
+                    title="Hapus berkas SPJ ini"
+                    aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic('medium');
+                      setIsSpjSwitcherOpen(false);
+                      promptDeleteKuitansi(k);
+                    }}
+                    className="min-h-[36px] min-w-[36px] rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </NativeBottomSheet>
+
+        {/* Modal / Interactive Bottom Sheet Konfirmasi Hapus Berkas SPJ */}
+        <NativeBottomSheet
+          isOpen={Boolean(kuitansiToDelete)}
+          onClose={() => setKuitansiToDelete(null)}
+          title="Hapus Berkas SPJ?"
+          subtitle="Tindakan ini permanen • Tarik ke bawah untuk membatalkan"
+          desktopModal={true}
+          footer={
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setKuitansiToDelete(null)}
@@ -1918,42 +1935,126 @@ export default function App() {
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDeleteKuitansi}
+                onClick={() => {
+                  triggerHaptic('heavy');
+                  handleConfirmDeleteKuitansi();
+                }}
                 className="min-h-[42px] px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Ya, Hapus Permanen</span>
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Floating Action Toast Notification (offset above bottom bar on mobile) */}
-      {actionToast && (
-        <div
-          role="status"
-          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          }
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{actionToast.message}</span>
-        </div>
-      )}
+          {kuitansiToDelete && (
+            <div className="space-y-3.5">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-4 h-4" />
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  Seluruh rincian biaya kuitansi serta foto dan bukti pengeluaran yang terhubung dengan berkas ini akan ikut dibersihkan.
+                </p>
+              </div>
 
-      {/* Floating Pill Bottom Navigation (Expanding Pill & Elevated Island Dock) */}
-      <FloatingBottomNav
-        mainMenu={mainMenu}
-        setMainMenu={setMainMenu}
-        spjView={spjView}
-        setSpjView={setSpjView}
-        kuitansiCount={kuitansiList.length}
-        activeKuitansiTujuan={activeKuitansi?.tujuan}
-      />
+              {/* Rincian Berkas SPJ yang Akan Dihapus */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Nomor SPT:</span>
+                  <span className="font-mono font-bold text-red-700">{kuitansiToDelete.noSpt}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Pelaksana:</span>
+                  <span className="font-bold text-slate-900">
+                    {kuitansiToDelete.atasNama || '(Nama Belum Diisi)'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">NIP Pelaksana:</span>
+                  <span className="font-mono text-slate-700">{kuitansiToDelete.nipPenerima || '-'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Tujuan:</span>
+                  <span className="text-slate-800 truncate max-w-[200px]">{kuitansiToDelete.tujuan}</span>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-bold">
+                  <span className="text-slate-700">Total Kuitansi:</span>
+                  <span className="font-mono text-emerald-800 text-sm">
+                    {formatRupiah(calculateKuitansiTotal(kuitansiToDelete.rincian))}
+                  </span>
+                </div>
+                {(() => {
+                  const relatedPhotos = dokumentasiPerjalanan.filter(
+                    (d) => d.kuitansiId === kuitansiToDelete.id
+                  ).length;
+                  const relatedExpenses = dokumentasiPengeluaran.filter(
+                    (e) => e.kuitansiId === kuitansiToDelete.id
+                  ).length;
+                  if (relatedPhotos > 0 || relatedExpenses > 0) {
+                    return (
+                      <div className="pt-2 border-t border-slate-200 text-[11px] text-amber-800 bg-amber-50/70 p-2 rounded-xl flex items-center gap-1.5 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>
+                          {relatedPhotos} Foto Kegiatan &amp; {relatedExpenses} Bukti Nota terkait akan ikut dihapus.
+                        </span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
 
-      {/* Offline Mode Connectivity Indicator */}
-      <OfflineIndicator />
+              {/* Opsi Unduh Cadangan 1-Klik Sebelum Hapus */}
+              <div className="p-3 rounded-2xl bg-sky-50/80 border border-sky-200 flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-sky-950">
+                  Simpan cadangan berkas ini sebelum dihapus?
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadSpjBackupJson({
+                      kuitansiItems: [kuitansiToDelete],
+                      allSptList: sptList,
+                      allDocPerjalanan: dokumentasiPerjalanan,
+                      allDocPengeluaran: dokumentasiPengeluaran,
+                      filenamePrefix: 'Cadangan_1_Berkas_SPJ',
+                    })
+                  }
+                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-sky-100 border border-sky-300 text-sky-900 text-[11px] font-bold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-sky-700" />
+                  <span>Unduh .JSON</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </NativeBottomSheet>
 
+        {/* Floating Action Toast Notification (offset above bottom bar on mobile) */}
+        {actionToast && (
+          <div
+            role="status"
+            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{actionToast.message}</span>
+          </div>
+        )}
 
-    </div>
+        {/* Floating Pill Bottom Navigation (Expanding Pill & Elevated Island Dock) */}
+        <FloatingBottomNav
+          mainMenu={mainMenu}
+          setMainMenu={setMainMenu}
+          spjView={spjView}
+          setSpjView={setSpjView}
+          kuitansiCount={kuitansiList.length}
+          activeKuitansiTujuan={activeKuitansi?.tujuan}
+        />
+
+        {/* Offline Mode Connectivity Indicator */}
+        <OfflineIndicator />
+      </div>
+    </MobileFocusModeContext.Provider>
   );
 }

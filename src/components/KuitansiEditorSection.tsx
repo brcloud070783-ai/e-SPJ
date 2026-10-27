@@ -56,6 +56,7 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
+import { useSwipeToDismissSheet, triggerHaptic } from '../utils/nativeMobile';
 
 interface KuitansiEditorSectionProps {
   kuitansiList: KuitansiPerjalananDinas[];
@@ -131,6 +132,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   };
 
   const openModalWithZone = (zone: CanvasEditableZone) => {
+    triggerHaptic('light');
     if (!isMobileSheetOpen) {
       modalSnapshotRef.current = draft;
     }
@@ -146,6 +148,11 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
     setValidationErrors([]);
     setIsMobileSheetOpen(false);
   };
+
+  const { sheetStyle: mobileSheetStyle, handleTouchHandlers: mobileSheetTouchHandlers } =
+    useSwipeToDismissSheet({
+      onDismiss: handleCancelAndCloseModal,
+    });
 
   React.useEffect(() => {
     if (!isPelaksanaDropdownOpen) return;
@@ -1858,12 +1865,16 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           <div
             role="dialog"
             aria-modal="true"
+            style={mobileSheetStyle}
             aria-label="Panel Editor Kuitansi Mobile"
-            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.18)] max-h-[68vh] flex flex-col overflow-hidden"
+            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white/98 backdrop-blur-xl text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.18)] max-h-[72dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
           >
-            {/* Drag Handle Modern & Sheet Header */}
-            <div className="px-4 pt-2.5 pb-2.5 border-b border-slate-200/90 bg-slate-50 shrink-0">
-              <div className="w-11 h-1.5 rounded-full bg-slate-300 mx-auto mb-2" />
+            {/* Drag Handle Modern & Sheet Header (Swipe-to-Dismiss) */}
+            <div
+              {...mobileSheetTouchHandlers}
+              className="px-4 pt-2.5 pb-2.5 border-b border-slate-200/90 bg-slate-50/90 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+            >
+              <div className="w-11 h-1.5 rounded-full bg-slate-300/90 mx-auto mb-2" />
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <span className="text-xs font-extrabold text-slate-900 block truncate">
@@ -1874,7 +1885,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                         : `Edit Bidang Kustom (${customFields.length})`}
                   </span>
                   <span className="text-[10px] text-slate-500 block">
-                    Pindah tab otomatis menyimpan draf sementara
+                    Tarik ke bawah untuk menutup • Pindah tab menyimpan draf sementara
                   </span>
                 </div>
                 <button
@@ -1882,7 +1893,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   onClick={handleCancelAndCloseModal}
                   aria-label="Batal / Tutup tanpa menyimpan"
                   title="Batal / Tutup tanpa menyimpan"
-                  className="min-h-[32px] min-w-[32px] rounded-lg bg-slate-200/80 hover:bg-slate-300 text-slate-800 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                  className="min-h-[32px] min-w-[32px] rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-800 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>

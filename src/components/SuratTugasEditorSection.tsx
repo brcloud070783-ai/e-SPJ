@@ -57,6 +57,7 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
+import { useSwipeToDismissSheet, triggerHaptic } from '../utils/nativeMobile';
 
 export type ActiveDocType = 'spd' | 'spd-belakang' | 'spt';
 
@@ -129,6 +130,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     nextSpdTab?: SpdEditableZone,
     nextVisumTab?: SpdBelakangEditableZone
   ) => {
+    triggerHaptic('light');
     if (!isMobileSheetOpen) {
       modalSnapshotRef.current = draft;
     }
@@ -146,6 +148,11 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     setValidationErrors([]);
     setIsMobileSheetOpen(false);
   };
+
+  const { sheetStyle: mobileSheetStyle, handleTouchHandlers: mobileSheetTouchHandlers } =
+    useSwipeToDismissSheet({
+      onDismiss: handleCancelAndCloseModal,
+    });
 
   const getTodayIso = (addDays = 0) => {
     const d = new Date();
@@ -2479,6 +2486,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           <div
             role="dialog"
             aria-modal="true"
+            style={mobileSheetStyle}
             aria-label={
               docType === 'spd-belakang'
                 ? 'Editor SPD Lembar 2 (Visum Belakang)'
@@ -2486,33 +2494,36 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 ? 'Editor Surat Perjalanan Dinas (SPD)'
                 : 'Editor Surat Perintah Tugas (SPT)'
             }
-            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-200"
+            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white/98 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80dvh] flex flex-col animate-in slide-in-from-bottom duration-200"
           >
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0 bg-white rounded-t-3xl">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-8 h-1 rounded-full bg-slate-300 block shrink-0" />
-                  <span className="text-xs font-bold text-slate-900 truncate">
+            <div
+              {...mobileSheetTouchHandlers}
+              className="pt-2.5 pb-2.5 px-3.5 border-b border-slate-100 flex flex-col gap-1.5 shrink-0 bg-slate-50/90 rounded-t-3xl cursor-grab active:cursor-grabbing touch-none select-none"
+            >
+              <div className="w-11 h-1.5 rounded-full bg-slate-300/90 mx-auto" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-xs font-extrabold text-slate-900 truncate block">
                     {docType === 'spd-belakang'
                       ? 'Editor SPD Lembar 2 (Visum Belakang)'
                       : docType === 'spd'
                       ? 'Editor Surat Perjalanan Dinas (SPD)'
                       : 'Editor Surat Perintah Tugas (SPT)'}
                   </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    Tarik ke bawah untuk menutup • Pindah tab menyimpan draf sementara
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-500 block pl-10">
-                  Pindah tab otomatis menyimpan draf sementara
-                </span>
+                <button
+                  type="button"
+                  onClick={handleCancelAndCloseModal}
+                  aria-label="Batal / Tutup tanpa menyimpan"
+                  title="Batal / Tutup tanpa menyimpan"
+                  className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-slate-900 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleCancelAndCloseModal}
-                aria-label="Batal / Tutup tanpa menyimpan"
-                title="Batal / Tutup tanpa menyimpan"
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">

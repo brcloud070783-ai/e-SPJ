@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, MousePointerClick } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { PaperSize } from '../types/spj';
 import {
   getPaperDimensions,
   calculateTouchDistance,
   calculatePinchZoomScale,
 } from '../utils/spjCalculations';
+import { triggerHaptic, useMobileFocusMode } from '../utils/nativeMobile';
 
 interface InteractivePaperViewerProps {
   paperSize: PaperSize;
@@ -31,6 +32,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   const spec = getPaperDimensions(paperSize);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  const { isFocusMode, toggleFocusMode } = useMobileFocusMode();
 
   const [fitMode, setFitMode] = useState<'width' | 'page'>('width');
   const [baseFitScale, setBaseFitScale] = useState<number>(() => {
@@ -79,8 +81,8 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     if (!el) return;
 
     const updateFitScale = () => {
-      const availableWidth = Math.max(260, el.clientWidth - 24);
-      const availableHeight = Math.max(380, window.innerHeight - 240);
+      const availableWidth = Math.max(260, el.clientWidth - (isFocusMode ? 12 : 24));
+      const availableHeight = Math.max(380, window.innerHeight - (isFocusMode ? 130 : 240));
       const widthFit = availableWidth / spec.widthPx;
       const heightFit = availableHeight / spec.minHeightPx;
 
@@ -95,7 +97,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     const observer = new ResizeObserver(updateFitScale);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [spec.widthPx, spec.minHeightPx, fitMode]);
+  }, [spec.widthPx, spec.minHeightPx, fitMode, isFocusMode]);
 
   // Keep sheet height strictly synchronized to official paper height
   useEffect(() => {
@@ -220,21 +222,24 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
         }
       `}</style>
 
-      {/* BILAH KONTROL KERTAS, FONT & ZOOM: 1 Baris Tunggal Ultra-Ringkas */}
-      <div className="no-print flex justify-center my-1 px-1">
+      {/* BILAH KONTROL KERTAS, FONT, ZOOM & MODE FOKUS: 1 Baris Tunggal Ultra-Ringkas Bergaya iOS Glass */}
+      <div className="no-print sticky top-1 z-20 flex justify-center my-1 px-1">
         <div
           data-testid="compact-floating-toolbar"
-          className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-md text-slate-800 border border-slate-200/90 rounded-full px-1.5 py-0.5 shadow-2xs max-w-full overflow-x-auto no-scrollbar"
+          className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/88 backdrop-blur-xl text-slate-800 border border-slate-200/90 rounded-full px-1.5 py-0.5 shadow-[0_4px_16px_rgba(15,23,42,0.08)] max-w-full overflow-x-auto no-scrollbar"
         >
           {/* Paper Size Selector (A4 | F4) */}
           <div
             role="group"
             aria-label="Pilih Ukuran Kertas Cetak"
-            className="inline-flex items-center p-0.5 bg-slate-100 rounded-full border border-slate-200/80 shrink-0"
+            className="inline-flex items-center p-0.5 bg-slate-100/90 rounded-full border border-slate-200/80 shrink-0"
           >
             <button
               type="button"
-              onClick={() => onChangePaperSize('A4')}
+              onClick={() => {
+                triggerHaptic('light');
+                onChangePaperSize('A4');
+              }}
               title="Kertas A4 (210 × 297 mm)"
               className={`h-6 px-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center ${
                 paperSize === 'A4'
@@ -246,7 +251,10 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChangePaperSize('F4')}
+              onClick={() => {
+                triggerHaptic('light');
+                onChangePaperSize('F4');
+              }}
               title="Kertas F4 Folio (215 × 330 mm)"
               className={`h-6 px-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center ${
                 paperSize === 'F4'
@@ -268,10 +276,13 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
           <div className="w-px h-3.5 bg-slate-200 shrink-0" aria-hidden="true" />
 
           {/* Minimalist Zoom Controls ("- 100% +") */}
-          <div className="inline-flex items-center bg-slate-100 rounded-full p-0.5 border border-slate-200/80 shrink-0">
+          <div className="inline-flex items-center bg-slate-100/90 rounded-full p-0.5 border border-slate-200/80 shrink-0">
             <button
               type="button"
-              onClick={() => handleZoomStep(-0.15)}
+              onClick={() => {
+                triggerHaptic('light');
+                handleZoomStep(-0.15);
+              }}
               aria-label="Perkecil tampilan kertas"
               title="Zoom Out (-15%)"
               className="h-6 w-6 rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
@@ -281,7 +292,10 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
 
             <button
               type="button"
-              onClick={handleResetZoom}
+              onClick={() => {
+                triggerHaptic('light');
+                handleResetZoom();
+              }}
               data-testid="paper-zoom-percentage"
               aria-label="Reset zoom ke ukuran pas layar"
               title="Klik untuk reset zoom"
@@ -292,7 +306,10 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
 
             <button
               type="button"
-              onClick={() => handleZoomStep(0.15)}
+              onClick={() => {
+                triggerHaptic('light');
+                handleZoomStep(0.15);
+              }}
               aria-label="Perbesar tampilan kertas"
               title="Zoom In (+15%)"
               className="h-6 w-6 rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
@@ -303,7 +320,10 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
             {userZoom !== 1 && (
               <button
                 type="button"
-                onClick={handleResetZoom}
+                onClick={() => {
+                  triggerHaptic('light');
+                  handleResetZoom();
+                }}
                 aria-label="Kembalikan posisi kertas"
                 title="Reset Zoom"
                 className="h-6 w-6 rounded-full text-sky-700 hover:bg-white flex items-center justify-center transition-colors cursor-pointer"
@@ -311,6 +331,41 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
                 <RotateCcw className="w-2.5 h-2.5" />
               </button>
             )}
+          </div>
+
+          {/* Mobile Full-Focus Workspace Toggle (<lg): Sembunyikan/Tampilkan Header Studio untuk Ruang Kertas Maksimal */}
+          <div className="lg:hidden flex items-center shrink-0">
+            <div className="w-px h-3.5 bg-slate-200 mr-1 shrink-0" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('medium');
+                toggleFocusMode();
+              }}
+              aria-pressed={isFocusMode}
+              title={
+                isFocusMode
+                  ? 'Keluar Mode Fokus (Tampilkan Navigasi Atas)'
+                  : 'Mode Fokus Penuh (Sembunyikan Navigasi Atas)'
+              }
+              className={`h-6 px-2 rounded-full text-[10.5px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                isFocusMode
+                  ? 'bg-sky-700 text-white shadow-2xs'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80'
+              }`}
+            >
+              {isFocusMode ? (
+                <>
+                  <Minimize2 className="w-3 h-3 shrink-0" />
+                  <span>Menu</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="w-3 h-3 shrink-0 text-sky-700" />
+                  <span>Fokus</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>
