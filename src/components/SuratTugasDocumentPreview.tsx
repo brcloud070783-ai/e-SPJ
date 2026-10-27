@@ -20,7 +20,7 @@ interface SuratTugasDocumentPreviewProps {
   isPrintMode?: boolean;
 }
 
-export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps> = ({
+export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps> = React.memo(({
   spt,
   appSettings,
   paperSize,
@@ -657,4 +657,5 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
       </div>
     </div>
   );
-};
+});
+SuratTugasDocumentPreview.displayName = 'SuratTugasDocumentPreview';

@@ -140,7 +140,7 @@ export const getEffectiveVisumData = (spt: SuratPerintahTugas): SpdVisumBelakang
 
 export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
   SuratPerjalananDinasBelakangDocumentPreviewProps
-> = ({
+> = React.memo(({
   spt,
   paperSize,
   activeZone,
@@ -545,4 +545,5 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
       </div>
     </div>
   );
-};
+});
+SuratPerjalananDinasBelakangDocumentPreview.displayName = 'SuratPerjalananDinasBelakangDocumentPreview';

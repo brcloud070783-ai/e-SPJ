@@ -18,15 +18,15 @@ interface KuitansiDocumentPreviewProps {
   onSelectZone?: (zone: CanvasEditableZone) => void;
 }
 
-export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = ({
+export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = React.memo(({
   kuitansi,
   customFields = [],
   paperSize = 'A4',
   activeZone = null,
   onSelectZone,
 }) => {
-  const totalAmount = calculateKuitansiTotal(kuitansi.rincian);
-  const terbilangText = terbilangRupiah(totalAmount);
+  const totalAmount = React.useMemo(() => calculateKuitansiTotal(kuitansi.rincian), [kuitansi.rincian]);
+  const terbilangText = React.useMemo(() => terbilangRupiah(totalAmount), [totalAmount]);
 
   const printableCustomFields = customFields.filter(
     (cf) => cf.showInPrint && kuitansi.customFieldValues?.[cf.id]?.trim()
@@ -370,4 +370,5 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = (
       </div>
     </div>
   );
-};
+});
+KuitansiDocumentPreview.displayName = 'KuitansiDocumentPreview';

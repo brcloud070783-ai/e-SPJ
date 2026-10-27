@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useDeferredValue } from 'react';
 import {
   FileCheck,
   FileText,
@@ -57,7 +57,13 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
-import { useSwipeToDismissSheet, triggerHaptic } from '../utils/nativeMobile';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  useSwipeToDismissSheet,
+  triggerHaptic,
+  MOBILE_TAB_VARIANTS,
+} from '../utils/nativeMobile';
+import { useSwipeTabs } from '../hooks/useSwipeTabs';
 
 export type ActiveDocType = 'spd' | 'spd-belakang' | 'spt';
 
@@ -116,6 +122,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const deferredDraft = useDeferredValue(draft);
 
   const commitOrStageDraft = (next: SuratPerintahTugas) => {
     setDraft(next);
@@ -153,6 +160,59 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     useSwipeToDismissSheet({
       onDismiss: handleCancelAndCloseModal,
     });
+
+  const sptSubTabs: SuratTugasEditableZone[] = ['header', 'pegawai', 'detail', 'ttd'];
+  const spdSubTabs: SpdEditableZone[] = ['header', 'pelaksana', 'perjalanan', 'pengikut', 'ttd'];
+  const spdBelakangSubTabs: SpdBelakangEditableZone[] = [
+    'bagian-1',
+    'bagian-transit',
+    'bagian-6',
+    'bagian-catatan',
+  ];
+
+  const handleSubTabSwipeLeft = () => {
+    if (docType === 'spd-belakang') {
+      const idx = spdBelakangSubTabs.indexOf(spdBelakangTab);
+      if (idx >= 0 && idx < spdBelakangSubTabs.length - 1) {
+        setSpdBelakangTab(spdBelakangSubTabs[idx + 1]);
+      }
+    } else if (docType === 'spd') {
+      const idx = spdSubTabs.indexOf(spdTab);
+      if (idx >= 0 && idx < spdSubTabs.length - 1) {
+        setSpdTab(spdSubTabs[idx + 1]);
+      }
+    } else {
+      const idx = sptSubTabs.indexOf(formTab);
+      if (idx >= 0 && idx < sptSubTabs.length - 1) {
+        setFormTab(sptSubTabs[idx + 1]);
+      }
+    }
+  };
+
+  const handleSubTabSwipeRight = () => {
+    if (docType === 'spd-belakang') {
+      const idx = spdBelakangSubTabs.indexOf(spdBelakangTab);
+      if (idx > 0) {
+        setSpdBelakangTab(spdBelakangSubTabs[idx - 1]);
+      }
+    } else if (docType === 'spd') {
+      const idx = spdSubTabs.indexOf(spdTab);
+      if (idx > 0) {
+        setSpdTab(spdSubTabs[idx - 1]);
+      }
+    } else {
+      const idx = sptSubTabs.indexOf(formTab);
+      if (idx > 0) {
+        setFormTab(sptSubTabs[idx - 1]);
+      }
+    }
+  };
+
+  const formSubTabSwipeHandlers = useSwipeTabs({
+    onSwipeLeft: handleSubTabSwipeLeft,
+    onSwipeRight: handleSubTabSwipeRight,
+    isEnabled: isMobileSheetOpen,
+  });
 
   const getTodayIso = (addDays = 0) => {
     const d = new Date();
@@ -842,8 +902,8 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           </div>
         )}
 
-        {/* SPD SUB-TAB 3: RINCIAN PERJALANAN (Row 4, 5, 6, 7) */}
-        {spdTab === 'perjalanan' && (
+        {/* SPD SUB-TAB 3: RINCIAN PERJALANAN & ANGGARAN (Row 4, 5, 6, 7, 9, 10) */}
+        {(spdTab === 'perjalanan' || spdTab === 'anggaran') && (
           <div className="space-y-3.5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -896,7 +956,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               </div>
             </div>
 
-            <div className="space-y-2 pt-1 border-t border-slate-200">
+            <div className="space-y-2 pt-2 border-t border-slate-200">
               <span className="text-[11px] font-bold text-slate-700 block">
                 7. Waktu &amp; Tanggal Pelaksanaan (Tersinkron SPT)
               </span>
@@ -930,25 +990,81 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 </div>
               </div>
             </div>
+
+            <div className="space-y-3 pt-2.5 border-t border-slate-200">
+              <span className="text-[11px] font-bold text-slate-700 block">
+                9 &amp; 10. Pembebanan Anggaran &amp; Keterangan Lain
+              </span>
+              <div>
+                <label htmlFor="input-spd-instansi" className="block text-[11px] font-medium text-slate-600 mb-1">
+                  9.a. Instansi Pembebanan Anggaran
+                </label>
+                <input
+                  id="input-spd-instansi"
+                  type="text"
+                  value={effectiveInstansi}
+                  onChange={(e) => handleUpdateSpdField('instansiAnggaran', e.target.value)}
+                  className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="input-spd-akun" className="block text-[11px] font-medium text-slate-600 mb-1">
+                  9.b. Kode Rekening / Akun Anggaran
+                </label>
+                <input
+                  id="input-spd-akun"
+                  type="text"
+                  value={effectiveAkun}
+                  onChange={(e) => handleUpdateSpdField('akunAnggaran', e.target.value)}
+                  className="w-full min-h-[38px] rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-mono font-semibold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="input-spd-ket-lain" className="block text-[11px] font-medium text-slate-600 mb-1">
+                  10. Keterangan Lain-lain
+                </label>
+                <textarea
+                  id="input-spd-ket-lain"
+                  rows={2}
+                  placeholder="-"
+                  value={currentSpd.keteranganLain ?? ''}
+                  onChange={(e) => handleUpdateSpdField('keteranganLain', e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900"
+                />
+              </div>
+            </div>
           </div>
         )}
 
         {/* SPD SUB-TAB 4: PENGIKUT (Row 8) */}
         {spdTab === 'pengikut' && (
           <div className="space-y-3.5">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold text-slate-800">
-                8. Daftar Pengikut (Nama, Tgl Lahir, Keterangan)
+                8. Daftar Pengikut (4 Baris)
               </span>
-              <button
-                type="button"
-                onClick={handleAutoFillPengikutFromSpt}
-                className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
-                title="Salin pegawai lain di SPT secara otomatis ke kolom Pengikut"
-              >
-                <Users className="w-3.5 h-3.5 text-emerald-700" />
-                <span>+ Isi Otomatis dari SPT</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleClearPengikutRows}
+                  className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Kosongkan daftar pengikut"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Kosongkan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAutoFillPengikutFromSpt}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/80 text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Salin pegawai lain di SPT secara otomatis ke kolom Pengikut"
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>+ Isi dari SPT</span>
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2.5">
@@ -998,52 +1114,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           </div>
         )}
 
-        {/* SPD SUB-TAB 5: PEMBEBANAN ANGGARAN & KETERANGAN (Row 9 & 10) */}
-        {spdTab === 'anggaran' && (
-          <div className="space-y-3.5">
-            <div>
-              <label htmlFor="input-spd-instansi" className="block text-xs font-semibold text-slate-700 mb-1">
-                9.a. Instansi Pembebanan Anggaran
-              </label>
-              <input
-                id="input-spd-instansi"
-                type="text"
-                value={effectiveInstansi}
-                onChange={(e) => handleUpdateSpdField('instansiAnggaran', e.target.value)}
-                className="w-full min-h-[40px] rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="input-spd-akun" className="block text-xs font-semibold text-slate-700 mb-1">
-                9.b. Akun Pembebanan Anggaran
-              </label>
-              <input
-                id="input-spd-akun"
-                type="text"
-                value={effectiveAkun}
-                onChange={(e) => handleUpdateSpdField('akunAnggaran', e.target.value)}
-                className="w-full min-h-[40px] rounded-xl border border-slate-300 px-3 py-2 text-xs font-mono font-semibold text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="input-spd-ket-lain" className="block text-xs font-semibold text-slate-700 mb-1">
-                10. Keterangan Lain-lain
-              </label>
-              <textarea
-                id="input-spd-ket-lain"
-                rows={2}
-                placeholder="-"
-                value={currentSpd.keteranganLain ?? ''}
-                onChange={(e) => handleUpdateSpdField('keteranganLain', e.target.value)}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs text-slate-900"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* SPD SUB-TAB 6: TITIMANGSA & PEJABAT PENANDATANGAN */}
+        {/* SPD SUB-TAB 5: TITIMANGSA & PEJABAT PENANDATANGAN */}
         {spdTab === 'ttd' && (
           <div className="space-y-3.5">
             <div className="grid grid-cols-2 gap-3">
@@ -1327,6 +1398,26 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               ))}
             </div>
           </div>
+
+          {onDeleteSpt && (
+            <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-slate-500">
+                Ingin menghapus seluruh berkas SPJ ini?
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileSheetOpen(false);
+                  onDeleteSpt();
+                }}
+                className="min-h-[34px] px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                title="Hapus Berkas SPJ ini"
+              >
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Hapus Berkas SPJ</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -2051,261 +2142,188 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           onSubmit={handleExplicitValidateAndSave}
           className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs"
         >
-          {/* Navigation Tabs Depending on Active Document */}
-          {docType === 'spd' ? (
-            <div
-              role="tablist"
-              aria-label="Bagian Form Surat Perjalanan Dinas"
-              className="grid grid-cols-6 bg-slate-100/80 p-1.5 gap-1 border-b border-slate-200 text-center"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'header'}
-                onClick={() => setSpdTab('header')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'header'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="1. Kop, No SPD & PPTK"
+          {/* Unified Native Segmented Control Sub-Tabs (Desktop Inspector) */}
+          <div className="p-2.5 bg-slate-100/90 border-b border-slate-200/90">
+            {docType === 'spd' ? (
+              <div
+                role="tablist"
+                aria-label="Bagian Form Surat Perjalanan Dinas"
+                className="grid grid-cols-5 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
               >
-                <FileText className="w-3 h-3 shrink-0" />
-                <span className="truncate">1. No/PPTK</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'pelaksana'}
-                onClick={() => setSpdTab('pelaksana')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'pelaksana'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="2 & 3. Pegawai Pelaksana & Pangkat/Jabatan"
+                {[
+                  { key: 'header', label: 'No & PPTK', icon: FileText },
+                  { key: 'pelaksana', label: 'Pelaksana', icon: User },
+                  { key: 'perjalanan', label: 'Rincian', icon: MapPin },
+                  { key: 'pengikut', label: 'Pengikut', icon: Users },
+                  { key: 'ttd', label: 'TTD', icon: PenLine },
+                ].map((t) => {
+                  const TIcon = t.icon;
+                  const normalizedSpdTab = spdTab === 'anggaran' ? 'perjalanan' : spdTab;
+                  const isTabActive = normalizedSpdTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSpdTab(t.key as SpdEditableZone);
+                      }}
+                      className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
+                        isTabActive
+                          ? 'text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
+                      }`}
+                    >
+                      {isTabActive && (
+                        <motion.span
+                          layoutId="desktop-spd-subtab-pill"
+                          transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                          className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                        />
+                      )}
+                      <TIcon
+                        className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                          isTabActive ? 'text-white' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : docType === 'spd-belakang' ? (
+              <div
+                role="tablist"
+                aria-label="Bagian Form SPD Lembar 2 (Visum Belakang)"
+                className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
               >
-                <User className="w-3 h-3 shrink-0" />
-                <span className="truncate">2. Pelaksana</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'perjalanan'}
-                onClick={() => setSpdTab('perjalanan')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'perjalanan'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="4-7. Maksud, Angkutan, Tempat & Waktu"
-              >
-                <MapPin className="w-3 h-3 shrink-0" />
-                <span className="truncate">3. Rincian</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'pengikut'}
-                onClick={() => setSpdTab('pengikut')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'pengikut'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="8. Daftar Pengikut"
-              >
-                <Users className="w-3 h-3 shrink-0" />
-                <span className="truncate">4. Pengikut</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'anggaran'}
-                onClick={() => setSpdTab('anggaran')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'anggaran'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="9 & 10. Pembebanan Anggaran & Ket Lain"
-              >
-                <Wallet className="w-3 h-3 shrink-0" />
-                <span className="truncate">5. Anggaran</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdTab === 'ttd'}
-                onClick={() => setSpdTab('ttd')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdTab === 'ttd'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="Penandatangan SPD & Pengguna Anggaran"
-              >
-                <PenLine className="w-3 h-3 shrink-0" />
-                <span className="truncate">6. TTD</span>
-              </button>
-            </div>
-          ) : docType === 'spd-belakang' ? (
-            <div
-              role="tablist"
-              aria-label="Bagian Form SPD Lembar 2 (Visum Belakang)"
-              className="grid grid-cols-4 bg-slate-100/80 p-1.5 gap-1 border-b border-slate-200 text-center"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdBelakangTab === 'bagian-1'}
-                onClick={() => setSpdBelakangTab('bagian-1')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdBelakangTab === 'bagian-1'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="I. Keberangkatan Awal"
-              >
-                <Navigation className="w-3 h-3 shrink-0" />
-                <span className="truncate">I. Berangkat</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdBelakangTab === 'bagian-transit'}
-                onClick={() => setSpdBelakangTab('bagian-transit')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdBelakangTab === 'bagian-transit'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="II - V. Persinggahan / Transit"
-              >
-                <MapPin className="w-3 h-3 shrink-0" />
-                <span className="truncate">II-V. Transit</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdBelakangTab === 'bagian-6'}
-                onClick={() => setSpdBelakangTab('bagian-6')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdBelakangTab === 'bagian-6'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="VI. Tiba Kembali & Pengesahan KPA"
-              >
-                <BadgeCheck className="w-3 h-3 shrink-0" />
-                <span className="truncate">VI. Pengesahan</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={spdBelakangTab === 'bagian-catatan'}
-                onClick={() => setSpdBelakangTab('bagian-catatan')}
-                className={`min-h-[36px] px-1 py-1 rounded-xl text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  spdBelakangTab === 'bagian-catatan'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-                title="VII - VIII. Catatan Lain & Perhatian"
-              >
-                <FileText className="w-3 h-3 shrink-0" />
-                <span className="truncate">VII-VIII. Ket</span>
-              </button>
-            </div>
-          ) : (
-            <div
-              role="tablist"
-              aria-label="Bagian Form Surat Perintah Tugas"
-              className="grid grid-cols-4 bg-slate-100/80 p-1.5 gap-1 border-b border-slate-200 text-center"
-            >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={formTab === 'header'}
-                onClick={() => setFormTab('header')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  formTab === 'header'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Kop &amp; No</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={formTab === 'pegawai'}
-                onClick={() => setFormTab('pegawai')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  formTab === 'pegawai'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Pegawai ({draft.pegawaiList.length})</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={formTab === 'detail'}
-                onClick={() => setFormTab('detail')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  formTab === 'detail'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <MapPin className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Detail</span>
-              </button>
-
-              <button
-                type="button"
-                role="tab"
-                aria-selected={formTab === 'ttd'}
-                onClick={() => setFormTab('ttd')}
-                className={`min-h-[38px] px-2 py-1.5 rounded-xl text-xs font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-                  formTab === 'ttd'
-                    ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <PenLine className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">TTD</span>
-              </button>
-            </div>
-          )}
-
-          <div className="p-4 sm:p-5 space-y-4 max-h-[calc(100vh-230px)] overflow-y-auto">
-            {docType === 'spd-belakang' ? (
-              <SuratPerjalananDinasBelakangEditor
-                spt={draft}
-                activeZone={spdBelakangTab}
-                onSelectZone={setSpdBelakangTab}
-                visumData={getEffectiveVisumData(draft)}
-                onUpdateVisumData={handleUpdateVisumData}
-              />
-            ) : docType === 'spd' ? (
-              renderSpdFormFieldsContent()
+                {[
+                  { key: 'bagian-1', label: 'I. Berangkat', icon: Navigation },
+                  { key: 'bagian-transit', label: 'II-V. Transit', icon: MapPin },
+                  { key: 'bagian-6', label: 'VI. Tiba', icon: BadgeCheck },
+                  { key: 'bagian-catatan', label: 'VII. Catatan', icon: FileText },
+                ].map((t) => {
+                  const TIcon = t.icon;
+                  const isTabActive = spdBelakangTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSpdBelakangTab(t.key as SpdBelakangEditableZone);
+                      }}
+                      className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
+                        isTabActive
+                          ? 'text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
+                      }`}
+                    >
+                      {isTabActive && (
+                        <motion.span
+                          layoutId="desktop-visum-subtab-pill"
+                          transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                          className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                        />
+                      )}
+                      <TIcon
+                        className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                          isTabActive ? 'text-white' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             ) : (
-              renderSptFormFieldsContent()
+              <div
+                role="tablist"
+                aria-label="Bagian Form Surat Perintah Tugas"
+                className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
+              >
+                {[
+                  { key: 'header', label: 'Kop & No', icon: FileText },
+                  { key: 'pegawai', label: `Pegawai (${draft.pegawaiList.length})`, icon: Users },
+                  { key: 'detail', label: 'Detail', icon: MapPin },
+                  { key: 'ttd', label: 'TTD', icon: PenLine },
+                ].map((t) => {
+                  const TIcon = t.icon;
+                  const isTabActive = formTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setFormTab(t.key as SuratTugasEditableZone);
+                      }}
+                      className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
+                        isTabActive
+                          ? 'text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
+                      }`}
+                    >
+                      {isTabActive && (
+                        <motion.span
+                          layoutId="desktop-spt-subtab-pill"
+                          transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                          className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                        />
+                      )}
+                      <TIcon
+                        className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                          isTabActive ? 'text-white' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                        {t.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             )}
+          </div>
+
+          <div className="p-4 sm:p-5 h-[560px] overflow-y-auto overscroll-contain bg-white">
+            <motion.div
+              key={
+                docType === 'spd-belakang'
+                  ? `visum-${spdBelakangTab}`
+                  : docType === 'spd'
+                    ? `spd-${spdTab}`
+                    : `spt-${formTab}`
+              }
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {docType === 'spd-belakang' ? (
+                <SuratPerjalananDinasBelakangEditor
+                  spt={draft}
+                  activeZone={spdBelakangTab}
+                  onSelectZone={setSpdBelakangTab}
+                  visumData={getEffectiveVisumData(draft)}
+                  onUpdateVisumData={handleUpdateVisumData}
+                  hideInternalTabs={true}
+                />
+              ) : docType === 'spd' ? (
+                renderSpdFormFieldsContent()
+              ) : (
+                renderSptFormFieldsContent()
+              )}
+            </motion.div>
           </div>
 
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
@@ -2407,11 +2425,11 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               interactiveHint="Ketuk bagian visum pada kertas untuk mengedit detail keberangkatan, transit, atau pengesahan"
             >
               <SuratPerjalananDinasBelakangDocumentPreview
-                spt={draft}
+                spt={deferredDraft}
                 paperSize={paperSize}
                 activeZone={spdBelakangTab}
                 onSelectZone={handleSelectSpdBelakangZoneFromCanvas}
-                visumData={getEffectiveVisumData(draft)}
+                visumData={getEffectiveVisumData(deferredDraft)}
                 onUpdateVisumData={handleUpdateVisumData}
               />
             </InteractivePaperViewer>
@@ -2423,7 +2441,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               interactiveHint="Ketuk elemen tabel atau ketik langsung untuk mengedit bagian Surat Perjalanan Dinas (SPD)"
             >
               <SuratPerjalananDinasDocumentPreview
-                spt={draft}
+                spt={deferredDraft}
                 appSettings={appSettings}
                 paperSize={paperSize}
                 activeZone={spdTab}
@@ -2462,7 +2480,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               }
             >
               <SuratTugasDocumentPreview
-                spt={draft}
+                spt={deferredDraft}
                 appSettings={appSettings}
                 paperSize={paperSize}
                 activeZone={formTab}
@@ -2476,11 +2494,11 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
         </div>
       </div>
 
-      {/* MOBILE SLIDE-UP BOTTOM SHEET (<lg) */}
+      {/* MOBILE SLIDE-UP BOTTOM SHEET (<lg) — Uniform Fixed Height & Native Segmented Tabs */}
       {isMobileSheetOpen && (
         <>
           <div
-            className="no-print lg:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150"
+            className="no-print lg:hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[3px] animate-in fade-in duration-150"
             onClick={handleCancelAndCloseModal}
             aria-hidden="true"
           />
@@ -2496,11 +2514,12 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 ? 'Editor Surat Perjalanan Dinas (SPD)'
                 : 'Editor Surat Perintah Tugas (SPT)'
             }
-            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white/98 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80dvh] flex flex-col animate-in slide-in-from-bottom duration-200"
+            className="no-print lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white/98 backdrop-blur-xl rounded-t-3xl shadow-[0_-14px_40px_rgba(15,23,42,0.22)] border-t border-slate-200/90 h-[82dvh] max-h-[82dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
           >
+            {/* Drag Handle & Sheet Header */}
             <div
               {...mobileSheetTouchHandlers}
-              className="pt-2.5 pb-2.5 px-3.5 border-b border-slate-100 flex flex-col gap-1.5 shrink-0 bg-slate-50/90 rounded-t-3xl cursor-grab active:cursor-grabbing touch-none select-none"
+              className="pt-2.5 pb-2 px-4 border-b border-slate-200/80 flex flex-col gap-1.5 shrink-0 bg-slate-50/95 rounded-t-3xl cursor-grab active:cursor-grabbing touch-none select-none"
             >
               <div className="w-11 h-1.5 rounded-full bg-slate-300/90 mx-auto" />
               <div className="flex items-center justify-between gap-2">
@@ -2512,7 +2531,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                       ? 'Editor Surat Perjalanan Dinas (SPD)'
                       : 'Editor Surat Perintah Tugas (SPT)'}
                   </span>
-                  <span className="text-[10px] text-slate-500 block">
+                  <span className="text-[10.5px] text-slate-500 block truncate">
                     Tarik ke bawah untuk menutup • Pindah tab menyimpan draf sementara
                   </span>
                 </div>
@@ -2521,21 +2540,29 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                   onClick={handleCancelAndCloseModal}
                   aria-label="Batal / Tutup tanpa menyimpan"
                   title="Batal / Tutup tanpa menyimpan"
-                  className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-slate-900 flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+                  className="w-8 h-8 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-slate-900 flex items-center justify-center cursor-pointer shrink-0 transition-transform active:scale-90"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
+            {/* Unified Native Segmented Control Sub-Tab Bar (100% Equal Height & Width) with Swipe Support */}
+            <div
+              {...formSubTabSwipeHandlers}
+              className="px-3 py-2 border-b border-slate-200/80 bg-slate-100/90 shrink-0 relative z-10"
+            >
               {docType === 'spd-belakang' ? (
-                <div className="grid grid-cols-4 gap-1.5">
+                <div
+                  role="tablist"
+                  aria-label="Bagian Form SPD Lembar 2"
+                  className="grid grid-cols-4 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
+                >
                   {[
-                    { key: 'bagian-1', label: 'Berangkat', icon: Navigation },
-                    { key: 'bagian-transit', label: 'Transit', icon: MapPin },
-                    { key: 'bagian-6', label: 'Pengesahan', icon: BadgeCheck },
-                    { key: 'bagian-catatan', label: 'Catatan', icon: FileText },
+                    { key: 'bagian-1', label: 'I. Berangkat', icon: Navigation },
+                    { key: 'bagian-transit', label: 'II-V. Transit', icon: MapPin },
+                    { key: 'bagian-6', label: 'VI. Tiba', icon: BadgeCheck },
+                    { key: 'bagian-catatan', label: 'VII. Catatan', icon: FileText },
                   ].map((t) => {
                     const TIcon = t.icon;
                     const isTabActive = spdBelakangTab === t.key;
@@ -2543,49 +2570,94 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                       <button
                         key={t.key}
                         type="button"
-                        onClick={() => setSpdBelakangTab(t.key as any)}
-                        className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        role="tab"
+                        aria-selected={isTabActive}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setSpdBelakangTab(t.key as SpdBelakangEditableZone);
+                        }}
+                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                           isTabActive
-                            ? 'bg-sky-700 text-white shadow-2xs'
-                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                            ? 'text-white font-bold'
+                            : 'text-slate-600 hover:text-slate-900 font-semibold'
                         }`}
                       >
-                        <TIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{t.label}</span>
+                        {isTabActive && (
+                          <motion.span
+                            layoutId="mobile-visum-subtab-pill"
+                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                          />
+                        )}
+                        <TIcon
+                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                            isTabActive ? 'text-white' : 'text-slate-500'
+                          }`}
+                        />
+                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                          {t.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               ) : docType === 'spd' ? (
-                <div className="grid grid-cols-5 gap-1">
+                <div
+                  role="tablist"
+                  aria-label="Bagian Form Surat Perjalanan Dinas"
+                  className="grid grid-cols-5 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
+                >
                   {[
-                    { key: 'header', label: 'No/PPTK', icon: FileText },
+                    { key: 'header', label: 'No & PPTK', icon: FileText },
                     { key: 'pelaksana', label: 'Pelaksana', icon: User },
                     { key: 'perjalanan', label: 'Rincian', icon: MapPin },
                     { key: 'pengikut', label: 'Pengikut', icon: Users },
                     { key: 'ttd', label: 'TTD', icon: PenLine },
                   ].map((t) => {
                     const TIcon = t.icon;
-                    const isTabActive = spdTab === t.key;
+                    const normalizedSpdTab = spdTab === 'anggaran' ? 'perjalanan' : spdTab;
+                    const isTabActive = normalizedSpdTab === t.key;
                     return (
                       <button
                         key={t.key}
                         type="button"
-                        onClick={() => setSpdTab(t.key as any)}
-                        className={`h-9 px-1 rounded-xl text-[10.5px] font-bold flex items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                        role="tab"
+                        aria-selected={isTabActive}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setSpdTab(t.key as SpdEditableZone);
+                        }}
+                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                           isTabActive
-                            ? 'bg-sky-700 text-white shadow-2xs'
-                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                            ? 'text-white font-bold'
+                            : 'text-slate-600 hover:text-slate-900 font-semibold'
                         }`}
                       >
-                        <TIcon className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{t.label}</span>
+                        {isTabActive && (
+                          <motion.span
+                            layoutId="mobile-spd-subtab-pill"
+                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                          />
+                        )}
+                        <TIcon
+                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                            isTabActive ? 'text-white' : 'text-slate-500'
+                          }`}
+                        />
+                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                          {t.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-1.5">
+                <div
+                  role="tablist"
+                  aria-label="Bagian Form Surat Perintah Tugas"
+                  className="grid grid-cols-4 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
+                >
                   {[
                     { key: 'header', label: 'Kop & No', icon: FileText },
                     { key: 'pegawai', label: `Pegawai (${draft.pegawaiList.length})`, icon: Users },
@@ -2598,15 +2670,33 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                       <button
                         key={t.key}
                         type="button"
-                        onClick={() => setFormTab(t.key as any)}
-                        className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        role="tab"
+                        aria-selected={isTabActive}
+                        onClick={() => {
+                          triggerHaptic('light');
+                          setFormTab(t.key as SuratTugasEditableZone);
+                        }}
+                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                           isTabActive
-                            ? 'bg-sky-700 text-white shadow-2xs'
-                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                            ? 'text-white font-bold'
+                            : 'text-slate-600 hover:text-slate-900 font-semibold'
                         }`}
                       >
-                        <TIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{t.label}</span>
+                        {isTabActive && (
+                          <motion.span
+                            layoutId="mobile-spt-subtab-pill"
+                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
+                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
+                          />
+                        )}
+                        <TIcon
+                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
+                            isTabActive ? 'text-white' : 'text-slate-500'
+                          }`}
+                        />
+                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                          {t.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -2614,82 +2704,54 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               )}
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1 min-h-0 bg-white">
-              {docType === 'spd-belakang' ? (
-                <SuratPerjalananDinasBelakangEditor
-                  spt={draft}
-                  activeZone={spdBelakangTab}
-                  onSelectZone={setSpdBelakangTab}
-                  visumData={getEffectiveVisumData(draft)}
-                  onUpdateVisumData={handleUpdateVisumData}
-                />
-              ) : docType === 'spd' ? (
-                renderSpdFormFieldsContent()
-              ) : (
-                renderSptFormFieldsContent()
-              )}
+            {/* Scrollable Sheet Content (Constant height container with Swipe Support) */}
+            <div
+              {...formSubTabSwipeHandlers}
+              className="p-4 overflow-y-auto overscroll-contain no-scrollbar flex-1 min-h-0 bg-white"
+            >
+              <motion.div
+                key={
+                  docType === 'spd-belakang'
+                    ? `mob-visum-${spdBelakangTab}`
+                    : docType === 'spd'
+                      ? `mob-spd-${spdTab}`
+                      : `mob-spt-${formTab}`
+                }
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {docType === 'spd-belakang' ? (
+                  <SuratPerjalananDinasBelakangEditor
+                    spt={draft}
+                    activeZone={spdBelakangTab}
+                    onSelectZone={setSpdBelakangTab}
+                    visumData={getEffectiveVisumData(draft)}
+                    onUpdateVisumData={handleUpdateVisumData}
+                    hideInternalTabs={true}
+                  />
+                ) : docType === 'spd' ? (
+                  renderSpdFormFieldsContent()
+                ) : (
+                  renderSptFormFieldsContent()
+                )}
+              </motion.div>
             </div>
 
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
-              {/* Contextual Destructive Button ("Hapus") ONLY on relevant sub-tabs */}
-              {docType === 'spt' && formTab === 'header' && onDeleteSpt && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileSheetOpen(false);
-                    onDeleteSpt();
-                  }}
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
-                  title="Hapus Berkas SPJ ini"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
+            {/* Consistent Pinned Footer Across All Sub-Tabs */}
+            <div className="px-4 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] bg-slate-50/95 border-t border-slate-200/90 flex items-center justify-between gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleCancelAndCloseModal}
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center justify-center cursor-pointer shrink-0 transition-colors"
+              >
+                Batal
+              </button>
 
-              {docType === 'spt' && formTab === 'pegawai' && draft.pegawaiList.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleRemovePegawaiRow(draft.pegawaiList[draft.pegawaiList.length - 1].id)
-                  }
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
-                  title="Hapus baris pegawai terakhir"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
-
-              {docType === 'spd' && spdTab === 'pengikut' && (
-                <button
-                  type="button"
-                  onClick={handleClearPengikutRows}
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
-                  title="Kosongkan daftar pengikut"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
-
-              {docType === 'spd-belakang' && spdBelakangTab === 'bagian-transit' && (
-                <button
-                  type="button"
-                  onClick={handleClearVisumTransitRows}
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-bold text-red-700 inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-colors"
-                  title="Kosongkan baris transit II - V"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
-
-              {/* Single Primary Action Button ("Simpan Perubahan") */}
               <button
                 type="button"
                 onClick={() => handleExplicitValidateAndSave()}
-                className="flex-1 min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                className="flex-1 min-h-[44px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
               >
                 <Save className="w-4 h-4 shrink-0" />
                 <span>Simpan Perubahan</span>

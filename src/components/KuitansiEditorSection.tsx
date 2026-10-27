@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useDeferredValue, useMemo } from 'react';
 import {
   Plus,
   Trash2,
@@ -56,7 +56,13 @@ import {
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
-import { useSwipeToDismissSheet, triggerHaptic } from '../utils/nativeMobile';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  useSwipeToDismissSheet,
+  triggerHaptic,
+  MOBILE_TAB_VARIANTS,
+} from '../utils/nativeMobile';
+import { useSwipeTabs } from '../hooks/useSwipeTabs';
 
 interface KuitansiEditorSectionProps {
   kuitansiList: KuitansiPerjalananDinas[];
@@ -123,6 +129,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const deferredDraft = useDeferredValue(draft);
 
   const commitOrStageDraft = (next: KuitansiPerjalananDinas) => {
     setDraft(next);
@@ -153,6 +160,28 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
     useSwipeToDismissSheet({
       onDismiss: handleCancelAndCloseModal,
     });
+
+  const kuiSubTabs: CanvasEditableZone[] = ['utama', 'rincian', 'kustom'];
+
+  const handleKuiSwipeLeft = () => {
+    const idx = kuiSubTabs.indexOf(formTab);
+    if (idx >= 0 && idx < kuiSubTabs.length - 1) {
+      setFormTab(kuiSubTabs[idx + 1]);
+    }
+  };
+
+  const handleKuiSwipeRight = () => {
+    const idx = kuiSubTabs.indexOf(formTab);
+    if (idx > 0) {
+      setFormTab(kuiSubTabs[idx - 1]);
+    }
+  };
+
+  const kuiSubTabSwipeHandlers = useSwipeTabs({
+    onSwipeLeft: handleKuiSwipeLeft,
+    onSwipeRight: handleKuiSwipeRight,
+    isEnabled: isMobileSheetOpen,
+  });
 
   React.useEffect(() => {
     if (!isPelaksanaDropdownOpen) return;
@@ -530,14 +559,20 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
     setTimeout(() => setSaveBanner(null), 4000);
   };
 
-  const totalKuitansi = calculateKuitansiTotal(draft.rincian);
-  const terbilangText = terbilangRupiah(totalKuitansi);
+  const totalKuitansi = useMemo(() => calculateKuitansiTotal(draft.rincian), [draft.rincian]);
+  const terbilangText = useMemo(() => terbilangRupiah(totalKuitansi), [totalKuitansi]);
 
   const renderFormFieldsContent = () => (
-    <div className="space-y-4">
-      {/* TAB 1: PELAKSANA, TUJUAN, SPT & SUB KEGIATAN */}
-      {formTab === 'utama' && (
-        <div className="space-y-4">
+    <motion.div
+      key={formTab}
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+      className="space-y-4"
+    >
+        {/* TAB 1: PELAKSANA, TUJUAN, SPT & SUB KEGIATAN */}
+        {formTab === 'utama' && (
+          <div className="space-y-4">
 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1185,10 +1220,26 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             )}
           </div>
 
-          <p className="text-[11px] text-slate-500">
-            Pejabat penandatangan ({draft.namaPenggunaAnggaran} &amp; {draft.namaBendahara})
-            mengikuti konfigurasi pada menu <strong>Pengaturan</strong>.
-          </p>
+          <div className="flex items-center justify-between gap-2 pt-1">
+            <p className="text-[11px] text-slate-500">
+              Pejabat penandatangan ({draft.namaPenggunaAnggaran} &amp; {draft.namaBendahara})
+              mengikuti konfigurasi pada menu <strong>Pengaturan</strong>.
+            </p>
+            {onDeleteKuitansi && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileSheetOpen(false);
+                  onDeleteKuitansi();
+                }}
+                className="lg:hidden min-h-[32px] px-2.5 py-1 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-[11px] font-bold text-red-700 inline-flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                title="Hapus berkas SPJ ini"
+              >
+                <Trash2 className="w-3 h-3 shrink-0" />
+                <span>Hapus SPJ</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1633,7 +1684,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 
   return (
@@ -1688,60 +1739,58 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           onSubmit={handleExplicitValidateAndSave}
           className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden"
         >
-          {/* Step / Category Navigation Tabs Inside Form */}
-          <div
-            role="tablist"
-            aria-label="Bagian Formulir Kuitansi"
-            className="grid grid-cols-3 bg-slate-100/80 p-1.5 gap-1 border-b border-slate-200"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={formTab === 'utama'}
-              onClick={() => setFormTab('utama')}
-              className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                formTab === 'utama'
-                  ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+          {/* Step / Category Navigation Tabs Inside Form — Uniform Native Segmented Control */}
+          <div className="p-2 border-b border-slate-200 bg-slate-50/90">
+            <div
+              role="tablist"
+              aria-label="Bagian Formulir Kuitansi"
+              className="grid grid-cols-3 bg-slate-200/75 p-1 rounded-2xl gap-1"
             >
-              <User className="w-3.5 h-3.5 shrink-0" />
-              <span>1. Pelaksana &amp; SPT</span>
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              aria-selected={formTab === 'rincian'}
-              onClick={() => setFormTab('rincian')}
-              className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                formTab === 'rincian'
-                  ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span>2. Rincian ({draft.rincian.length})</span>
-            </button>
-
-            <button
-              type="button"
-              role="tab"
-              aria-selected={formTab === 'kustom'}
-              onClick={() => setFormTab('kustom')}
-              className={`min-h-[38px] px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer ${
-                formTab === 'kustom'
-                  ? 'bg-white text-sky-800 shadow-2xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5 shrink-0" />
-              <span>3. Kustom ({customFields.length})</span>
-            </button>
+              {[
+                { key: 'utama', label: 'Data & SPT', icon: User },
+                { key: 'rincian', label: `Rincian (${draft.rincian.length})`, icon: Wallet },
+                { key: 'kustom', label: `Kustom (${customFields.length})`, icon: SlidersHorizontal },
+              ].map((t) => {
+                const TIcon = t.icon;
+                const isTabActive = formTab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isTabActive}
+                    onClick={() => setFormTab(t.key as any)}
+                    className={`relative h-12 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
+                      isTabActive
+                        ? 'text-sky-950 font-extrabold'
+                        : 'text-slate-600 hover:text-slate-900 font-semibold'
+                    }`}
+                  >
+                    {isTabActive && (
+                      <motion.div
+                        layoutId="desktop-kuitansi-subtab-pill"
+                        transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+                        className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
+                      />
+                    )}
+                    <TIcon
+                      className={`relative z-10 w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${
+                        isTabActive ? 'text-sky-700 scale-105' : 'text-slate-500'
+                      }`}
+                    />
+                    <span className="relative z-10 text-[11px] leading-none tracking-tight whitespace-nowrap">
+                      {t.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="p-4 sm:p-5 space-y-4">
-            {renderFormFieldsContent()}
+          <div className="p-4 sm:p-5 flex flex-col">
+            <div className="h-[520px] overflow-y-auto overscroll-contain pr-1 space-y-4">
+              {renderFormFieldsContent()}
+            </div>
 
             {/* Persistent Total & Terbilang Summary Footer */}
             <div className="pt-3 border-t border-slate-200/80 space-y-3">
@@ -1840,8 +1889,8 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           >
             <KuitansiDocumentPreview
               kuitansi={{
-                ...draft,
-                logoPemprovDataUrl: logoPemprovDataUrl ?? draft.logoPemprovDataUrl,
+                ...deferredDraft,
+                logoPemprovDataUrl: logoPemprovDataUrl ?? deferredDraft.logoPemprovDataUrl,
               }}
               customFields={customFields}
               paperSize={paperSize}
@@ -1869,12 +1918,12 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             aria-modal="true"
             style={mobileSheetStyle}
             aria-label="Panel Editor Kuitansi Mobile"
-            className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white/98 backdrop-blur-xl text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.18)] max-h-[72dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
+            className="no-print lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white/98 backdrop-blur-xl text-slate-900 border-t border-slate-200 rounded-t-3xl shadow-[0_-12px_36px_rgba(15,23,42,0.22)] h-[82dvh] max-h-[82dvh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200"
           >
             {/* Drag Handle Modern & Sheet Header (Swipe-to-Dismiss) */}
             <div
               {...mobileSheetTouchHandlers}
-              className="px-4 pt-2.5 pb-2.5 border-b border-slate-200/90 bg-slate-50/90 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+              className="px-4 pt-2.5 pb-2 border-b border-slate-200/80 bg-slate-50/95 shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
             >
               <div className="w-11 h-1.5 rounded-full bg-slate-300/90 mx-auto mb-2" />
               <div className="flex items-center justify-between gap-2">
@@ -1887,7 +1936,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                         : `Edit Bidang Kustom (${customFields.length})`}
                   </span>
                   <span className="text-[10px] text-slate-500 block">
-                    Tarik ke bawah untuk menutup • Pindah tab menyimpan draf sementara
+                    Tarik ke bawah untuk menutup • Ketuk Simpan untuk menerapkan
                   </span>
                 </div>
                 <button
@@ -1902,9 +1951,16 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               </div>
             </div>
 
-            {/* Sub-Tabs Selector INSIDE Mobile Sheet */}
-            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
-              <div className="grid grid-cols-3 gap-1.5">
+            {/* Sub-Tabs Selector INSIDE Mobile Sheet — Uniform Native Segmented Control with Swipe Support */}
+            <div
+              {...kuiSubTabSwipeHandlers}
+              className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10"
+            >
+              <div
+                role="tablist"
+                aria-label="Sub-Tab Editor Kuitansi Mobile"
+                className="grid grid-cols-3 bg-slate-200/75 p-1 rounded-2xl gap-1"
+              >
                 {[
                   { key: 'utama', label: 'Data & SPT', icon: User },
                   { key: 'rincian', label: `Rincian (${draft.rincian.length})`, icon: Wallet },
@@ -1916,56 +1972,53 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                     <button
                       key={t.key}
                       type="button"
+                      role="tab"
+                      aria-selected={isTabActive}
                       onClick={() => setFormTab(t.key as any)}
-                      className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                         isTabActive
-                          ? 'bg-sky-700 text-white shadow-2xs'
-                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                          ? 'text-sky-950 font-extrabold'
+                          : 'text-slate-600 hover:text-slate-900 font-semibold'
                       }`}
                     >
-                      <TIcon className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate">{t.label}</span>
+                      {isTabActive && (
+                        <motion.div
+                          layoutId="mobile-kuitansi-subtab-pill"
+                          transition={{ type: 'spring', stiffness: 460, damping: 34 }}
+                          className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
+                        />
+                      )}
+                      <TIcon
+                        className={`relative z-10 w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${
+                          isTabActive ? 'text-sky-700 scale-105' : 'text-slate-500'
+                        }`}
+                      />
+                      <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
+                        {t.label}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Scrollable Sheet Content (no-scrollbar + overscroll-contain seperti native mobile app) */}
-            <div className="p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-4 flex-1 min-h-0 bg-white text-slate-900">
+            {/* Scrollable Sheet Content (with Swipe Support) */}
+            <div
+              {...kuiSubTabSwipeHandlers}
+              className="p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-4 flex-1 min-h-0 bg-white text-slate-900"
+            >
               {renderFormFieldsContent()}
             </div>
 
-            {/* Sticky Action Footer Konsisten di Bagian Bawah Sheet (Satu Primary Action + Hapus Kontekstual) */}
-            <div className="px-4 py-3 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2.5 shrink-0">
-              {formTab === 'utama' && onDeleteKuitansi && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMobileSheetOpen(false);
-                    onDeleteKuitansi();
-                  }}
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
-                  title="Hapus berkas SPJ"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
-
-              {formTab === 'rincian' && draft.rincian.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleRemoveRincianRow(draft.rincian[draft.rincian.length - 1].id)
-                  }
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl border border-red-200 bg-red-50 text-xs font-bold text-red-700 hover:bg-red-100 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
-                  title="Hapus baris rincian biaya terakhir"
-                >
-                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>Hapus</span>
-                </button>
-              )}
+            {/* Sticky Action Footer Seragam & Konsisten di Semua Tab */}
+            <div className="px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleCancelAndCloseModal}
+                className="min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
+              >
+                <span>Batal</span>
+              </button>
 
               <button
                 type="button"

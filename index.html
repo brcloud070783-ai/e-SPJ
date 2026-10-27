@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>SAPA Kaltara — Dashboard Perjalanan Dinas</title>
     <meta name="description" content="Aplikasi Mobile PWA untuk pembuatan Kuitansi Perjalanan Dinas, Dokumentasi Kegiatan, dan Dokumentasi Pengeluaran Dinas Pendidikan dan Kebudayaan Provinsi Kalimantan Utara terintegrasi dengan Google Sheets dan Google Drive." />
     <meta property="og:title" content="SAPA Kaltara — Dashboard Perjalanan Dinas" />
@@ -12,8 +12,8 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="SAPA Kaltara" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="e-SPJ Kaltara" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
@@ -183,8 +183,30 @@
       })();
     </script>
   </head>
-  <body>
-    <div id="root"></div>
+  <body class="bg-slate-900">
+    <div id="root">
+      <div id="pwa-splash" style="position:fixed;inset:0;background-color:#0f172a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#ffffff;user-select:none;-webkit-user-select:none;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px;text-align:center;">
+          <div style="width:68px;height:68px;border-radius:20px;background:linear-gradient(135deg,#0284c7,#0369a1);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(2,132,199,0.36);padding:10px;">
+            <img src="/icon.svg" alt="e-SPJ Kaltara" style="width:100%;height:100%;object-fit:contain;" />
+          </div>
+          <div>
+            <div style="font-size:18px;font-weight:800;letter-spacing:-0.02em;color:#f8fafc;">e-SPJ Kaltara</div>
+            <div style="font-size:11px;font-weight:500;color:#94a3b8;margin-top:4px;letter-spacing:0.01em;">Sistem Dokumen Pertanggungjawaban Dinas</div>
+          </div>
+          <div style="width:110px;height:3px;background:rgba(255,255,255,0.12);border-radius:999px;overflow:hidden;margin-top:16px;">
+            <div style="width:40%;height:100%;background:#38bdf8;border-radius:999px;animation:pwa-splash-bar 1.2s infinite ease-in-out;"></div>
+          </div>
+        </div>
+        <style>
+          @keyframes pwa-splash-bar {
+            0% { transform: translateX(-100%); }
+            50% { transform: translateX(120%); }
+            100% { transform: translateX(320%); }
+          }
+        </style>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

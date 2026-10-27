@@ -74,8 +74,11 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { NativeBottomSheet } from './components/NativeBottomSheet';
+import { useSwipeTabs } from './hooks/useSwipeTabs';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   MobileFocusModeContext,
+  MOBILE_PAGE_VARIANTS,
   triggerHaptic,
   useGlobalButtonHaptics,
 } from './utils/nativeMobile';
@@ -119,12 +122,31 @@ export default function App() {
   const [spjView, setSpjView] = useState<SpjViewKey>('sub-home');
   const [isSpjSwitcherOpen, setIsSpjSwitcherOpen] = useState<boolean>(false);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
-  const [viewTransitionClass, setViewTransitionClass] = useState<string>('ios-view-enter-fade');
   const mainScrollRef = useRef<HTMLElement | null>(null);
-  const prevNavRef = useRef<{ menu: MainMenuKey; view: SpjViewKey }>({
+  const prevNavRef = useRef<{ menu: MainMenuKey; view: SpjViewKey; direction: number }>({
     menu: 'home',
     view: 'sub-home',
+    direction: 0,
   });
+
+  // Compute directional slide-in / fade-out vector synchronously on navigation change
+  const navDirection = (() => {
+    const prev = prevNavRef.current;
+    if (prev.menu !== mainMenu) {
+      const prevIdx = MAIN_MENU_ORDER[prev.menu] ?? 0;
+      const nextIdx = MAIN_MENU_ORDER[mainMenu] ?? 0;
+      return nextIdx >= prevIdx ? 1 : -1;
+    }
+    if (prev.view !== spjView) {
+      if (prev.view === 'sub-home' || spjView === 'sub-home') {
+        return 0;
+      }
+      const prevStep = SPJ_STEP_ORDER[prev.view] ?? 0;
+      const nextStep = SPJ_STEP_ORDER[spjView] ?? 0;
+      return nextStep >= prevStep ? 1 : -1;
+    }
+    return prev.direction;
+  })();
 
   // Reset Focus Mode when leaving the SPJ Studio workspace
   useEffect(() => {
@@ -133,31 +155,13 @@ export default function App() {
     }
   }, [mainMenu, spjView]);
 
-  // Compute directional iOS spring transition class & reset scroll container on navigation
+  // Persist navigation history & reset scroll container on navigation
   useEffect(() => {
-    const prev = prevNavRef.current;
-    if (prev.menu !== mainMenu) {
-      const prevIdx = MAIN_MENU_ORDER[prev.menu] ?? 0;
-      const nextIdx = MAIN_MENU_ORDER[mainMenu] ?? 0;
-      setViewTransitionClass(
-        nextIdx > prevIdx ? 'ios-view-enter-right' : 'ios-view-enter-left'
-      );
-    } else if (prev.view !== spjView) {
-      const prevStep = SPJ_STEP_ORDER[prev.view] ?? 0;
-      const nextStep = SPJ_STEP_ORDER[spjView] ?? 0;
-      if (prev.view === 'sub-home' || spjView === 'sub-home') {
-        setViewTransitionClass('ios-view-enter-fade');
-      } else {
-        setViewTransitionClass(
-          nextStep >= prevStep ? 'ios-view-enter-right' : 'ios-view-enter-left'
-        );
-      }
-    }
-    prevNavRef.current = { menu: mainMenu, view: spjView };
+    prevNavRef.current = { menu: mainMenu, view: spjView, direction: navDirection };
     if (mainScrollRef.current) {
       mainScrollRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
-  }, [mainMenu, spjView]);
+  }, [mainMenu, spjView, navDirection]);
 
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
     try {
@@ -1259,7 +1263,7 @@ export default function App() {
       key: 'dokumentasi',
       stepNum: '5',
       label: 'Dokumentasi',
-      shortLabel: 'Dokumen',
+      shortLabel: 'Foto',
       microcopy: 'Foto Kegiatan',
       icon: Camera,
     },
@@ -1279,6 +1283,28 @@ export default function App() {
       : spjView === 'sub-home'
         ? 'spt'
         : spjView;
+
+  const currentStudioStepIndex = studioSteps.findIndex(
+    (s) => s.key === normalizedActiveStepKey
+  );
+
+  const handleStudioSwipeLeft = () => {
+    if (!isInsideStudio || currentStudioStepIndex < 0 || currentStudioStepIndex >= studioSteps.length - 1) return;
+    const nextStep = studioSteps[currentStudioStepIndex + 1];
+    setSpjView(nextStep.key);
+  };
+
+  const handleStudioSwipeRight = () => {
+    if (!isInsideStudio || currentStudioStepIndex <= 0) return;
+    const prevStep = studioSteps[currentStudioStepIndex - 1];
+    setSpjView(prevStep.key);
+  };
+
+  const studioSwipeHandlers = useSwipeTabs({
+    onSwipeLeft: handleStudioSwipeLeft,
+    onSwipeRight: handleStudioSwipeRight,
+    isEnabled: isInsideStudio && !isSpjSwitcherOpen && !kuitansiToDelete,
+  });
 
   return (
     <MobileFocusModeContext.Provider
@@ -1332,93 +1358,100 @@ export default function App() {
                     </span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   </button>
-                  {isSpjSwitcherOpen && (
-                    <div
-                      role="menu"
-                      className="absolute top-full mt-1.5 left-0 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
-                    >
-                      <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                        <span>Pilih Berkas SPJ</span>
-                        <span>{kuitansiList.length} Berkas</span>
-                      </div>
-                      <div className="max-h-60 overflow-y-auto space-y-1">
-                        {kuitansiList.map((k, idx) => {
-                          const isSelected = k.id === activeKuitansi.id;
-                          return (
-                            <div
-                              key={k.id}
-                              className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
-                                isSelected
-                                  ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
-                                  : 'hover:bg-slate-50 text-slate-700'
-                              }`}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  triggerHaptic('light');
-                                  setActiveKuitansiId(k.id);
-                                  setIsSpjSwitcherOpen(false);
-                                }}
-                                className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                  <AnimatePresence>
+                    {isSpjSwitcherOpen && (
+                      <motion.div
+                        key="desktop-spj-switcher"
+                        role="menu"
+                        initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute top-full mt-1.5 left-0 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+                      >
+                        <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                          <span>Pilih Berkas SPJ</span>
+                          <span>{kuitansiList.length} Berkas</span>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto space-y-1">
+                          {kuitansiList.map((k, idx) => {
+                            const isSelected = k.id === activeKuitansi.id;
+                            return (
+                              <div
+                                key={k.id}
+                                className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
+                                  isSelected
+                                    ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                                }`}
                               >
-                                <div className="min-w-0">
-                                  <p className="truncate">
-                                    SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
-                                  </p>
-                                  <p className="text-[11px] font-mono text-slate-500 truncate">
-                                    {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
-                                  </p>
-                                </div>
-                                {isSelected && (
-                                  <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
-                                )}
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    triggerHaptic('light');
+                                    setActiveKuitansiId(k.id);
+                                    setIsSpjSwitcherOpen(false);
+                                  }}
+                                  className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                                >
+                                  <div className="min-w-0">
+                                    <p className="truncate">
+                                      SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
+                                    </p>
+                                    <p className="text-[11px] font-mono text-slate-500 truncate">
+                                      {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
+                                    </p>
+                                  </div>
+                                  {isSelected && (
+                                    <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
+                                  )}
+                                </button>
 
-                              <button
-                                type="button"
-                                data-testid={`delete-kuitansi-${k.id}`}
-                                title="Hapus berkas SPJ ini"
-                                aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setIsSpjSwitcherOpen(false);
-                                  promptDeleteKuitansi(k);
-                                }}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSpjSwitcherOpen(false);
-                            handleDuplicateActiveKuitansi();
-                          }}
-                          className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>+ Duplikat</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsSpjSwitcherOpen(false);
-                            handleCreateNewKuitansi();
-                          }}
-                          className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>+ SPJ Baru</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                                <button
+                                  type="button"
+                                  data-testid={`delete-kuitansi-${k.id}`}
+                                  title="Hapus berkas SPJ ini"
+                                  aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsSpjSwitcherOpen(false);
+                                    promptDeleteKuitansi(k);
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsSpjSwitcherOpen(false);
+                              handleDuplicateActiveKuitansi();
+                            }}
+                            className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>+ Duplikat</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsSpjSwitcherOpen(false);
+                              handleCreateNewKuitansi();
+                            }}
+                            className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>+ SPJ Baru</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
@@ -1439,14 +1472,21 @@ export default function App() {
                         setIsSpjSwitcherOpen(false);
                         setSpjView(step.key);
                       }}
-                      className={`w-full py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`relative w-full py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer overflow-hidden ${
                         isActive
-                          ? 'bg-sky-700 text-white shadow-xs font-bold'
+                          ? 'text-white font-bold shadow-xs'
                           : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 font-semibold'
                       }`}
                     >
-                      <StepIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                      <span className="text-xs leading-none truncate max-w-full">{step.label}</span>
+                      {isActive && (
+                        <motion.span
+                          layoutId="spj-studio-tab-desktop"
+                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-sky-700 z-0"
+                        />
+                      )}
+                      <StepIcon className={`relative z-10 w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                      <span className="relative z-10 text-xs leading-none truncate max-w-full">{step.label}</span>
                     </button>
                   );
                 })}
@@ -1503,18 +1543,25 @@ export default function App() {
                         setIsSpjSwitcherOpen(false);
                         setSpjView(step.key);
                       }}
-                      className={`h-10 w-full py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                      className={`relative h-10 w-full py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer overflow-hidden ${
                         isActive
-                          ? 'bg-sky-700 text-white shadow-2xs font-bold'
+                          ? 'text-white shadow-2xs font-bold'
                           : 'bg-white/90 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 font-semibold'
                       }`}
                     >
+                      {isActive && (
+                        <motion.span
+                          layoutId="spj-studio-tab-mobile"
+                          transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                          className="absolute inset-0 rounded-xl bg-sky-700 z-0"
+                        />
+                      )}
                       <StepIcon
-                        className={`w-3.5 h-3.5 shrink-0 ${
+                        className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
                           isActive ? 'text-white' : 'text-slate-500'
                         }`}
                       />
-                      <span className="text-[9.5px] leading-none text-center truncate max-w-full block">
+                      <span className="relative z-10 text-[9.5px] leading-none text-center truncate max-w-full block">
                         {step.shortLabel}
                       </span>
                     </button>
@@ -1621,14 +1668,23 @@ export default function App() {
           </header>
         )}
 
-        {/* Main Isolated Scroll Container with Momentum Scroll & Directional Spring Transitions */}
+        {/* Main Isolated Scroll Container with Momentum Scroll & Smooth Native Transitions */}
         <main
           ref={mainScrollRef}
+          {...studioSwipeHandlers}
           className="native-scroll-container w-full min-w-0"
         >
-          <div
-            key={`${mainMenu}-${spjView}`}
-            className={`w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-24 sm:pb-28 min-w-0 ${viewTransitionClass}`}
+          <motion.div
+            key={
+              mainMenu === 'perjalanan-dinas' &&
+              (spjView === 'spt' || spjView === 'spd' || spjView === 'visum' || spjView === 'surat-tugas')
+                ? 'perjalanan-dinas-sppd-suite'
+                : `${mainMenu}-${spjView}`
+            }
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-32 sm:pb-36 min-w-0"
           >
             {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
             {mainMenu === 'home' && (
@@ -1835,7 +1891,7 @@ export default function App() {
                 isGoogleConnected={hasValidToken && !!workspaceConfig}
               />
             )}
-          </div>
+          </motion.div>
         </main>
 
         {/* Mobile Interactive Bottom Sheet: Pilih Berkas SPJ (Swipe-to-Dismiss) */}
@@ -2045,16 +2101,23 @@ export default function App() {
           )}
         </NativeBottomSheet>
 
-        {/* Floating Action Toast Notification (offset above bottom bar on mobile) */}
-        {actionToast && (
-          <div
-            role="status"
-            className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{actionToast.message}</span>
-          </div>
-        )}
+        {/* Floating Action Toast Notification (offset above bottom bar on mobile & desktop) */}
+        <AnimatePresence>
+          {actionToast && (
+            <motion.div
+              key={actionToast.message}
+              role="status"
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.96 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="fixed bottom-24 right-4 sm:bottom-28 sm:right-6 z-50 bg-slate-900/95 backdrop-blur-md text-white text-xs font-medium px-4 py-2.5 rounded-2xl shadow-xl flex items-center gap-2 max-w-[calc(100vw-2rem)]"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{actionToast.message}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Floating Pill Bottom Navigation (Expanding Pill & Elevated Island Dock) */}
         <FloatingBottomNav

@@ -1218,9 +1218,9 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
         </div>
       )}
 
-      {/* 4. FLOATING BULK ACTION BAR (Saat Mode Pilih & Ada Berkas Tercentang) */}
+      {/* 4. FLOATING BULK ACTION BAR (Saat Mode Pilih & Ada Berkas Tercentang — Diposisikan di atas FloatingBottomNav) */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-3xl bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 w-[calc(100vw-1.5rem)] max-w-3xl bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 p-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center justify-between sm:justify-start gap-2.5">
             <span className="px-2.5 py-1 rounded-lg bg-sky-600 text-white text-xs font-extrabold font-mono">
               {selectedIds.length} Dipilih

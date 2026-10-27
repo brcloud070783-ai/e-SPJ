@@ -1,5 +1,6 @@
 import React from 'react';
 import { LayoutGrid, FileText, SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 import { triggerHaptic } from '../utils/nativeMobile';
 
@@ -84,59 +85,45 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           const isActive = mainMenu === item.id;
           const Icon = item.icon;
 
-          if (isActive) {
-            // Item Aktif: Ikon di atas, Nama Ikon di bawah, dengan background pill gelap premium & aksen titik aktif
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={item.action}
-                aria-current="page"
-                title={item.tooltip}
-                className="group relative flex flex-col items-center justify-center px-4 sm:px-5 py-1.5 rounded-2xl bg-gradient-to-b from-sky-950 via-sky-900 to-sky-950 text-white shadow-md shadow-sky-950/30 transition-all duration-200 min-w-[64px] sm:min-w-[72px] min-h-[48px] cursor-pointer"
-              >
-                <div className="relative flex items-center justify-center">
-                  <Icon className={`w-5 h-5 shrink-0 ${item.iconActiveColor} transition-transform group-hover:scale-110`} />
-
-                  {/* Badge counter untuk SPJ Dinas */}
-                  {typeof item.badge === 'number' && (
-                    <span
-                      title={`${item.badge} berkas SPJ`}
-                      className="absolute -top-1 -right-3 min-w-[16px] h-4 px-1 text-[9px] font-black rounded-full bg-amber-400 text-sky-950 flex items-center justify-center shadow-xs leading-none"
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </div>
-
-                {/* Nama Ikon persis di bawah ikonnya */}
-                <span className="text-[10.5px] font-bold tracking-tight text-white whitespace-nowrap mt-1 leading-none">
-                  {item.label}
-                </span>
-
-                {/* Indikator titik aktif kecil */}
-                <span className="w-1 h-1 rounded-full bg-emerald-400 mt-1 shadow-[0_0_5px_rgba(52,211,153,0.9)]" />
-              </button>
-            );
-          }
-
-          // Item Inaktif: Ikon di atas, Nama Ikon di bawah, bersih & responsif saat disentuh/di-hover
           return (
             <button
               key={item.id}
               type="button"
               onClick={item.action}
+              aria-current={isActive ? 'page' : undefined}
               title={item.tooltip}
-              className="group relative flex flex-col items-center justify-center px-3.5 sm:px-4 py-1.5 rounded-2xl text-slate-500 hover:text-slate-900 hover:bg-slate-100/90 active:scale-95 transition-all duration-200 min-w-[60px] sm:min-w-[68px] min-h-[48px] cursor-pointer"
+              className={`group relative flex flex-col items-center justify-center px-4 sm:px-5 py-1.5 rounded-2xl transition-colors duration-200 min-w-[64px] sm:min-w-[72px] min-h-[48px] cursor-pointer ${
+                isActive
+                  ? 'text-white'
+                  : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/90'
+              }`}
             >
-              <div className="relative flex items-center justify-center">
-                <Icon className="w-5 h-5 shrink-0 text-slate-500 group-hover:text-slate-800 transition-transform group-hover:scale-105" />
+              {isActive && (
+                <motion.span
+                  layoutId="floating-bottom-nav-active-pill"
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-sky-950 via-sky-900 to-sky-950 shadow-md shadow-sky-950/30 z-0"
+                />
+              )}
 
-                {/* Badge counter mini saat inaktif */}
+              <div className="relative z-10 flex items-center justify-center">
+                <Icon
+                  className={`w-5 h-5 shrink-0 transition-transform ${
+                    isActive
+                      ? `${item.iconActiveColor} group-hover:scale-110`
+                      : 'text-slate-500 group-hover:text-slate-800 group-hover:scale-105'
+                  }`}
+                />
+
+                {/* Badge counter untuk SPJ Dinas */}
                 {typeof item.badge === 'number' && (
                   <span
                     title={`${item.badge} berkas SPJ`}
-                    className="absolute -top-1 -right-3 min-w-[16px] h-4 px-1 text-[9px] font-bold rounded-full bg-sky-800 text-white flex items-center justify-center shadow-xs leading-none"
+                    className={`absolute -top-1 -right-3 min-w-[16px] h-4 px-1 text-[9px] rounded-full flex items-center justify-center shadow-xs leading-none ${
+                      isActive
+                        ? 'font-black bg-amber-400 text-sky-950'
+                        : 'font-bold bg-sky-800 text-white'
+                    }`}
                   >
                     {item.badge}
                   </span>
@@ -144,12 +131,26 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
               </div>
 
               {/* Nama Ikon persis di bawah ikonnya */}
-              <span className="text-[10.5px] font-medium text-slate-600 group-hover:text-slate-900 whitespace-nowrap mt-1 leading-none">
+              <span
+                className={`relative z-10 text-[10.5px] whitespace-nowrap mt-1 leading-none ${
+                  isActive
+                    ? 'font-bold tracking-tight text-white'
+                    : 'font-medium text-slate-600 group-hover:text-slate-900'
+                }`}
+              >
                 {item.label}
               </span>
 
-              {/* Spacer agar tinggi tombol seragam dengan yang aktif */}
-              <span className="w-1 h-1 rounded-full bg-transparent mt-1" />
+              {/* Indikator titik aktif kecil */}
+              {isActive ? (
+                <motion.span
+                  layoutId="floating-bottom-nav-active-dot"
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  className="relative z-10 w-1 h-1 rounded-full bg-emerald-400 mt-1 shadow-[0_0_5px_rgba(52,211,153,0.9)]"
+                />
+              ) : (
+                <span className="relative z-10 w-1 h-1 rounded-full bg-transparent mt-1" />
+              )}
             </button>
           );
         })}

@@ -6,6 +6,78 @@ import React, {
   useCallback,
   useEffect,
 } from 'react';
+import type { Variants } from 'framer-motion';
+
+/**
+ * Framer Motion directional page & menu transition variants (slide-in & fade-out)
+ * modeled after native iOS / Android navigation stacks.
+ * - direction > 0: slide in from right, exit fade out to left
+ * - direction < 0: slide in from left, exit fade out to right
+ * - direction === 0: subtle vertical slide-in & fade-out (depth transition)
+ */
+export const MOBILE_PAGE_VARIANTS: Variants = {
+  enter: (direction: number = 1) => ({
+    x: direction > 0 ? 28 : direction < 0 ? -28 : 0,
+    y: direction === 0 ? 10 : 0,
+    opacity: 0,
+    scale: 0.994,
+  }),
+  center: {
+    x: 0,
+    y: 0,
+    opacity: 1,
+    scale: 1,
+    transition: {
+      x: { type: 'spring', stiffness: 380, damping: 34, mass: 0.8 },
+      y: { type: 'spring', stiffness: 380, damping: 34, mass: 0.8 },
+      opacity: { duration: 0.18, ease: 'easeOut' },
+      scale: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
+    },
+    transitionEnd: {
+      transform: 'none',
+    },
+  },
+  exit: (direction: number = 1) => ({
+    x: direction > 0 ? -18 : direction < 0 ? 18 : 0,
+    y: direction === 0 ? -6 : 0,
+    opacity: 0,
+    scale: 0.994,
+    transition: {
+      duration: 0.14,
+      ease: [0.4, 0, 1, 1],
+    },
+  }),
+};
+
+/**
+ * Framer Motion compact sub-tab transition variants (slide-in & fade-out)
+ * for inspector tabs and bottom-sheet form sub-tabs.
+ */
+export const MOBILE_TAB_VARIANTS: Variants = {
+  enter: (direction: number = 1) => ({
+    x: direction >= 0 ? 16 : -16,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: {
+      x: { type: 'spring', stiffness: 420, damping: 34, mass: 0.7 },
+      opacity: { duration: 0.15, ease: 'easeOut' },
+    },
+    transitionEnd: {
+      transform: 'none',
+    },
+  },
+  exit: (direction: number = 1) => ({
+    x: direction >= 0 ? -12 : 12,
+    opacity: 0,
+    transition: {
+      duration: 0.11,
+      ease: 'easeIn',
+    },
+  }),
+};
 
 export type HapticStyle =
   | 'light'

@@ -24,11 +24,19 @@ interface SuratPerjalananDinasBelakangEditorProps {
   onSelectZone: (zone: SpdBelakangEditableZone) => void;
   visumData: SpdVisumBelakangData;
   onUpdateVisumData: (updated: SpdVisumBelakangData) => void;
+  hideInternalTabs?: boolean;
 }
 
 export const SuratPerjalananDinasBelakangEditor: React.FC<
   SuratPerjalananDinasBelakangEditorProps
-> = ({ spt, activeZone, onSelectZone, visumData, onUpdateVisumData }) => {
+> = ({
+  spt,
+  activeZone,
+  onSelectZone,
+  visumData,
+  onUpdateVisumData,
+  hideInternalTabs = false,
+}) => {
   const data = visumData || getEffectiveVisumData(spt);
 
   const handleFieldChange = (field: keyof SpdVisumBelakangData, value: any) => {
@@ -153,7 +161,7 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
       <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-sky-50/70 border border-sky-200/80 rounded-xl">
         <div className="flex items-center gap-1.5 text-xs font-bold text-sky-950">
           <Stamp className="w-4 h-4 text-sky-700" />
-          <span>Formulir SPD Lembar 2 (Belakang / Visum)</span>
+          <span>Formulir SPD Lembar 2 (Visum)</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -168,76 +176,78 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
         </div>
       </div>
 
-      {/* TABS SELECTOR */}
-      <div
-        role="tablist"
-        aria-label="Bagian SPD Lembar 2"
-        className="grid grid-cols-4 bg-slate-100/80 p-1.5 gap-1 rounded-xl text-center"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeZone === 'bagian-1'}
-          onClick={() => onSelectZone('bagian-1')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-            activeZone === 'bagian-1'
-              ? 'bg-white text-sky-800 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="I. Keberangkatan Awal"
+      {/* TABS SELECTOR (Only shown when standalone; hidden when parent already renders the unified segmented tab bar) */}
+      {!hideInternalTabs && (
+        <div
+          role="tablist"
+          aria-label="Bagian SPD Lembar 2"
+          className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
         >
-          <PlaneTakeoff className="w-3 h-3 shrink-0" />
-          <span className="truncate">1. Berangkat (I)</span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-1'}
+            onClick={() => onSelectZone('bagian-1')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-1'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="I. Keberangkatan Awal"
+          >
+            <PlaneTakeoff className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">I. Berangkat</span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeZone === 'bagian-transit'}
-          onClick={() => onSelectZone('bagian-transit')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-            activeZone === 'bagian-transit'
-              ? 'bg-white text-sky-800 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="II - V. Tempat Persinggahan"
-        >
-          <Route className="w-3 h-3 shrink-0" />
-          <span className="truncate">2. Transit (II-V)</span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-transit'}
+            onClick={() => onSelectZone('bagian-transit')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-transit'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="II - V. Tempat Persinggahan"
+          >
+            <Route className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">II-V. Transit</span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeZone === 'bagian-6'}
-          onClick={() => onSelectZone('bagian-6')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-            activeZone === 'bagian-6'
-              ? 'bg-white text-sky-800 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="VI. Tiba Kembali & Pemeriksaan"
-        >
-          <Stamp className="w-3 h-3 shrink-0" />
-          <span className="truncate">3. Tiba &amp; Cek (VI)</span>
-        </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-6'}
+            onClick={() => onSelectZone('bagian-6')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-6'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="VI. Tiba Kembali & Pemeriksaan"
+          >
+            <Stamp className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">VI. Tiba</span>
+          </button>
 
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeZone === 'bagian-catatan'}
-          onClick={() => onSelectZone('bagian-catatan')}
-          className={`min-h-[36px] px-1 py-1 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center justify-center gap-1 truncate cursor-pointer ${
-            activeZone === 'bagian-catatan'
-              ? 'bg-white text-sky-800 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-          title="VII & VIII. Catatan & Perhatian"
-        >
-          <NotebookPen className="w-3 h-3 shrink-0" />
-          <span className="truncate">4. Catatan &amp; Info</span>
-        </button>
-      </div>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-catatan'}
+            onClick={() => onSelectZone('bagian-catatan')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-catatan'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="VII & VIII. Catatan & Perhatian"
+          >
+            <NotebookPen className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">VII. Catatan</span>
+          </button>
+        </div>
+      )}
 
       {/* TAB CONTENT 1: BAGIAN I (KEBERANGKATAN AWAL DARI TEMPAT KEDUDUKAN) */}
       {activeZone === 'bagian-1' && (

@@ -17,7 +17,7 @@ interface SuratPerjalananDinasDocumentPreviewProps {
   isPrintMode?: boolean;
 }
 
-export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasDocumentPreviewProps> = ({
+export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasDocumentPreviewProps> = React.memo(({
   spt,
   appSettings,
   paperSize,
@@ -690,4 +690,5 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
       </div>
     </div>
   );
-};
+});
+SuratPerjalananDinasDocumentPreview.displayName = 'SuratPerjalananDinasDocumentPreview';
