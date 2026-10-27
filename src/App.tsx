@@ -1525,9 +1525,14 @@ export default function App() {
                 e.preventDefault();
                 setMainMenu('home');
               }}
-              className="text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-2 text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 whitespace-nowrap shrink-0"
             >
-              SAPA Kaltara
+              <img
+                src="/icon.svg"
+                alt="Ikon SAPA Kaltara"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg object-contain shrink-0 shadow-xs"
+              />
+              <span>SAPA Kaltara</span>
             </a>
             <span className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200/80 hidden xs:inline-block">
               Disdikbud Kaltara

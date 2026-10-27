@@ -29,6 +29,7 @@ import {
   Maximize2,
   Check,
   FileDown,
+  ImagePlus,
 } from 'lucide-react';
 import {
   DokumentasiPerjalananItem,
@@ -1766,31 +1767,30 @@ export const DokumentasiPerjalananSection: React.FC<DokumentasiPerjalananSection
                 <div className="space-y-4 flex flex-col justify-between">
                   <div className="space-y-3.5">
                     <div>
-                      <label htmlFor="doc-file-input" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      <label htmlFor="doc-file-input" className="block text-xs font-semibold text-slate-700 mb-1.5 cursor-pointer">
                         Pilih Banyak Foto Sekaligus (Multiple)
                       </label>
-                      <label
-                        htmlFor="doc-file-input"
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-sky-600 rounded-2xl p-5 bg-slate-50 cursor-pointer transition-colors min-h-[136px]"
+                      <div
+                        className="relative flex flex-col items-center justify-center border-2 border-dashed border-slate-300 hover:border-sky-600 active:border-sky-700 active:bg-sky-50/60 rounded-2xl p-5 bg-slate-50 cursor-pointer transition-colors min-h-[136px] select-none overflow-hidden"
                       >
-                        <Camera className="w-7 h-7 text-sky-600 mb-1.5" />
-                        <span className="text-xs font-bold text-slate-800 text-center">
-                          {stagedFiles.length > 0
-                            ? `${stagedFiles.length} Berkas Dipilih · Ketuk untuk Tambah Foto Lagi`
-                            : 'Ketuk untuk Pilih Beberapa Foto Sekaligus / Dokumen'}
-                        </span>
-                        <span className="text-[11px] text-slate-500 mt-0.5 text-center">
-                          Bisa pilih banyak foto dari galeri (JPG, PNG, PDF)
-                        </span>
                         <input
                           id="doc-file-input"
                           type="file"
                           multiple
-                          accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+                          accept="image/*"
                           onChange={handleFileChange}
-                          className="sr-only"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                         />
-                      </label>
+                        <ImagePlus className="w-7 h-7 text-sky-600 mb-1.5 pointer-events-none" />
+                        <span className="text-xs font-bold text-slate-800 text-center pointer-events-none">
+                          {stagedFiles.length > 0
+                            ? `${stagedFiles.length} Foto Dipilih · Ketuk untuk Tambah Foto dari Galeri`
+                            : 'Ketuk untuk Pilih Foto dari Galeri HP'}
+                        </span>
+                        <span className="text-[11px] text-slate-500 mt-0.5 text-center pointer-events-none">
+                          Bisa pilih banyak gambar sekaligus dari galeri (JPG, PNG, WebP)
+                        </span>
+                      </div>
                       <div className="pt-2 flex items-center justify-between">
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
                           <input

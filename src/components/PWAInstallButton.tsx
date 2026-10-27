@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Smartphone, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export const PWAInstallButton: React.FC = () => {
@@ -40,9 +40,11 @@ export const PWAInstallButton: React.FC = () => {
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-slate-200">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-700 shrink-0">
-                  <Smartphone className="w-5 h-5" />
-                </div>
+                <img
+                  src="/icon.svg"
+                  alt="Ikon SAPA Kaltara"
+                  className="w-10 h-10 rounded-xl object-contain shrink-0 shadow-xs"
+                />
                 <div>
                   <h3 id="pwa-install-title" className="text-base font-bold text-slate-900">
                     Pasang SAPA Kaltara di Perangkat Anda

@@ -1299,20 +1299,20 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <label
-                    htmlFor="exp-file-input"
-                    className="min-h-[34px] px-3 py-1 rounded-full bg-slate-100 hover:bg-sky-50 text-slate-800 hover:text-sky-800 border border-slate-200 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                  <div
+                    className="relative min-h-[34px] px-3 py-1 rounded-full bg-slate-100 hover:bg-sky-50 active:bg-sky-100 text-slate-800 hover:text-sky-800 border border-slate-200 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer overflow-hidden select-none"
                   >
-                    <UploadCloud className="w-3.5 h-3.5 text-sky-700" />
-                    <span>Ganti Foto</span>
+                    <UploadCloud className="w-3.5 h-3.5 text-sky-700 pointer-events-none" />
+                    <span className="pointer-events-none">Pilih Foto Galeri</span>
                     <input
                       id="exp-file-input"
                       type="file"
-                      accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
+                      accept="image/*"
+                      aria-label="Pilih Foto Galeri"
                       onChange={handleFileChange}
-                      className="sr-only"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
-                  </label>
+                  </div>
 
                   <button
                     type="button"
