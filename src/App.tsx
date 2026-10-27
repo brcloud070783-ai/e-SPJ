@@ -8,22 +8,18 @@ import {
   Camera,
   Receipt,
   ArrowLeft,
-  ArrowRight,
   ChevronDown,
   Plus,
   CheckCircle2,
   Copy,
   Trash2,
   AlertTriangle,
-  Home,
-  FileSpreadsheet,
-  Settings,
-  Banknote,
-  FileCheck,
-  ClipboardList,
-  Stamp,
-  Layers,
-  Printer,
+  LayoutGrid,
+  Navigation,
+  SlidersHorizontal,
+  Wallet,
+  FileText,
+  BadgeCheck,
   Download,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
@@ -1150,6 +1146,7 @@ export default function App() {
     key: SpjSubSectionKey;
     stepNum: string;
     label: string;
+    shortLabel: string;
     microcopy: string;
     icon: React.ComponentType<{ className?: string }>;
   }> = [
@@ -1157,34 +1154,39 @@ export default function App() {
       key: 'spt',
       stepNum: '1',
       label: 'SPT',
-      microcopy: 'Surat Tugas',
-      icon: FileCheck,
+      shortLabel: 'SPT',
+      microcopy: 'Surat Perintah Tugas',
+      icon: FileText,
     },
     {
       key: 'spd',
       stepNum: '2',
       label: 'SPD',
+      shortLabel: 'SPD',
       microcopy: 'SPD Depan',
-      icon: ClipboardList,
+      icon: Navigation,
     },
     {
       key: 'visum',
       stepNum: '3',
       label: 'Visum',
+      shortLabel: 'Visum',
       microcopy: 'SPD Belakang',
-      icon: Stamp,
+      icon: BadgeCheck,
     },
     {
       key: 'kuitansi',
       stepNum: '4',
       label: 'Kuitansi',
+      shortLabel: 'Kuitansi',
       microcopy: 'Biaya SPPD',
-      icon: Banknote,
+      icon: Wallet,
     },
     {
       key: 'dokumentasi',
       stepNum: '5',
       label: 'Dokumentasi',
+      shortLabel: 'Dokumen',
       microcopy: 'Foto Kegiatan',
       icon: Camera,
     },
@@ -1192,7 +1194,8 @@ export default function App() {
       key: 'pengeluaran',
       stepNum: '6',
       label: 'Bukti',
-      microcopy: 'Scan Nota',
+      shortLabel: 'Bukti',
+      microcopy: 'Scan Nota / Riil',
       icon: Receipt,
     },
   ];
@@ -1204,158 +1207,134 @@ export default function App() {
         ? 'spt'
         : spjView;
 
-  const currentStepIdx = studioSteps.findIndex(
-    (s) => s.key === normalizedActiveStepKey
-  );
-  const prevStep = currentStepIdx > 0 ? studioSteps[currentStepIdx - 1] : null;
-  const nextStep =
-    currentStepIdx >= 0 && currentStepIdx < studioSteps.length - 1
-      ? studioSteps[currentStepIdx + 1]
-      : null;
-
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-clip flex flex-col bg-slate-100 text-slate-900 pb-28 lg:pb-12">
-      {/* 1. COMPACT STUDIO APP BAR (Tampil HANYA saat di dalam mode kerja/editor Studio — Tema Terang Bersih) */}
+      {/* 1. STUDIO APP BAR (Bersih, Rapi, & Ergonomis di Mobile mau pun Desktop) */}
       {isInsideStudio ? (
         <header className="no-print sticky top-0 z-30 w-full max-w-full bg-white/95 text-slate-900 backdrop-blur-md border-b border-slate-200 shadow-2xs">
-          {/* Baris 1: Tombol Kembali + Pemilih Berkas SPJ Compact + Tombol "+ Duplikat" + Pintasan 1 File Utuh */}
-          <div className="max-w-7xl mx-auto px-2 sm:px-6 h-10 sm:h-11 flex items-center justify-between gap-1.5 sm:gap-2 relative min-w-0">
-            <button
-              type="button"
-              onClick={() => {
-                setIsSpjSwitcherOpen(false);
-                setSpjView('sub-home');
-              }}
-              className="min-h-[30px] px-2 py-1 rounded-xl hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Daftar SPJ</span>
-            </button>
-
-            {/* Judul / Nomor SPJ Aktif + Tombol Sekunder "+ Duplikat" */}
-            <div className="relative min-w-0 flex-1 flex items-center justify-center gap-1.5">
+          {/* DESKTOP (lg+): Baris tunggal yang proporsional */}
+          <div className="hidden lg:flex max-w-7xl mx-auto px-4 sm:px-6 h-16 items-center justify-between gap-4 min-w-0">
+            {/* Zone 1: Kembali & Pemilih SPJ */}
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsSpjSwitcherOpen((prev) => !prev)}
-                aria-expanded={isSpjSwitcherOpen}
-                aria-label="Ganti berkas SPJ aktif"
-                className="max-w-full min-h-[34px] px-2.5 sm:px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/80 border border-slate-200/90 text-xs font-bold text-slate-900 inline-flex items-center gap-1.5 min-w-0 transition-colors cursor-pointer"
+                onClick={() => {
+                  setIsSpjSwitcherOpen(false);
+                  setSpjView('sub-home');
+                }}
+                title="Kembali ke Daftar Berkas SPJ"
+                className="h-10 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
               >
-                <span className="truncate">
-                  Berkas SPJ #{activeKuitansiIndex + 1} · {activeKuitansi.atasNama || '(Draft)'}
-                </span>
-                <span className="hidden md:inline text-slate-500 font-normal truncate max-w-[200px]">
-                  ({activeKuitansi.noSpt})
-                </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <ArrowLeft className="w-4 h-4 text-sky-700 shrink-0" />
+                <span>Daftar SPJ</span>
               </button>
 
-              {/* Tombol Aksi Sekunder "+ Duplikat" untuk menduplikasi Berkas SPJ aktif */}
-              <button
-                type="button"
-                onClick={handleDuplicateActiveKuitansi}
-                data-testid="duplicate-kuitansi-button"
-                title="Gandakan berkas SPJ utuh ini menjadi berkas baru"
-                className="min-h-[34px] px-2 sm:px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-xs font-bold inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                <span className="hidden sm:inline">+ Duplikat</span>
-              </button>
-
-              {isSpjSwitcherOpen && (
-                <div
-                  role="menu"
-                  className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1"
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsSpjSwitcherOpen((prev) => !prev)}
+                  aria-expanded={isSpjSwitcherOpen}
+                  aria-label="Ganti berkas SPJ aktif"
+                  className="max-w-[220px] h-10 px-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
                 >
-                  <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                    <span>Pilih Berkas SPJ Utuh</span>
-                    <span>{kuitansiList.length} Berkas</span>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
-                    {kuitansiList.map((k, idx) => {
-                      const isSelected = k.id === activeKuitansi.id;
-                      return (
-                        <div
-                          key={k.id}
-                          className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
-                            isSelected
-                              ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
-                              : 'hover:bg-slate-50 text-slate-700'
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveKuitansiId(k.id);
-                              setIsSpjSwitcherOpen(false);
-                            }}
-                            className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                  <span className="truncate">
+                    #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </button>
+                {isSpjSwitcherOpen && (
+                  <div
+                    role="menu"
+                    className="absolute top-full mt-1.5 left-0 w-72 sm:w-80 max-w-[calc(100vw-1rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
+                  >
+                    <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                      <span>Pilih Berkas SPJ</span>
+                      <span>{kuitansiList.length} Berkas</span>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto space-y-1">
+                      {kuitansiList.map((k, idx) => {
+                        const isSelected = k.id === activeKuitansi.id;
+                        return (
+                          <div
+                            key={k.id}
+                            className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
+                              isSelected
+                                ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
                           >
-                            <div className="min-w-0">
-                              <p className="truncate">
-                                SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
-                              </p>
-                              <p className="text-[11px] font-mono text-slate-500 truncate">
-                                {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
-                              </p>
-                            </div>
-                            {isSelected && (
-                              <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
-                            )}
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveKuitansiId(k.id);
+                                setIsSpjSwitcherOpen(false);
+                              }}
+                              className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate">
+                                  SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
+                                </p>
+                                <p className="text-[11px] font-mono text-slate-500 truncate">
+                                  {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
+                                </p>
+                              </div>
+                              {isSelected && (
+                                <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
+                              )}
+                            </button>
 
-                          <button
-                            type="button"
-                            data-testid={`delete-kuitansi-${k.id}`}
-                            title="Hapus berkas SPJ ini"
-                            aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsSpjSwitcherOpen(false);
-                              promptDeleteKuitansi(k);
-                            }}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      );
-                    })}
+                            <button
+                              type="button"
+                              data-testid={`delete-kuitansi-${k.id}`}
+                              title="Hapus berkas SPJ ini"
+                              aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSpjSwitcherOpen(false);
+                                promptDeleteKuitansi(k);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSpjSwitcherOpen(false);
+                          handleDuplicateActiveKuitansi();
+                        }}
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>+ Duplikat</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSpjSwitcherOpen(false);
+                          handleCreateNewKuitansi();
+                        }}
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ SPJ Baru</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSpjSwitcherOpen(false);
-                        handleDuplicateActiveKuitansi();
-                      }}
-                      className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>+ Duplikat</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsSpjSwitcherOpen(false);
-                        handleCreateNewKuitansi();
-                      }}
-                      className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ SPJ Baru</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Baris 2: Urutan 6 Bagian Dokumen SPJ */}
-          <div className="border-t border-slate-100 bg-slate-50/90">
+            {/* Zone 2: 6 Tab Dokumen Desktop (Menyesuaikan proporsional mengisi ruang setelah ikon copy dihapus) */}
             <nav
-              aria-label="Urutan Halaman Berkas SPJ"
-              className="max-w-7xl mx-auto px-1.5 sm:px-6 py-1 grid grid-cols-6 gap-1 sm:gap-1.5"
+              aria-label="Navigasi Dokumen SPJ"
+              className="flex-1 max-w-2xl grid grid-cols-6 gap-2"
             >
               {studioSteps.map((step) => {
                 const StepIcon = step.icon;
@@ -1368,33 +1347,167 @@ export default function App() {
                       setIsSpjSwitcherOpen(false);
                       setSpjView(step.key);
                     }}
-                    className={`min-w-0 px-1 sm:px-2 py-1 rounded-xl flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-0.5 sm:gap-1.5 text-center sm:text-left border transition-all cursor-pointer ${
+                    className={`w-full py-1.5 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-sky-700 text-white border-sky-700 shadow-2xs'
-                        : 'bg-white hover:bg-slate-100/80 text-slate-700 hover:text-slate-900 border-slate-200/80'
+                        ? 'bg-sky-700 text-white shadow-xs font-bold'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 font-semibold'
                     }`}
                   >
-                    <div
-                      className={`w-4 h-4 sm:w-5 sm:h-5 rounded-md flex items-center justify-center shrink-0 ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-slate-100 text-sky-700'
-                      }`}
-                    >
-                      <StepIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" />
+                    <StepIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                    <span className="text-xs leading-none truncate max-w-full">{step.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* MOBILE (<lg): Tanpa ikon copy di kanan, tombol kembali & pemilih berkas SPJ menyesuaikan proporsional */}
+          <div className="lg:hidden flex flex-col">
+            {/* Mobile Baris 1: Tombol Kembali & Dropdown Pemilih SPJ mengisi penuh secara proporsional */}
+            <div className="px-2.5 h-10 flex items-center justify-between gap-2 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSpjSwitcherOpen(false);
+                  setSpjView('sub-home');
+                }}
+                className="h-8 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer border border-slate-200/80"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                <span>Daftar SPJ</span>
+              </button>
+
+              <div className="relative min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => setIsSpjSwitcherOpen((prev) => !prev)}
+                  aria-expanded={isSpjSwitcherOpen}
+                  className="w-full h-8 px-3 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-900 inline-flex items-center justify-between gap-1.5 truncate cursor-pointer shadow-2xs"
+                >
+                  <span className="truncate">
+                    #{activeKuitansiIndex + 1} {activeKuitansi.atasNama || '(Draft)'}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                </button>
+                {isSpjSwitcherOpen && (
+                  <div
+                    role="menu"
+                    className="absolute top-full mt-1.5 right-0 w-72 sm:w-80 max-w-[calc(100vw-1.25rem)] bg-white text-slate-900 border border-slate-200 rounded-2xl shadow-xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-1 duration-150"
+                  >
+                    <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                      <span>Pilih Berkas SPJ</span>
+                      <span>{kuitansiList.length} Berkas</span>
                     </div>
-                    <div className="min-w-0 max-w-full flex flex-col leading-tight">
-                      <span className="text-[8.5px] sm:text-[11px] font-bold tracking-tight truncate">
-                        {step.stepNum}. {step.label}
-                      </span>
-                      <span
-                        className={`hidden md:block text-[9.5px] font-medium truncate ${
-                          isActive ? 'text-sky-100' : 'text-slate-500'
-                        }`}
+                    <div className="max-h-60 overflow-y-auto space-y-1">
+                      {kuitansiList.map((k, idx) => {
+                        const isSelected = k.id === activeKuitansi.id;
+                        return (
+                          <div
+                            key={k.id}
+                            className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between gap-1 transition-colors ${
+                              isSelected
+                                ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200'
+                                : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveKuitansiId(k.id);
+                                setIsSpjSwitcherOpen(false);
+                              }}
+                              className="min-w-0 flex-1 text-left cursor-pointer flex items-center justify-between gap-2 p-1"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate">
+                                  SPJ #{idx + 1} · {k.atasNama || '(Nama belum diisi)'} — {k.tujuan}
+                                </p>
+                                <p className="text-[11px] font-mono text-slate-500 truncate">
+                                  {k.noSpt} · {formatRupiah(calculateKuitansiTotal(k.rincian))}
+                                </p>
+                              </div>
+                              {isSelected && (
+                                <CheckCircle2 className="w-4 h-4 text-sky-700 shrink-0" />
+                              )}
+                            </button>
+
+                            <button
+                              type="button"
+                              data-testid={`delete-kuitansi-mobile-${k.id}`}
+                              title="Hapus berkas SPJ ini"
+                              aria-label={`Hapus berkas SPJ ${k.atasNama || k.noSpt}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsSpjSwitcherOpen(false);
+                                promptDeleteKuitansi(k);
+                              }}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pt-1 border-t border-slate-100 grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSpjSwitcherOpen(false);
+                          handleDuplicateActiveKuitansi();
+                        }}
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-800 text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                       >
-                        {step.microcopy}
-                      </span>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>+ Duplikat</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsSpjSwitcherOpen(false);
+                          handleCreateNewKuitansi();
+                        }}
+                        className="min-h-[36px] px-2.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>+ SPJ Baru</span>
+                      </button>
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mobile Baris 2: 6 TAB DOKUMEN PROPORSIONAL DALAM GRID 6-KOLOM */}
+            <nav
+              aria-label="Navigasi Dokumen SPJ Mobile"
+              className="w-full px-2 py-1.5 grid grid-cols-6 gap-1.5 bg-slate-50/90 border-t border-slate-100"
+            >
+              {studioSteps.map((step) => {
+                const StepIcon = step.icon;
+                const isActive = normalizedActiveStepKey === step.key;
+                return (
+                  <button
+                    key={step.key}
+                    type="button"
+                    onClick={() => {
+                      setIsSpjSwitcherOpen(false);
+                      setSpjView(step.key);
+                    }}
+                    className={`h-11 w-full py-1 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-sky-700 text-white shadow-2xs font-bold'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80 font-semibold'
+                    }`}
+                  >
+                    <StepIcon
+                      className={`w-4 h-4 shrink-0 ${
+                        isActive ? 'text-white' : 'text-slate-500'
+                      }`}
+                    />
+                    <span className="text-[10px] leading-none text-center truncate max-w-full block">
+                      {step.shortLabel}
+                    </span>
                   </button>
                 );
               })}
@@ -1439,7 +1552,7 @@ export default function App() {
                   : 'hover:text-slate-900'
               }`}
             >
-              <Home className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <LayoutGrid className="w-3.5 h-3.5 text-sky-700 shrink-0" />
               <div className="flex flex-col text-left leading-tight">
                 <span>Beranda</span>
                 <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Dasbor & Pantauan</span>
@@ -1459,7 +1572,7 @@ export default function App() {
                   : 'hover:text-slate-900'
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <FileText className="w-3.5 h-3.5 text-sky-700 shrink-0" />
               <div className="flex flex-col text-left leading-tight">
                 <span>SPJ Dinas</span>
                 <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Ruang Kerja & Formulir</span>
@@ -1478,7 +1591,7 @@ export default function App() {
                   : 'hover:text-slate-900'
               }`}
             >
-              <Settings className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-sky-700 shrink-0" />
               <div className="flex flex-col text-left leading-tight">
                 <span>Pengaturan</span>
                 <span className="text-[10px] text-slate-400 font-normal hidden sm:inline">Data Dinas & Kop</span>
@@ -1494,7 +1607,7 @@ export default function App() {
       )}
 
       {/* Main Content Container with bottom padding for Floating Pill Bar */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-2.5 sm:px-8 py-2.5 sm:py-5 pb-28 sm:pb-32 min-w-0 overflow-x-clip">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-20 sm:pb-28 min-w-0 overflow-x-clip">
         {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
         {mainMenu === 'home' && (
           <MainHomeSection
@@ -1669,55 +1782,6 @@ export default function App() {
                     }}
                   />
                 )}
-
-                {/* Navigasi Berurutan Antar-Halaman dalam 1 Berkas SPJ */}
-                <div className="no-print bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 mb-6 sm:mb-8">
-                  <div className="flex items-center gap-2">
-                    {prevStep ? (
-                      <button
-                        type="button"
-                        onClick={() => setSpjView(prevStep.key)}
-                        className="w-full sm:w-auto min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                        <span>
-                          Sebelumnya: {prevStep.stepNum}. {prevStep.label}
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSpjView('sub-home')}
-                        className="w-full sm:w-auto min-h-[40px] px-3.5 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-                        <span>Ringkasan Berkas SPJ</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-slate-500 font-semibold hidden md:block text-center px-2">
-                    1 Kesatuan Berkas SPJ ·{' '}
-                    <span className="text-slate-900 font-bold">
-                      {activeKuitansi.atasNama || '(Nama belum diisi)'} ({activeKuitansi.noSpt})
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 justify-end">
-                    {nextStep && (
-                      <button
-                        type="button"
-                        onClick={() => setSpjView(nextStep.key)}
-                        className="w-full sm:w-auto min-h-[40px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                      >
-                        <span>
-                          Selanjutnya: {nextStep.stepNum}. {nextStep.label}
-                        </span>
-                        <ArrowRight className="w-3.5 h-3.5 shrink-0" />
-                      </button>
-                    )}
-                  </div>
-                </div>
               </div>
             )}
           </div>

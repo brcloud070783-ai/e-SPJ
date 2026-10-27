@@ -14,6 +14,7 @@ interface InteractivePaperViewerProps {
   interactiveHint?: string;
   transparentSurface?: boolean;
   zeroPageMargin?: boolean;
+  extraControls?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -24,6 +25,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   interactiveHint,
   transparentSurface = false,
   zeroPageMargin = false,
+  extraControls,
   children,
 }) => {
   const spec = getPaperDimensions(paperSize);
@@ -218,140 +220,97 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
         }
       `}</style>
 
-      {/* UNIFIED COMPACT FLOATING TOOLBAR: Info Interaktif + Ukuran Kertas (A4 | F4 Folio) + Zoom */}
-      <div className="no-print flex justify-center">
+      {/* BILAH KONTROL KERTAS, FONT & ZOOM: 1 Baris Tunggal Ultra-Ringkas */}
+      <div className="no-print flex justify-center my-1 px-1">
         <div
           data-testid="compact-floating-toolbar"
-          className="w-full inline-flex flex-wrap items-center justify-between gap-2 bg-white/95 backdrop-blur-md text-slate-800 border border-slate-200/90 rounded-2xl sm:rounded-full px-2.5 sm:px-3.5 py-1.5 shadow-sm"
+          className="inline-flex items-center gap-1 sm:gap-1.5 bg-white/95 backdrop-blur-md text-slate-800 border border-slate-200/90 rounded-full px-1.5 py-0.5 shadow-2xs max-w-full overflow-x-auto no-scrollbar"
         >
-          {/* Left: Interactive Canvas Hint Badge */}
+          {/* Paper Size Selector (A4 | F4) */}
           <div
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50/90 border border-sky-200/80 text-sky-900 text-[11px] font-semibold min-w-0 max-w-full sm:max-w-[320px] md:max-w-[380px]"
-            title={
-              interactiveHint
-                ? `${interactiveHint} (${spec.label})`
-                : `Ketuk elemen kertas untuk mengedit · ${documentTitle} (${spec.label})`
-            }
+            role="group"
+            aria-label="Pilih Ukuran Kertas Cetak"
+            className="inline-flex items-center p-0.5 bg-slate-100 rounded-full border border-slate-200/80 shrink-0"
           >
-            <MousePointerClick className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-            <span className="truncate">
-              {interactiveHint || 'Ketuk elemen kertas untuk mengedit...'}
-            </span>
+            <button
+              type="button"
+              onClick={() => onChangePaperSize('A4')}
+              title="Kertas A4 (210 × 297 mm)"
+              className={`h-6 px-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center ${
+                paperSize === 'A4'
+                  ? 'bg-sky-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              A4
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangePaperSize('F4')}
+              title="Kertas F4 Folio (215 × 330 mm)"
+              className={`h-6 px-2 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center justify-center ${
+                paperSize === 'F4'
+                  ? 'bg-sky-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              F4
+            </button>
           </div>
 
-          {/* Right: Paper Size ("A4 | F4 Folio") & Zoom Controls */}
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 ml-auto shrink-0">
-            {/* Paper Size Selector */}
-            <div
-              role="group"
-              aria-label="Pilih Ukuran Kertas Cetak"
-              className="inline-flex items-center p-0.5 bg-slate-100 rounded-full border border-slate-200/80 shrink-0"
+          {extraControls && (
+            <>
+              <div className="w-px h-3.5 bg-slate-200 shrink-0" aria-hidden="true" />
+              <div className="shrink-0 flex items-center">{extraControls}</div>
+            </>
+          )}
+
+          <div className="w-px h-3.5 bg-slate-200 shrink-0" aria-hidden="true" />
+
+          {/* Minimalist Zoom Controls ("- 100% +") */}
+          <div className="inline-flex items-center bg-slate-100 rounded-full p-0.5 border border-slate-200/80 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleZoomStep(-0.15)}
+              aria-label="Perkecil tampilan kertas"
+              title="Zoom Out (-15%)"
+              className="h-6 w-6 rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
             >
-              <button
-                type="button"
-                onClick={() => onChangePaperSize('A4')}
-                title="Kertas A4 (210 × 297 mm) — Rasio Standar 1 : 1.414"
-                className={`min-h-[28px] px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  paperSize === 'A4'
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>A4</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onChangePaperSize('F4')}
-                title="Kertas F4 Folio (215 × 330 mm) — Rasio Jenjang 1 : 1.535 (+33mm Lebih Tinggi)"
-                className={`min-h-[28px] px-2.5 py-0.5 rounded-full text-[11px] font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1 ${
-                  paperSize === 'F4'
-                    ? 'bg-sky-600 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <span>F4 Folio</span>
-              </button>
-            </div>
+              <ZoomOut className="w-3 h-3" />
+            </button>
 
-            {/* Fit Mode (Desktop XL) */}
-            <div className="hidden xl:inline-flex items-center p-0.5 bg-slate-100 rounded-full border border-slate-200/80 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setFitMode('width');
-                  setUserZoom(1);
-                  setPanOffset({ x: 0, y: 0 });
-                }}
-                title="Pas Lebar (Tampilan Nyaman)"
-                className={`min-h-[28px] px-2 py-0.5 rounded-full text-[10.5px] font-bold transition-all cursor-pointer ${
-                  fitMode === 'width'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Pas Lebar
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setFitMode('page');
-                  setUserZoom(1);
-                  setPanOffset({ x: 0, y: 0 });
-                }}
-                title="Pas 1 Halaman Penuh"
-                className={`min-h-[28px] px-2 py-0.5 rounded-full text-[10.5px] font-bold transition-all cursor-pointer ${
-                  fitMode === 'page'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Pas Halaman
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              data-testid="paper-zoom-percentage"
+              aria-label="Reset zoom ke ukuran pas layar"
+              title="Klik untuk reset zoom"
+              className="h-6 px-1.5 text-[11px] font-mono font-bold text-slate-800 hover:bg-white rounded-full transition-colors tabular-nums cursor-pointer flex items-center justify-center"
+            >
+              {zoomPercentage}%
+            </button>
 
-            <div className="w-px h-4 bg-slate-200 shrink-0" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={() => handleZoomStep(0.15)}
+              aria-label="Perbesar tampilan kertas"
+              title="Zoom In (+15%)"
+              className="h-6 w-6 rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
+            >
+              <ZoomIn className="w-3 h-3" />
+            </button>
 
-            {/* Minimalist Zoom Controls ("- 100% +") */}
-            <div className="inline-flex items-center bg-slate-100 rounded-full p-0.5 border border-slate-200/80 shrink-0">
-              <button
-                type="button"
-                onClick={() => handleZoomStep(-0.15)}
-                aria-label="Perkecil tampilan kertas"
-                className="min-h-[28px] min-w-[28px] rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-
+            {userZoom !== 1 && (
               <button
                 type="button"
                 onClick={handleResetZoom}
-                data-testid="paper-zoom-percentage"
-                aria-label="Reset zoom ke ukuran pas layar"
-                className="min-h-[28px] px-2 text-[11px] font-mono font-bold text-slate-800 hover:bg-white rounded-full transition-colors tabular-nums cursor-pointer"
+                aria-label="Kembalikan posisi kertas"
+                title="Reset Zoom"
+                className="h-6 w-6 rounded-full text-sky-700 hover:bg-white flex items-center justify-center transition-colors cursor-pointer"
               >
-                {zoomPercentage}%
+                <RotateCcw className="w-2.5 h-2.5" />
               </button>
-
-              <button
-                type="button"
-                onClick={() => handleZoomStep(0.15)}
-                aria-label="Perbesar tampilan kertas"
-                className="min-h-[28px] min-w-[28px] rounded-full text-slate-700 hover:bg-white hover:text-slate-900 active:scale-95 flex items-center justify-center transition-all cursor-pointer"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-
-              {userZoom !== 1 && (
-                <button
-                  type="button"
-                  onClick={handleResetZoom}
-                  aria-label="Kembalikan posisi kertas"
-                  className="min-h-[28px] min-w-[28px] rounded-full text-sky-700 hover:bg-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -370,7 +329,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
         style={{
           touchAction: isPinching || userZoom > 1.02 ? 'none' : 'pan-y',
         }}
-        className="paper-zoom-viewport relative w-full overflow-x-auto overflow-y-hidden rounded-2xl bg-slate-100 border border-slate-200/90 p-3 sm:p-7 flex justify-center items-start select-none"
+        className="paper-zoom-viewport relative w-full overflow-x-auto overflow-y-hidden rounded-2xl bg-slate-100 border border-slate-200/90 p-1.5 sm:p-6 flex justify-center items-start select-none"
       >
         <div
           className={`paper-zoom-stage relative ${
@@ -403,14 +362,6 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
               isGestureActive ? 'transition-none' : 'transition-transform duration-150 ease-out'
             }`}
           >
-            {/* Top Paper Format Watermark Tag */}
-            <div className="no-print absolute top-2 right-3 z-20 pointer-events-none">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-slate-900/5 border border-slate-300/80 text-slate-700 backdrop-blur-xs">
-                <span className={`w-2 h-2 rounded-full ${paperSize === 'F4' ? 'bg-amber-500' : 'bg-sky-500'}`} />
-                {paperSize === 'F4' ? 'Kertas F4 Folio · 215 × 330 mm (Rasio 1:1.535)' : 'Kertas A4 · 210 × 297 mm (Rasio 1:1.414)'}
-              </span>
-            </div>
-
             {/* F4 Folio Extension Visual Guide Line: Displays the exact A4 cutoff boundary (297 mm) */}
             {paperSize === 'F4' && (
               <div

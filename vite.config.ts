@@ -24,9 +24,9 @@ export default defineConfig(() => {
           scope: '/',
           icons: [
             {
-              src: '/assets/aistudio/9994effd-8e31-467b-8811-b171984eb176_a0480f98.png',
+              src: '/icon.svg',
               sizes: '512x512',
-              type: 'image/png',
+              type: 'image/svg+xml',
               purpose: 'any maskable',
             },
           ],

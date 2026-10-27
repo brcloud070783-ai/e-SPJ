@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for UI Cleanup, Text Reduction, and Single CTA optimization across the Main Dashboard (MainHomeSection) and SPJ Document List (SpjPerjalananSubHome).",
-  "updatedAt":  "2026-10-26T08:36:23.047190645Z",
+  "summary":  "Restrukturisasi tata letak navigasi atas (Layout & Navigation Cleanup) pada ruang kerja SPJ: merampingkan lapisan navigasi menjadi satu baris utama dengan horizontal scrollable pills, menghapus tombol sub-menu kedua yang berlebihan, dan memperluas whitespace ruang kerja dokumen pratinjau A4/F4 bergaya Canva Light Workspace.",
+  "updatedAt":  "2026-10-26T12:39:46.519308479Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

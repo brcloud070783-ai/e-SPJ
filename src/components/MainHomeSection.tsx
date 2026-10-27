@@ -138,9 +138,9 @@ export const MainHomeSection: React.FC<MainHomeSectionProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-5 min-w-0">
           <div className="flex items-center gap-3.5 min-w-0">
             <img
-              src="/assets/aistudio/9994effd-8e31-467b-8811-b171984eb176_a0480f98.png"
+              src="/icon.svg"
               alt="SAPA Kaltara Logo"
-              className="w-12 h-12 sm:w-13 sm:h-13 rounded-2xl object-contain bg-white p-1 shadow-sm border border-slate-200 shrink-0"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl object-contain shrink-0 shadow-xs"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 min-w-0">

@@ -1,24 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1e3a8a" />
-    </linearGradient>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#facc15" />
-      <stop offset="100%" stop-color="#ca8a04" />
+    <linearGradient id="sapaBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0369a1" />
+      <stop offset="100%" stop-color="#0f172a" />
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
-  <!-- Shield Emblem Outline -->
-  <path d="M256 76 L396 124 L396 252 C396 346 332 412 256 442 C180 412 116 346 116 252 L116 124 Z" fill="#0284c7" stroke="url(#goldGrad)" stroke-width="14" />
-  <!-- Inner Document / Receipt Symbol -->
-  <rect x="186" y="150" width="140" height="176" rx="12" fill="#ffffff" />
-  <rect x="206" y="178" width="60" height="10" rx="5" fill="#0f172a" />
-  <rect x="206" y="202" width="100" height="8" rx="4" fill="#64748b" />
-  <rect x="206" y="222" width="100" height="8" rx="4" fill="#64748b" />
-  <rect x="206" y="242" width="84" height="8" rx="4" fill="#64748b" />
-  <rect x="206" y="274" width="100" height="26" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="3" />
-  <!-- Star at top of shield -->
-  <polygon points="256,98 265,118 287,120 270,134 275,155 256,144 237,155 242,134 225,120 247,118" fill="#facc15" />
+  <!-- Minimalist Squircle Background -->
+  <rect width="512" height="512" rx="120" fill="url(#sapaBg)" />
+
+  <!-- Minimalist Official SPJ Document Sheet -->
+  <rect x="136" y="104" width="216" height="288" rx="28" fill="#ffffff" />
+
+  <!-- Minimalist Document Header & Lines -->
+  <rect x="172" y="148" width="88" height="16" rx="8" fill="#0284c7" />
+  <rect x="172" y="188" width="144" height="12" rx="6" fill="#94a3b8" />
+  <rect x="172" y="216" width="144" height="12" rx="6" fill="#94a3b8" />
+  <rect x="172" y="244" width="104" height="12" rx="6" fill="#cbd5e1" />
+
+  <!-- Minimalist Verified Travel / Check Badge -->
+  <circle cx="336" cy="344" r="68" fill="#10b981" stroke="#0f172a" stroke-width="12" />
+  <path d="M306 344L326 364L368 322" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" />
 </svg>

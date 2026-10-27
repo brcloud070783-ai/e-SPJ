@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
 import {
-  Banknote,
-  FileCheck,
-  ClipboardList,
-  Stamp,
+  Wallet,
+  FileText,
+  Navigation,
+  BadgeCheck,
   Camera,
   Receipt,
   ArrowRight,
@@ -388,7 +388,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       badgeClass: activeKuitansi.noSpt
         ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
         : 'bg-amber-50 text-amber-800 border-amber-200',
-      icon: FileCheck,
+      icon: FileText,
       iconColor: 'text-indigo-600 bg-indigo-50',
     },
     {
@@ -398,7 +398,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       microcopy: 'Lembar Depan (86%)',
       statusText: 'Tersinkron',
       badgeClass: 'bg-sky-50 text-sky-800 border-sky-200',
-      icon: ClipboardList,
+      icon: Navigation,
       iconColor: 'text-sky-600 bg-sky-50',
     },
     {
@@ -410,7 +410,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
       badgeClass: activeKuitansi.tujuan
         ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
         : 'bg-amber-50 text-amber-800 border-amber-200',
-      icon: Stamp,
+      icon: BadgeCheck,
       iconColor: 'text-teal-600 bg-teal-50',
     },
     {
@@ -423,7 +423,7 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
         totalKuitansi > 0
           ? 'bg-emerald-50 text-emerald-800 border-emerald-200 font-mono'
           : 'bg-amber-50 text-amber-800 border-amber-200',
-      icon: Banknote,
+      icon: Wallet,
       iconColor: 'text-blue-600 bg-blue-50',
     },
     {

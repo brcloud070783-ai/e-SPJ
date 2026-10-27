@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   FileCheck,
+  FileText,
   Plus,
   Trash2,
   CheckCircle2,
@@ -11,15 +12,14 @@ import {
   User,
   Calendar,
   ClipboardList,
-  Stamp,
-  PenTool,
-  Route,
+  BadgeCheck,
+  PenLine,
+  MapPin,
   Wallet,
-  Hash,
-  PlaneTakeoff,
-  NotebookPen,
+  Navigation,
   Save,
   FileDown,
+  Pencil,
 } from 'lucide-react';
 import {
   SuratPerintahTugas,
@@ -34,6 +34,7 @@ import {
 import {
   SuratTugasDocumentPreview,
   SuratTugasEditableZone,
+  ALLOWED_SPT_FONT_SIZES,
 } from './SuratTugasDocumentPreview';
 import {
   SuratPerjalananDinasDocumentPreview,
@@ -99,6 +100,12 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     setInternalDocType(nextType);
     onChangeDocType?.(nextType);
   };
+
+  React.useEffect(() => {
+    if (activeDocType && activeDocType !== internalDocType) {
+      setInternalDocType(activeDocType);
+    }
+  }, [activeDocType, internalDocType]);
   const [formTab, setFormTab] = useState<SuratTugasEditableZone>('header');
   const [spdTab, setSpdTab] = useState<SpdEditableZone>('header');
   const [spdBelakangTab, setSpdBelakangTab] = useState<SpdBelakangEditableZone>('bagian-1');
@@ -1976,95 +1983,27 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
         isMobileSheetOpen ? 'max-lg:overflow-hidden' : ''
       }`}
     >
-      {/* 0. DOCUMENT SELECTOR BAR (SPT -> SPD Lembar 1 -> SPD Lembar 2 / Visum) */}
-      <div className="no-print bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 max-w-full overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0 w-full xl:w-auto">
-          <span className="text-xs font-bold text-slate-700 ml-1 shrink-0">Dokumen SPPD:</span>
-          <div className="grid grid-cols-3 p-1 bg-slate-100/90 rounded-xl gap-1 w-full sm:w-auto min-w-0">
-            <button
-              type="button"
-              onClick={() => setDocType('spt')}
-              className={`min-h-[38px] px-2 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
-                docType === 'spt'
-                  ? 'bg-sky-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-              title="Dokumen Induk Surat Perintah Tugas (SPT)"
-            >
-              <FileCheck
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${
-                  docType === 'spt' ? 'text-amber-300' : 'text-sky-700'
-                }`}
-              />
-              <span className="truncate">
-                Surat Tugas <span className="hidden md:inline">(SPT)</span>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDocType('spd')}
-              className={`min-h-[38px] px-2 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
-                docType === 'spd'
-                  ? 'bg-sky-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-              title="Surat Perjalanan Dinas Lembar 1 (Depan / Rincian)"
-            >
-              <ClipboardList
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${
-                  docType === 'spd' ? 'text-sky-200' : 'text-sky-700'
-                }`}
-              />
-              <span className="truncate">
-                SPD Depan <span className="hidden md:inline">(Lembar 1)</span>
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDocType('spd-belakang')}
-              className={`min-h-[38px] px-2 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0 ${
-                docType === 'spd-belakang'
-                  ? 'bg-sky-700 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
-              }`}
-              title="Surat Perjalanan Dinas Lembar 2 (Belakang / Visum Pengesahan)"
-            >
-              <Stamp
-                className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 transition-colors ${
-                  docType === 'spd-belakang' ? 'text-emerald-300' : 'text-emerald-700'
-                }`}
-              />
-              <span className="truncate">
-                SPD Belakang <span className="hidden md:inline">(Visum)</span>
-              </span>
-            </button>
+      {/* Selector Pelaksana SPD (Hanya muncul jika terdapat lebih dari 1 pegawai pada mode SPD/Visum) */}
+      {(docType === 'spd' || docType === 'spd-belakang') && draft.pegawaiList.length > 1 && (
+        <div className="no-print flex items-center justify-between gap-2 bg-white/95 border border-slate-200/90 px-3 py-1.5 rounded-2xl shadow-2xs max-w-full overflow-hidden">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-sky-950 shrink-0">
+            <User className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+            <span>Pilih Pelaksana SPD ({draft.pegawaiList.length} Pegawai):</span>
           </div>
+          <select
+            aria-label="Pilih Pegawai Pelaksana SPD"
+            value={selectedSpdPegawaiId}
+            onChange={(e) => handleSelectSpdPegawai(e.target.value)}
+            className="min-h-[30px] rounded-lg border border-slate-300 bg-white px-2.5 py-0.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer max-w-full truncate"
+          >
+            {draft.pegawaiList.map((p, idx) => (
+              <option key={p.id} value={p.id}>
+                {idx + 1}. {p.nama} ({p.jabatan || 'Pelaksana'})
+              </option>
+            ))}
+          </select>
         </div>
-
-        {/* When in SPD Mode or SPD Belakang Mode, show employee picker directly in header */}
-        {(docType === 'spd' || docType === 'spd-belakang') && (
-          <div className="flex items-center gap-2 bg-sky-50/70 border border-sky-200/80 px-2.5 py-1.5 rounded-xl w-full xl:w-auto min-w-0 max-w-full overflow-hidden">
-            <span className="text-xs font-bold text-sky-950 flex items-center gap-1 shrink-0 whitespace-nowrap">
-              <User className="w-3.5 h-3.5 text-sky-700 shrink-0" />
-              <span>Pelaksana SPD:</span>
-            </span>
-            <select
-              aria-label="Pilih Pegawai Pelaksana SPD"
-              value={selectedSpdPegawaiId}
-              onChange={(e) => handleSelectSpdPegawai(e.target.value)}
-              className="min-h-[32px] flex-1 min-w-0 w-full max-w-full truncate rounded-lg border border-sky-300 bg-white px-2 py-0.5 text-xs font-bold text-sky-900 focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
-            >
-              {draft.pegawaiList.map((p, idx) => (
-                <option key={p.id} value={p.id}>
-                  {idx + 1}. {p.nama} ({p.jabatan || 'Pelaksana'})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Validation Banners */}
       {validationErrors.length > 0 && (
@@ -2122,7 +2061,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="1. Kop, No SPD & PPTK"
               >
-                <Hash className="w-3 h-3 shrink-0" />
+                <FileText className="w-3 h-3 shrink-0" />
                 <span className="truncate">1. No/PPTK</span>
               </button>
 
@@ -2154,7 +2093,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="4-7. Maksud, Angkutan, Tempat & Waktu"
               >
-                <Route className="w-3 h-3 shrink-0" />
+                <MapPin className="w-3 h-3 shrink-0" />
                 <span className="truncate">3. Rincian</span>
               </button>
 
@@ -2202,7 +2141,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="Penandatangan SPD & Pengguna Anggaran"
               >
-                <PenTool className="w-3 h-3 shrink-0" />
+                <PenLine className="w-3 h-3 shrink-0" />
                 <span className="truncate">6. TTD</span>
               </button>
             </div>
@@ -2224,7 +2163,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="I. Keberangkatan Awal"
               >
-                <PlaneTakeoff className="w-3 h-3 shrink-0" />
+                <Navigation className="w-3 h-3 shrink-0" />
                 <span className="truncate">I. Berangkat</span>
               </button>
 
@@ -2240,7 +2179,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="II - V. Persinggahan / Transit"
               >
-                <Route className="w-3 h-3 shrink-0" />
+                <MapPin className="w-3 h-3 shrink-0" />
                 <span className="truncate">II-V. Transit</span>
               </button>
 
@@ -2256,7 +2195,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="VI. Tiba Kembali & Pengesahan KPA"
               >
-                <Stamp className="w-3 h-3 shrink-0" />
+                <BadgeCheck className="w-3 h-3 shrink-0" />
                 <span className="truncate">VI. Pengesahan</span>
               </button>
 
@@ -2272,7 +2211,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
                 title="VII - VIII. Catatan Lain & Perhatian"
               >
-                <NotebookPen className="w-3 h-3 shrink-0" />
+                <FileText className="w-3 h-3 shrink-0" />
                 <span className="truncate">VII-VIII. Ket</span>
               </button>
             </div>
@@ -2293,8 +2232,8 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Hash className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">1. Kop &amp; No</span>
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Kop &amp; No</span>
               </button>
 
               <button
@@ -2309,7 +2248,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                 }`}
               >
                 <Users className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">2. Pegawai ({draft.pegawaiList.length})</span>
+                <span className="truncate">Pegawai ({draft.pegawaiList.length})</span>
               </button>
 
               <button
@@ -2323,8 +2262,8 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <Route className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">3. Detail</span>
+                <MapPin className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Detail</span>
               </button>
 
               <button
@@ -2338,8 +2277,8 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <PenTool className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">4. TTD</span>
+                <PenLine className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">TTD</span>
               </button>
             </div>
           )}
@@ -2491,6 +2430,27 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               onChangePaperSize={onChangePaperSize}
               documentTitle="Surat Perintah Tugas (SPT)"
               interactiveHint="Ketuk elemen kertas untuk mengedit bagian Surat Perintah Tugas"
+              extraControls={
+                <label className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200/80 rounded-full px-2 h-6 text-[11px] font-bold text-slate-700 cursor-pointer">
+                  <span className="text-slate-500">Font:</span>
+                  <select
+                    aria-label="Ukuran Font SPT"
+                    value={draft.fontSizePt ?? 'auto'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      handleFieldChange('fontSizePt', val === 'auto' ? undefined : Number(val));
+                    }}
+                    className="bg-transparent font-bold text-sky-800 focus:outline-none cursor-pointer"
+                  >
+                    <option value="auto">Auto (1 Hal)</option>
+                    {ALLOWED_SPT_FONT_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size} pt
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              }
             >
               <SuratTugasDocumentPreview
                 spt={draft}
@@ -2528,7 +2488,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
             }
             className="no-print lg:hidden fixed inset-x-0 bottom-16 z-50 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-200"
           >
-            <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-2">
+            <div className="p-3 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0 bg-white rounded-t-3xl">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="w-8 h-1 rounded-full bg-slate-300 block shrink-0" />
@@ -2555,7 +2515,93 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               </button>
             </div>
 
-            <div className="p-4 overflow-y-auto flex-1">
+            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
+              {docType === 'spd-belakang' ? (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'bagian-1', label: 'Berangkat', icon: Navigation },
+                    { key: 'bagian-transit', label: 'Transit', icon: MapPin },
+                    { key: 'bagian-6', label: 'Pengesahan', icon: BadgeCheck },
+                    { key: 'bagian-catatan', label: 'Catatan', icon: FileText },
+                  ].map((t) => {
+                    const TIcon = t.icon;
+                    const isTabActive = spdBelakangTab === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setSpdBelakangTab(t.key as any)}
+                        className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isTabActive
+                            ? 'bg-sky-700 text-white shadow-2xs'
+                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                        }`}
+                      >
+                        <TIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : docType === 'spd' ? (
+                <div className="grid grid-cols-5 gap-1">
+                  {[
+                    { key: 'header', label: 'No/PPTK', icon: FileText },
+                    { key: 'pelaksana', label: 'Pelaksana', icon: User },
+                    { key: 'perjalanan', label: 'Rincian', icon: MapPin },
+                    { key: 'pengikut', label: 'Pengikut', icon: Users },
+                    { key: 'ttd', label: 'TTD', icon: PenLine },
+                  ].map((t) => {
+                    const TIcon = t.icon;
+                    const isTabActive = spdTab === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setSpdTab(t.key as any)}
+                        className={`h-9 px-1 rounded-xl text-[10.5px] font-bold flex items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                          isTabActive
+                            ? 'bg-sky-700 text-white shadow-2xs'
+                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                        }`}
+                      >
+                        <TIcon className="w-3 h-3 shrink-0" />
+                        <span className="truncate">{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'header', label: 'Kop & No', icon: FileText },
+                    { key: 'pegawai', label: `Pegawai (${draft.pegawaiList.length})`, icon: Users },
+                    { key: 'detail', label: 'Detail', icon: MapPin },
+                    { key: 'ttd', label: 'TTD', icon: PenLine },
+                  ].map((t) => {
+                    const TIcon = t.icon;
+                    const isTabActive = formTab === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setFormTab(t.key as any)}
+                        className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          isTabActive
+                            ? 'bg-sky-700 text-white shadow-2xs'
+                            : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                        }`}
+                      >
+                        <TIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 overflow-y-auto flex-1 min-h-0 bg-white">
               {docType === 'spd-belakang' ? (
                 <SuratPerjalananDinasBelakangEditor
                   spt={draft}
@@ -2571,7 +2617,7 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               )}
             </div>
 
-            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5">
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2.5 shrink-0">
               {/* Contextual Destructive Button ("Hapus") ONLY on relevant sub-tabs */}
               {docType === 'spt' && formTab === 'header' && onDeleteSpt && (
                 <button
@@ -2640,191 +2686,29 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
         </>
       )}
 
-      {/* MOBILE BOTTOM TOOLBAR (<lg) */}
+      {/* MOBILE CONTEXTUAL ACTION TOOLBAR (<lg) — Ringkas & Hemat Ruang Kerja */}
       <div
         role="toolbar"
-        aria-label="Alat Editor Dokumen Mobile"
-        className="no-print lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200 px-2 py-1.5 flex items-center gap-1.5 shadow-lg"
+        aria-label="Alat Aksi Dokumen Mobile"
+        className="no-print lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200/90 px-2.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-1.5 shadow-md"
       >
-        {docType === 'spd-belakang' ? (
-          <div className="grid grid-cols-4 gap-1 flex-1">
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdBelakangTool('bagian-1')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdBelakangTab === 'bagian-1'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <PlaneTakeoff className="w-4 h-4" />
-              <span>Berangkat</span>
-            </button>
+        {/* 1. Tombol Aksi Utama: Ubah Data (Buka Form Editor) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileSheetOpen((prev) => !prev)}
+          aria-expanded={isMobileSheetOpen}
+          aria-label="Buka formulir editor data"
+          className={`h-9 flex-1 px-3 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+            isMobileSheetOpen
+              ? 'bg-sky-50 border-sky-300 text-sky-800 shadow-2xs'
+              : 'bg-slate-50 border-slate-300 text-slate-800 hover:bg-slate-100'
+          }`}
+        >
+          <Pencil className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+          <span>{isMobileSheetOpen ? 'Tutup Formulir' : 'Ubah Formulir'}</span>
+        </button>
 
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdBelakangTool('bagian-transit')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdBelakangTab === 'bagian-transit'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Route className="w-4 h-4" />
-              <span>Transit</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdBelakangTool('bagian-6')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdBelakangTab === 'bagian-6'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Stamp className="w-4 h-4" />
-              <span>Pengesahan</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdBelakangTool('bagian-catatan')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdBelakangTab === 'bagian-catatan'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <NotebookPen className="w-4 h-4" />
-              <span>Catatan</span>
-            </button>
-          </div>
-        ) : docType === 'spd' ? (
-          <div className="grid grid-cols-5 gap-1 flex-1">
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdTool('header')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdTab === 'header'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Hash className="w-4 h-4" />
-              <span>No/PPTK</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdTool('pelaksana')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdTab === 'pelaksana'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>Pelaksana</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdTool('perjalanan')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdTab === 'perjalanan'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Route className="w-4 h-4" />
-              <span>Rincian</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdTool('pengikut')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdTab === 'pengikut'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Pengikut</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileSpdTool('ttd')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && spdTab === 'ttd'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <PenTool className="w-4 h-4" />
-              <span>TTD</span>
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-1 flex-1">
-            <button
-              type="button"
-              onClick={() => handleOpenMobileTool('header')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && formTab === 'header'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Hash className="w-4 h-4" />
-              <span>Kop &amp; No</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileTool('pegawai')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && formTab === 'pegawai'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Pegawai ({draft.pegawaiList.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileTool('detail')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && formTab === 'detail'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Route className="w-4 h-4" />
-              <span>Detail</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenMobileTool('ttd')}
-              className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition-all cursor-pointer ${
-                isMobileSheetOpen && formTab === 'ttd'
-                  ? 'bg-sky-600 text-white shadow-xs'
-                  : 'bg-transparent text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <PenTool className="w-4 h-4" />
-              <span>TTD</span>
-            </button>
-          </div>
-        )}
-
-        <div className="w-px h-8 bg-slate-200 shrink-0" aria-hidden="true" />
-
+        {/* 2. Aksi Dokumen: Ekspor PDF */}
         <button
           type="button"
           disabled={isExportingPdf}
@@ -2853,12 +2737,13 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               setIsExportingPdf(false);
             }
           }}
-          className="min-h-[48px] px-2.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+          className="h-9 px-3.5 rounded-lg flex items-center justify-center gap-1 text-xs font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-2xs transition-colors shrink-0 cursor-pointer"
         >
-          <FileDown className="w-4 h-4" />
+          <FileDown className="w-3.5 h-3.5" />
           <span>{isExportingPdf ? '...' : 'PDF'}</span>
         </button>
 
+        {/* 3. Aksi Dokumen: Cetak */}
         <button
           type="button"
           onClick={() => {
@@ -2887,16 +2772,10 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               ? 'Cetak Surat Perjalanan Dinas'
               : 'Cetak Surat Perintah Tugas'
           }
-          className="min-h-[48px] px-3 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+          className="h-9 px-3.5 rounded-lg flex items-center justify-center gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors shrink-0 cursor-pointer"
         >
-          <Printer className="w-4 h-4" />
-          <span>
-            {docType === 'spd-belakang'
-              ? 'Cetak Visum'
-              : docType === 'spd'
-              ? 'Cetak SPD'
-              : 'Cetak SPT'}
-          </span>
+          <Printer className="w-3.5 h-3.5" />
+          <span>Cetak</span>
         </button>
       </div>
     </div>

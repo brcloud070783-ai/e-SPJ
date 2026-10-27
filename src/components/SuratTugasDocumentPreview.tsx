@@ -136,60 +136,6 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
 
   return (
     <div className="w-full">
-      {/* NO-PRINT TOOLBAR: STATUS PAS 1 HALAMAN & KONTROL UKURAN FONT (STANDAR 11.5pt, MIN 9.5pt) */}
-      {!isPrintMode && (
-        <div className="no-print w-[86%] max-w-[86%] mx-auto mb-2.5">
-          <div className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-50 border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                  isAutoAdjusted ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-              />
-              <span className="font-semibold text-slate-800 text-[11px] truncate">
-                Font SPT:{' '}
-                <strong className="text-sky-800 font-bold">{effectiveFontSizePt} pt</strong>
-                {spt.fontSizePt
-                  ? ' (Manual)'
-                  : isAutoAdjusted
-                  ? ' (Disesuaikan Otomatis agar 1 Halaman)'
-                  : ' (Standar 11.5 pt - Pas 1 Halaman)'}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => onUpdateField?.('fontSizePt', undefined)}
-                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
-                  !spt.fontSizePt
-                    ? 'bg-sky-700 text-white shadow-2xs'
-                    : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
-                }`}
-                title="Sesuaikan otomatis agar SPT pas 1 halaman penuh (11.5pt s.d. 9.5pt)"
-              >
-                Auto (1 Halaman)
-              </button>
-              {ALLOWED_SPT_FONT_SIZES.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  onClick={() => onUpdateField?.('fontSizePt', size)}
-                  className={`px-1.5 py-0.5 rounded-md text-[10.5px] font-bold transition-all cursor-pointer ${
-                    spt.fontSizePt === size || (!spt.fontSizePt && effectiveFontSizePt === size)
-                      ? 'bg-sky-700 text-white shadow-2xs'
-                      : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-100'
-                  }`}
-                  title={`Kunci ukuran font ke ${size} pt`}
-                >
-                  {size}pt
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* DOKUMEN FISIK SURAT PERINTAH TUGAS (SPT) */}
       <div
         className={`spt-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${

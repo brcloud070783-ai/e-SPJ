@@ -18,6 +18,7 @@ import {
   Car,
   BedDouble,
   FileDown,
+  Pencil,
 } from 'lucide-react';
 import {
   KuitansiPerjalananDinas,
@@ -1888,8 +1889,37 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               </div>
             </div>
 
+            {/* Sub-Tabs Selector INSIDE Mobile Sheet */}
+            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { key: 'utama', label: 'Data & SPT', icon: User },
+                  { key: 'rincian', label: `Rincian (${draft.rincian.length})`, icon: Wallet },
+                  { key: 'kustom', label: `Kustom (${customFields.length})`, icon: SlidersHorizontal },
+                ].map((t) => {
+                  const TIcon = t.icon;
+                  const isTabActive = formTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setFormTab(t.key as any)}
+                      className={`h-9 px-1.5 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        isTabActive
+                          ? 'bg-sky-700 text-white shadow-2xs'
+                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/90'
+                      }`}
+                    >
+                      <TIcon className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Scrollable Sheet Content (no-scrollbar + overscroll-contain seperti native mobile app) */}
-            <div className="p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-4 flex-1 bg-white text-slate-900">
+            <div className="p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-4 flex-1 min-h-0 bg-white text-slate-900">
               {renderFormFieldsContent()}
             </div>
 
@@ -1937,78 +1967,29 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
         </>
       )}
 
-      {/* CANVA MOBILE LIGHT MODE BOTTOM STUDIO TOOL DOCK (<lg only)
-          - Tema terang bersih (bg-white/95 + border-slate-200)
-          - Tab hanya menyala biru (bg-sky-600 text-white) saat Bottom Sheet untuk tab tersebut sedang TERBUKA
-          - Mengklik tab yang sedang aktif otomatis menutup Bottom Sheet (toggle open/close)
-          - Saat Bottom Sheet TERTUTUP, tidak ada tab yang menyala biru
-          - Tombol Cetak memiliki gaya aksi khusus (emerald) dengan teks dinamis Cetak A4 / Cetak F4 */}
+      {/* MOBILE CONTEXTUAL ACTION TOOLBAR (<lg) — Ringkas & Hemat Ruang Kerja */}
       <div
         role="toolbar"
-        aria-label="Alat Editor Kuitansi Mobile"
-        className="no-print lg:hidden fixed inset-x-0 bottom-0 z-50 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200 px-2 py-1.5 flex items-center gap-1.5 shadow-[0_-4px_20px_rgba(15,23,42,0.08)]"
+        aria-label="Alat Aksi Kuitansi Mobile"
+        className="no-print lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200/90 px-2.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-1.5 shadow-md"
       >
-        <div className="grid grid-cols-3 gap-1 flex-1">
-          <button
-            type="button"
-            aria-pressed={isMobileSheetOpen && formTab === 'utama'}
-            title={
-              isMobileSheetOpen && formTab === 'utama'
-                ? 'Ketuk lagi untuk menutup panel Data & SPT'
-                : 'Buka panel Data & SPT'
-            }
-            onClick={() => handleOpenMobileTool('utama')}
-            className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-all cursor-pointer ${
-              isMobileSheetOpen && formTab === 'utama'
-                ? 'bg-sky-600 text-white shadow-xs'
-                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Data &amp; SPT</span>
-          </button>
+        {/* 1. Tombol Aksi Utama: Ubah Data (Buka Form Editor) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileSheetOpen((prev) => !prev)}
+          aria-expanded={isMobileSheetOpen}
+          aria-label="Buka formulir editor rincian kuitansi"
+          className={`h-9 flex-1 px-3 rounded-lg border flex items-center justify-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
+            isMobileSheetOpen
+              ? 'bg-sky-50 border-sky-300 text-sky-800 shadow-2xs'
+              : 'bg-slate-50 border-slate-300 text-slate-800 hover:bg-slate-100'
+          }`}
+        >
+          <Pencil className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+          <span>{isMobileSheetOpen ? 'Tutup Formulir' : 'Ubah Formulir'}</span>
+        </button>
 
-          <button
-            type="button"
-            aria-pressed={isMobileSheetOpen && formTab === 'rincian'}
-            title={
-              isMobileSheetOpen && formTab === 'rincian'
-                ? 'Ketuk lagi untuk menutup panel Rincian'
-                : 'Buka panel Rincian Biaya'
-            }
-            onClick={() => handleOpenMobileTool('rincian')}
-            className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-all cursor-pointer ${
-              isMobileSheetOpen && formTab === 'rincian'
-                ? 'bg-sky-600 text-white shadow-xs'
-                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Rincian ({draft.rincian.length})</span>
-          </button>
-
-          <button
-            type="button"
-            aria-pressed={isMobileSheetOpen && formTab === 'kustom'}
-            title={
-              isMobileSheetOpen && formTab === 'kustom'
-                ? 'Ketuk lagi untuk menutup panel Bidang Kustom'
-                : 'Buka panel Bidang Kustom'
-            }
-            onClick={() => handleOpenMobileTool('kustom')}
-            className={`min-h-[48px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold transition-all cursor-pointer ${
-              isMobileSheetOpen && formTab === 'kustom'
-                ? 'bg-sky-600 text-white shadow-xs'
-                : 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            <span>Kustom ({customFields.length})</span>
-          </button>
-        </div>
-
-        <div className="w-px h-8 bg-slate-200 shrink-0" aria-hidden="true" />
-
+        {/* 2. Aksi Dokumen: Ekspor PDF */}
         <button
           type="button"
           disabled={isExportingPdf}
@@ -2031,12 +2012,13 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               setIsExportingPdf(false);
             }
           }}
-          className="min-h-[48px] px-2.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+          className="h-9 px-3.5 rounded-lg flex items-center justify-center gap-1 text-xs font-bold bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white shadow-2xs transition-colors shrink-0 cursor-pointer"
         >
-          <FileDown className="w-4 h-4" />
+          <FileDown className="w-3.5 h-3.5" />
           <span>{isExportingPdf ? '...' : 'PDF'}</span>
         </button>
 
+        {/* 3. Aksi Dokumen: Cetak */}
         <button
           type="button"
           onClick={() => {
@@ -2052,10 +2034,10 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
             });
           }}
           aria-label={paperSize === 'F4' ? 'Cetak Kuitansi F4' : 'Cetak Kuitansi A4'}
-          className="min-h-[48px] px-3.5 rounded-xl flex flex-col items-center justify-center gap-0.5 text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+          className="h-9 px-3.5 rounded-lg flex items-center justify-center gap-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-colors shrink-0 cursor-pointer"
         >
-          <Printer className="w-4 h-4" />
-          <span>{paperSize === 'F4' ? 'Cetak F4' : 'Cetak A4'}</span>
+          <Printer className="w-3.5 h-3.5" />
+          <span>Cetak</span>
         </button>
       </div>
     </div>
