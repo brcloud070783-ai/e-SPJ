@@ -74,7 +74,12 @@ import { PWAInstallButton } from './components/PWAInstallButton';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { FloatingBottomNav } from './components/FloatingBottomNav';
 import { NativeBottomSheet } from './components/NativeBottomSheet';
-import { useSwipeTabs } from './hooks/useSwipeTabs';
+import { PWAInstallBanner } from './components/PWAInstallBanner';
+import { PullToRefreshIndicator } from './components/PullToRefreshWrapper';
+import { NativeSnapPager } from './components/NativeSnapPager';
+import { StudioSwipeProgressBar } from './components/StudioSwipeProgressBar';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { usePWAInstall } from './hooks/usePWAInstall';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MobileFocusModeContext,
@@ -121,7 +126,9 @@ export default function App() {
   const [mainMenu, setMainMenu] = useState<MainMenuKey>('home');
   const [spjView, setSpjView] = useState<SpjViewKey>('sub-home');
   const [isSpjSwitcherOpen, setIsSpjSwitcherOpen] = useState<boolean>(false);
+  const [isPwaModalOpen, setIsPwaModalOpen] = useState<boolean>(false);
   const [isFocusMode, setIsFocusMode] = useState<boolean>(false);
+  const { isInstallable: isPwaInstallable } = usePWAInstall();
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const prevNavRef = useRef<{ menu: MainMenuKey; view: SpjViewKey; direction: number }>({
     menu: 'home',
@@ -155,10 +162,21 @@ export default function App() {
     }
   }, [mainMenu, spjView]);
 
-  // Persist navigation history & reset scroll container on navigation
+  // Persist navigation history & reset scroll container on major section navigation
   useEffect(() => {
+    const prevView = prevNavRef.current.view;
+    const prevMenu = prevNavRef.current.menu;
+    const isSuratTugasSuite = (v: SpjViewKey) =>
+      v === 'spt' || v === 'spd' || v === 'visum' || v === 'surat-tugas';
+
+    const stayingInSuratTugasSuite =
+      prevMenu === mainMenu &&
+      mainMenu === 'perjalanan-dinas' &&
+      isSuratTugasSuite(prevView) &&
+      isSuratTugasSuite(spjView);
+
     prevNavRef.current = { menu: mainMenu, view: spjView, direction: navDirection };
-    if (mainScrollRef.current) {
+    if (mainScrollRef.current && !stayingInSuratTugasSuite) {
       mainScrollRef.current.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
     }
   }, [mainMenu, spjView, navDirection]);
@@ -1287,23 +1305,29 @@ export default function App() {
   const currentStudioStepIndex = studioSteps.findIndex(
     (s) => s.key === normalizedActiveStepKey
   );
+  const [studioSwipeProgress, setStudioSwipeProgress] = useState<number>(
+    Math.max(0, currentStudioStepIndex)
+  );
 
-  const handleStudioSwipeLeft = () => {
-    if (!isInsideStudio || currentStudioStepIndex < 0 || currentStudioStepIndex >= studioSteps.length - 1) return;
-    const nextStep = studioSteps[currentStudioStepIndex + 1];
-    setSpjView(nextStep.key);
-  };
-
-  const handleStudioSwipeRight = () => {
-    if (!isInsideStudio || currentStudioStepIndex <= 0) return;
-    const prevStep = studioSteps[currentStudioStepIndex - 1];
-    setSpjView(prevStep.key);
-  };
-
-  const studioSwipeHandlers = useSwipeTabs({
-    onSwipeLeft: handleStudioSwipeLeft,
-    onSwipeRight: handleStudioSwipeRight,
-    isEnabled: isInsideStudio && !isSpjSwitcherOpen && !kuitansiToDelete,
+  const pullRefresh = usePullToRefresh({
+    isEnabled: !isInsideStudio && !isSpjSwitcherOpen && !kuitansiToDelete,
+    onRefresh: async () => {
+      if (hasValidToken && workspaceConfig) {
+        try {
+          await syncAllRecordsToSheets({
+            spreadsheetId: workspaceConfig.spreadsheetId,
+            kuitansiList,
+            dokumentasiPerjalanan,
+            dokumentasiPengeluaran,
+          });
+          showToast('Data berhasil disinkronkan ke Sheets');
+        } catch {
+          showToast('Tampilan berhasil diperbarui');
+        }
+      } else {
+        showToast('Tampilan berhasil diperbarui');
+      }
+    },
   });
 
   return (
@@ -1321,7 +1345,7 @@ export default function App() {
             className={`no-print shrink-0 z-30 w-full max-w-full bg-white/88 text-slate-900 backdrop-blur-xl border-b border-slate-200/90 shadow-2xs transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] ${
               isFocusMode
                 ? 'max-lg:max-h-0 max-lg:opacity-0 max-lg:overflow-hidden max-lg:border-b-0 max-lg:pointer-events-none'
-                : 'max-lg:max-h-32 max-lg:opacity-100'
+                : 'max-lg:max-h-48 max-lg:opacity-100'
             }`}
           >
             {/* DESKTOP (lg+): Baris tunggal yang proporsional */}
@@ -1668,83 +1692,162 @@ export default function App() {
           </header>
         )}
 
-        {/* Main Isolated Scroll Container with Momentum Scroll & Smooth Native Transitions */}
+        {/* Top PWA Install Banner (Mobile) */}
+        <PWAInstallBanner
+          forceShowModal={isPwaModalOpen}
+          onCloseModal={() => setIsPwaModalOpen(false)}
+        />
+
+        {/* Non-Intrusive Pull-To-Refresh Indicator (Never transforms <main> or breaks position:fixed) */}
+        <PullToRefreshIndicator
+          pullDistance={pullRefresh.pullDistance}
+          isRefreshing={pullRefresh.isRefreshing}
+          pullProgress={pullRefresh.pullProgress}
+        />
+
+        {/* Main Isolated Scroll-Snap Viewport — Direct Flex Child of .native-app-shell */}
         <main
           ref={mainScrollRef}
-          {...studioSwipeHandlers}
-          className="native-scroll-container w-full min-w-0"
+          {...(!isInsideStudio ? pullRefresh.touchHandlers : {})}
+          style={{ touchAction: 'pan-x pan-y' }}
+          className="flex-1 min-h-0 w-full min-w-0 overflow-hidden print:overflow-visible"
         >
-          <motion.div
-            key={
-              mainMenu === 'perjalanan-dinas' &&
-              (spjView === 'spt' || spjView === 'spd' || spjView === 'visum' || spjView === 'surat-tugas')
-                ? 'perjalanan-dinas-sppd-suite'
-                : `${mainMenu}-${spjView}`
-            }
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-32 sm:pb-36 min-w-0"
-          >
-            {/* 1. HALAMAN UTAMA (BERANDA): Action Center dengan Executive Summary Grid & Progress 1-6 */}
-            {mainMenu === 'home' && (
-              <MainHomeSection
-                settings={appSettings}
-                kuitansiList={kuitansiList}
-                activeKuitansi={activeKuitansi}
-                activeSpt={activeSpt}
-                docPerjalananCount={activeDocPerjalanan.length}
-                docPengeluaranList={activeDocPengeluaran}
-                allDocPerjalanan={dokumentasiPerjalanan}
-                allDocPengeluaran={dokumentasiPengeluaran}
-                sptList={sptList}
-                isCloudSynced={isCloudSynced}
-                onEnterSpjPerjalananDinas={() => {
-                  triggerHaptic('light');
-                  setMainMenu('perjalanan-dinas');
-                  setSpjView('sub-home');
-                }}
-                onOpenStudioModule={(sub) => {
-                  triggerHaptic('light');
-                  setMainMenu('perjalanan-dinas');
-                  setSpjView(sub);
-                }}
-                onCreateNewKuitansi={() => {
-                  triggerHaptic('medium');
-                  handleCreateNewKuitansi();
-                }}
-                onSelectKuitansi={setActiveKuitansiId}
-              />
-            )}
-
-            {/* 2. SECTION PERJALANAN DINAS: Sub-Home & Ruang Kerja Berurutan 1 Berkas SPJ Utuh */}
-            {mainMenu === 'perjalanan-dinas' && (
-              <div className="space-y-3 sm:space-y-4 min-w-0 max-w-full">
-                {spjView === 'sub-home' ? (
-                  <SpjPerjalananSubHome
-                    kuitansiList={kuitansiList}
-                    activeKuitansi={activeKuitansi}
-                    activeSpt={activeSpt}
-                    sptList={sptList}
-                    onSelectKuitansi={setActiveKuitansiId}
-                    onCreateNewKuitansi={handleCreateNewKuitansi}
-                    onDuplicateKuitansi={handleDuplicateActiveKuitansi}
-                    onDeleteKuitansi={promptDeleteKuitansi}
-                    onDeleteKuitansiBatch={handleDeleteKuitansiBatch}
-                    onArchiveKuitansiBatch={handleArchiveKuitansiBatch}
-                    onRestoreBackupPayload={handleRestoreBackupPayload}
-                    docPerjalanan={activeDocPerjalanan}
-                    docPengeluaran={activeDocPengeluaran}
-                    allDocPerjalanan={dokumentasiPerjalanan}
-                    allDocPengeluaran={dokumentasiPengeluaran}
-                    onOpenSubSection={(sub) => {
-                      triggerHaptic('light');
-                      setSpjView(sub);
-                    }}
-                  />
-                ) : (
-                  <div className="min-w-0 max-w-full space-y-4">
-                    {spjView === 'kuitansi' && (
+          {isInsideStudio ? (
+            <NativeSnapPager
+              key={`studio-pager-${activeKuitansi.id}`}
+              activeTabId={normalizedActiveStepKey}
+              onTabChange={(nextKey) => {
+                setIsSpjSwitcherOpen(false);
+                setSpjView(nextKey as SpjSubSectionKey);
+              }}
+              onScrollProgress={(progress) => setStudioSwipeProgress(progress)}
+              disabled={isSpjSwitcherOpen || Boolean(kuitansiToDelete)}
+              ariaLabel="Ruang Kerja 6 Dokumen SPJ"
+              dataTestId="studio-snap-pager"
+              className="h-full w-full"
+              slideClassName="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain"
+              tabs={[
+                {
+                  id: 'spt',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
+                      <SuratTugasEditorSection
+                        sptList={sptList}
+                        activeSptId={activeSpt.id}
+                        onSelectSpt={setActiveSptId}
+                        onSaveSpt={handleSaveSpt}
+                        onCreateNewSpt={handleCreateNewSpt}
+                        onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
+                        appSettings={appSettings}
+                        daftarPegawai={daftarPegawai}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        activeDocType="spt"
+                        singleSlideMode={true}
+                        isActiveSlide={normalizedActiveStepKey === 'spt'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
+                        onChangeDocType={(dt) => {
+                          setSpjView(
+                            dt === 'spt'
+                              ? 'spt'
+                              : dt === 'spd-belakang'
+                                ? 'visum'
+                                : 'spd'
+                          );
+                        }}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'spd',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
+                      <SuratTugasEditorSection
+                        sptList={sptList}
+                        activeSptId={activeSpt.id}
+                        onSelectSpt={setActiveSptId}
+                        onSaveSpt={handleSaveSpt}
+                        onCreateNewSpt={handleCreateNewSpt}
+                        onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
+                        appSettings={appSettings}
+                        daftarPegawai={daftarPegawai}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        activeDocType="spd"
+                        singleSlideMode={true}
+                        isActiveSlide={normalizedActiveStepKey === 'spd'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
+                        onChangeDocType={(dt) => {
+                          setSpjView(
+                            dt === 'spt'
+                              ? 'spt'
+                              : dt === 'spd-belakang'
+                                ? 'visum'
+                                : 'spd'
+                          );
+                        }}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'visum',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
+                      <SuratTugasEditorSection
+                        sptList={sptList}
+                        activeSptId={activeSpt.id}
+                        onSelectSpt={setActiveSptId}
+                        onSaveSpt={handleSaveSpt}
+                        onCreateNewSpt={handleCreateNewSpt}
+                        onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
+                        appSettings={appSettings}
+                        daftarPegawai={daftarPegawai}
+                        paperSize={paperSize}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        activeDocType="spd-belakang"
+                        singleSlideMode={true}
+                        isActiveSlide={normalizedActiveStepKey === 'visum'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
+                        onChangeDocType={(dt) => {
+                          setSpjView(
+                            dt === 'spt'
+                              ? 'spt'
+                              : dt === 'spd-belakang'
+                                ? 'visum'
+                                : 'spd'
+                          );
+                        }}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'kuitansi',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
                       <KuitansiEditorSection
                         kuitansiList={kuitansiList}
                         activeKuitansiId={activeKuitansi.id}
@@ -1775,51 +1878,16 @@ export default function App() {
                         daftarPegawai={daftarPegawai}
                         sptList={sptList}
                         activeSptId={activeSpt.id}
+                        isActiveSlide={normalizedActiveStepKey === 'kuitansi'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
                       />
-                    )}
-
-                    {(spjView === 'spt' ||
-                      spjView === 'spd' ||
-                      spjView === 'visum' ||
-                      spjView === 'surat-tugas') && (
-                      <SuratTugasEditorSection
-                        sptList={sptList}
-                        activeSptId={activeSpt.id}
-                        onSelectSpt={setActiveSptId}
-                        onSaveSpt={handleSaveSpt}
-                        onCreateNewSpt={handleCreateNewSpt}
-                        onDeleteSpt={() => promptDeleteKuitansi(activeKuitansi)}
-                        appSettings={appSettings}
-                        daftarPegawai={daftarPegawai}
-                        paperSize={paperSize}
-                        onChangePaperSize={(size) => {
-                          setPaperSize(size);
-                          try {
-                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                          } catch {
-                            // ignore
-                          }
-                        }}
-                        activeDocType={
-                          spjView === 'spt' || spjView === 'surat-tugas'
-                            ? 'spt'
-                            : spjView === 'visum'
-                              ? 'spd-belakang'
-                              : 'spd'
-                        }
-                        onChangeDocType={(dt) => {
-                          setSpjView(
-                            dt === 'spt'
-                              ? 'spt'
-                              : dt === 'spd-belakang'
-                                ? 'visum'
-                                : 'spd'
-                          );
-                        }}
-                      />
-                    )}
-
-                    {spjView === 'dokumentasi' && (
+                    </div>
+                  ),
+                },
+                {
+                  id: 'dokumentasi',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
                       <DokumentasiPerjalananSection
                         items={activeDocPerjalanan}
                         kuitansiList={kuitansiList}
@@ -1840,10 +1908,16 @@ export default function App() {
                             // ignore
                           }
                         }}
+                        isActiveSlide={normalizedActiveStepKey === 'dokumentasi'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
                       />
-                    )}
-
-                    {spjView === 'pengeluaran' && (
+                    </div>
+                  ),
+                },
+                {
+                  id: 'pengeluaran',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-1.5 sm:px-8 pt-1 pb-13 lg:py-3 lg:pb-4 min-w-0">
                       <DokumentasiPengeluaranSection
                         items={activeDocPengeluaran}
                         kuitansiList={kuitansiList}
@@ -1864,34 +1938,119 @@ export default function App() {
                             // ignore
                           }
                         }}
+                        isActiveSlide={normalizedActiveStepKey === 'pengeluaran'}
+                        onNavigateStudioStep={(stepKey) => setSpjView(stepKey)}
                       />
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 3. MENU PENGATURAN (SETTINGS) */}
-            {mainMenu === 'settings' && (
-              <SettingsSection
-                settings={appSettings}
-                daftarPegawai={daftarPegawai}
-                onUpdateDaftarPegawai={handleUpdateDaftarPegawai}
-                paperSize={paperSize}
-                onSaveSettings={handleSaveSettings}
-                onChangePaperSize={(size) => {
-                  setPaperSize(size);
-                  try {
-                    localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
-                  } catch {
-                    // ignore
-                  }
-                }}
-                onOpenWorkspaceModal={() => {}}
-                isGoogleConnected={hasValidToken && !!workspaceConfig}
-              />
-            )}
-          </motion.div>
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          ) : (
+            <NativeSnapPager
+              key="main-menu-pager"
+              activeTabId={mainMenu}
+              onTabChange={(nextMenu) => {
+                setMainMenu(nextMenu as MainMenuKey);
+                if (nextMenu === 'perjalanan-dinas') {
+                  setSpjView('sub-home');
+                }
+              }}
+              disabled={Boolean(kuitansiToDelete)}
+              ariaLabel="Menu Utama SAPA Kaltara"
+              dataTestId="main-menu-snap-pager"
+              className="h-full w-full"
+              slideClassName="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain"
+              tabs={[
+                {
+                  id: 'home',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-22 sm:pb-8 min-w-0">
+                      <MainHomeSection
+                        settings={appSettings}
+                        kuitansiList={kuitansiList}
+                        activeKuitansi={activeKuitansi}
+                        activeSpt={activeSpt}
+                        docPerjalananCount={activeDocPerjalanan.length}
+                        docPengeluaranList={activeDocPengeluaran}
+                        allDocPerjalanan={dokumentasiPerjalanan}
+                        allDocPengeluaran={dokumentasiPengeluaran}
+                        sptList={sptList}
+                        isCloudSynced={isCloudSynced}
+                        onEnterSpjPerjalananDinas={() => {
+                          triggerHaptic('light');
+                          setMainMenu('perjalanan-dinas');
+                          setSpjView('sub-home');
+                        }}
+                        onOpenStudioModule={(sub) => {
+                          triggerHaptic('light');
+                          setMainMenu('perjalanan-dinas');
+                          setSpjView(sub);
+                        }}
+                        onCreateNewKuitansi={() => {
+                          triggerHaptic('medium');
+                          handleCreateNewKuitansi();
+                        }}
+                        onSelectKuitansi={setActiveKuitansiId}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'perjalanan-dinas',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-22 sm:pb-8 min-w-0 space-y-3 sm:space-y-4">
+                      <SpjPerjalananSubHome
+                        kuitansiList={kuitansiList}
+                        activeKuitansi={activeKuitansi}
+                        activeSpt={activeSpt}
+                        sptList={sptList}
+                        onSelectKuitansi={setActiveKuitansiId}
+                        onCreateNewKuitansi={handleCreateNewKuitansi}
+                        onDuplicateKuitansi={handleDuplicateActiveKuitansi}
+                        onDeleteKuitansi={promptDeleteKuitansi}
+                        onDeleteKuitansiBatch={handleDeleteKuitansiBatch}
+                        onArchiveKuitansiBatch={handleArchiveKuitansiBatch}
+                        onRestoreBackupPayload={handleRestoreBackupPayload}
+                        docPerjalanan={activeDocPerjalanan}
+                        docPengeluaran={activeDocPengeluaran}
+                        allDocPerjalanan={dokumentasiPerjalanan}
+                        allDocPengeluaran={dokumentasiPengeluaran}
+                        onOpenSubSection={(sub) => {
+                          triggerHaptic('light');
+                          setSpjView(sub);
+                        }}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  id: 'settings',
+                  content: (
+                    <div className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-22 sm:pb-8 min-w-0">
+                      <SettingsSection
+                        settings={appSettings}
+                        daftarPegawai={daftarPegawai}
+                        onUpdateDaftarPegawai={handleUpdateDaftarPegawai}
+                        paperSize={paperSize}
+                        onSaveSettings={handleSaveSettings}
+                        onChangePaperSize={(size) => {
+                          setPaperSize(size);
+                          try {
+                            localStorage.setItem(STORAGE_KEYS.PAPER_SIZE, size);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        onOpenWorkspaceModal={() => {}}
+                        isGoogleConnected={hasValidToken && !!workspaceConfig}
+                      />
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          )}
         </main>
 
         {/* Mobile Interactive Bottom Sheet: Pilih Berkas SPJ (Swipe-to-Dismiss) */}
@@ -2119,7 +2278,7 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* Floating Pill Bottom Navigation (Expanding Pill & Elevated Island Dock) */}
+        {/* Unified Bottom Navigation Bar (Docked on Mobile, Floating Pill on Desktop, Hidden Inside Studio) */}
         <FloatingBottomNav
           mainMenu={mainMenu}
           setMainMenu={setMainMenu}
@@ -2127,6 +2286,8 @@ export default function App() {
           setSpjView={setSpjView}
           kuitansiCount={kuitansiList.length}
           activeKuitansiTujuan={activeKuitansi?.tujuan}
+          isPwaInstallable={isPwaInstallable}
+          onOpenPwaInstall={() => setIsPwaModalOpen(true)}
         />
 
         {/* Offline Mode Connectivity Indicator */}

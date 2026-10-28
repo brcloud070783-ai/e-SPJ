@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana implementasi gestur geser jari (horizontal swipe gesture) untuk navigasi tab:\n1. Swipe Antar-Dokumen Utama: Geser layar kiri/kanan untuk berpindah antara 1. SPT, 2. SPD, 3. Visum, 4. Kuitansi, 5. Foto, dan 6. Bukti dengan proteksi scroll vertikal dan haptic feedback ringan.\n2. Swipe Sub-Tab Formulir: Geser bilah sub-tab dan isi form di dalam Mobile Bottom Sheet untuk berpindah antar-bagian formulir secara mulus.\n3. Auto-Center Tab Bar: Bilah pill navigasi atas otomatis bergulir ke tengah menyesuaikan posisi tab yang sedang aktif.",
-  "updatedAt":  "2026-10-27T21:42:40.160921606Z",
+  "summary":  "Rencana Implementasi Peningkatan Native Mobile UX & PWA pada Aplikasi E-SPJ (Bottom Nav, Pull-to-Refresh, Haptic Feedback, Long-Press Context Menu, dan Progressive Web App Offline Installable).",
+  "updatedAt":  "2026-10-28T08:34:14.994789563Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

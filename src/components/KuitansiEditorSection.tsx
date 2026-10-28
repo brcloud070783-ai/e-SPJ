@@ -1,4 +1,5 @@
 import React, { useState, useDeferredValue, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Plus,
   Trash2,
@@ -50,19 +51,23 @@ import {
   CanvasEditableZone,
 } from './KuitansiDocumentPreview';
 import { InteractivePaperViewer } from './InteractivePaperViewer';
+import { NativeSnapPager } from './NativeSnapPager';
+import {
+  StudioSwipeProgressBar,
+  FormSubTabProgressBar,
+} from './StudioSwipeProgressBar';
+import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 import { LabeledIcon, InfoTooltip, EmptyStateCard } from './UiPatterns';
 import {
   buildCleanPdfTitle,
   triggerIsolatedSpjPrint,
   exportToDirectPdf,
 } from '../utils/printPdf';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   useSwipeToDismissSheet,
   triggerHaptic,
-  MOBILE_TAB_VARIANTS,
 } from '../utils/nativeMobile';
-import { useSwipeTabs } from '../hooks/useSwipeTabs';
 
 interface KuitansiEditorSectionProps {
   kuitansiList: KuitansiPerjalananDinas[];
@@ -90,6 +95,8 @@ interface KuitansiEditorSectionProps {
   daftarPegawai?: PegawaiItem[];
   sptList?: SuratPerintahTugas[];
   activeSptId?: string;
+  isActiveSlide?: boolean;
+  onNavigateStudioStep?: (stepKey: SpjSubSectionKey) => void;
 }
 
 export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
@@ -112,6 +119,8 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   daftarPegawai = [],
   sptList = [],
   activeSptId,
+  isActiveSlide = true,
+  onNavigateStudioStep,
 }) => {
   const currentKuitansi =
     kuitansiList.find((k) => k.id === activeKuitansiId) || kuitansiList[0];
@@ -120,6 +129,11 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   const [formTab, setFormTab] = useState<CanvasEditableZone>('utama');
   // Canva Mobile Bottom Sheet state: open when user taps a tool in the bottom dock or taps directly on the paper canvas
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState<boolean>(false);
+  React.useEffect(() => {
+    if (!isActiveSlide && isMobileSheetOpen) {
+      setIsMobileSheetOpen(false);
+    }
+  }, [isActiveSlide, isMobileSheetOpen]);
   // Snapshot of Kuitansi when opening the mobile bottom-sheet modal so "X" cancels uncommitted edits
   const modalSnapshotRef = React.useRef<KuitansiPerjalananDinas | null>(null);
   const [showAnggaranDetail, setShowAnggaranDetail] = useState(false);
@@ -162,26 +176,20 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
     });
 
   const kuiSubTabs: CanvasEditableZone[] = ['utama', 'rincian', 'kustom'];
+  const [kuiSlideDir, setKuiSlideDir] = useState<1 | -1>(1);
+  const mobileKuiScrollRef = React.useRef<HTMLDivElement | null>(null);
+  const desktopKuiScrollRef = React.useRef<HTMLDivElement | null>(null);
 
-  const handleKuiSwipeLeft = () => {
-    const idx = kuiSubTabs.indexOf(formTab);
-    if (idx >= 0 && idx < kuiSubTabs.length - 1) {
-      setFormTab(kuiSubTabs[idx + 1]);
+  const selectKuiSubTab = (nextTab: CanvasEditableZone) => {
+    const curIdx = kuiSubTabs.indexOf(formTab);
+    const nextIdx = kuiSubTabs.indexOf(nextTab);
+    if (nextIdx !== curIdx) {
+      setKuiSlideDir(nextIdx > curIdx ? 1 : -1);
+      setFormTab(nextTab);
+      if (mobileKuiScrollRef.current) mobileKuiScrollRef.current.scrollTop = 0;
+      if (desktopKuiScrollRef.current) desktopKuiScrollRef.current.scrollTop = 0;
     }
   };
-
-  const handleKuiSwipeRight = () => {
-    const idx = kuiSubTabs.indexOf(formTab);
-    if (idx > 0) {
-      setFormTab(kuiSubTabs[idx - 1]);
-    }
-  };
-
-  const kuiSubTabSwipeHandlers = useSwipeTabs({
-    onSwipeLeft: handleKuiSwipeLeft,
-    onSwipeRight: handleKuiSwipeRight,
-    isEnabled: isMobileSheetOpen,
-  });
 
   React.useEffect(() => {
     if (!isPelaksanaDropdownOpen) return;
@@ -562,16 +570,12 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
   const totalKuitansi = useMemo(() => calculateKuitansiTotal(draft.rincian), [draft.rincian]);
   const terbilangText = useMemo(() => terbilangRupiah(totalKuitansi), [totalKuitansi]);
 
-  const renderFormFieldsContent = () => (
-    <motion.div
-      key={formTab}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-      className="space-y-4"
-    >
+  const renderFormFieldsContent = (overrideTab?: CanvasEditableZone) => {
+    const currentTab = overrideTab || formTab;
+    return (
+      <div className="space-y-4">
         {/* TAB 1: PELAKSANA, TUJUAN, SPT & SUB KEGIATAN */}
-        {formTab === 'utama' && (
+        {currentTab === 'utama' && (
           <div className="space-y-4">
 
 
@@ -1244,7 +1248,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       )}
 
       {/* TAB 2: RINCIAN BIAYA PERJALANAN DINAS */}
-      {formTab === 'rincian' && (
+      {currentTab === 'rincian' && (
         <div className="space-y-3.5">
           {/* Quick Preset Buttons dengan InfoTooltip */}
           <div className="space-y-1.5">
@@ -1450,7 +1454,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       )}
 
       {/* TAB 3: BIDANG KUSTOM DINAMIS */}
-      {formTab === 'kustom' && (
+      {currentTab === 'kustom' && (
         <div className="space-y-3.5">
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -1684,12 +1688,13 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           )}
         </div>
       )}
-    </motion.div>
-  );
+      </div>
+    );
+  };
 
   return (
     <div
-      className={`space-y-3 pb-20 lg:pb-0 min-w-0 max-w-full overflow-x-hidden ${
+      className={`space-y-2.5 pb-0 min-w-0 max-w-full overflow-x-hidden ${
         isMobileSheetOpen ? 'max-lg:overflow-hidden' : ''
       }`}
     >
@@ -1737,8 +1742,16 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
         {/* DESKTOP LEFT INSPECTOR PANEL (Hidden on Mobile because Mobile uses Canva Slide-Up Bottom Sheet) */}
         <form
           onSubmit={handleExplicitValidateAndSave}
+          data-no-swipe="true"
           className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden"
         >
+          {/* 6-Document SPJ Studio Swipe Progress Bar at the Top of Form Editor */}
+          <StudioSwipeProgressBar
+            activeStepKey="kuitansi"
+            onSelectStep={onNavigateStudioStep}
+            variant="editor-header"
+          />
+
           {/* Step / Category Navigation Tabs Inside Form — Uniform Native Segmented Control */}
           <div className="p-2 border-b border-slate-200 bg-slate-50/90">
             <div
@@ -1759,7 +1772,10 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                     type="button"
                     role="tab"
                     aria-selected={isTabActive}
-                    onClick={() => setFormTab(t.key as any)}
+                    onClick={() => {
+                      triggerHaptic('light');
+                      selectKuiSubTab(t.key as CanvasEditableZone);
+                    }}
                     className={`relative h-12 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                       isTabActive
                         ? 'text-sky-950 font-extrabold'
@@ -1785,12 +1801,36 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 );
               })}
             </div>
+            <FormSubTabProgressBar
+              tabs={[
+                { key: 'utama', label: 'Data Pelaksana & SPT' },
+                { key: 'rincian', label: `Rincian Biaya (${draft.rincian.length})` },
+                { key: 'kustom', label: `Bidang Kustom (${customFields.length})` },
+              ]}
+              activeKey={formTab}
+              onSelectTab={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+            />
           </div>
 
-          <div className="p-4 sm:p-5 flex flex-col">
-            <div className="h-[520px] overflow-y-auto overscroll-contain pr-1 space-y-4">
-              {renderFormFieldsContent()}
+          <div className="flex flex-col">
+            <div
+              ref={desktopKuiScrollRef}
+              className="h-[520px] overflow-hidden"
+            >
+              <NativeSnapPager
+                activeTabId={formTab}
+                onTabChange={(next) => selectKuiSubTab(next as CanvasEditableZone)}
+                stopPropagation={true}
+                className="h-full"
+                slideClassName="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain p-4 sm:p-5 space-y-4"
+                tabs={kuiSubTabs.map((tabKey) => ({
+                  id: tabKey,
+                  content: renderFormFieldsContent(tabKey),
+                }))}
+              />
             </div>
+
+            <div className="px-4 sm:px-5 pb-4 sm:pb-5">
 
             {/* Persistent Total & Terbilang Summary Footer */}
             <div className="pt-3 border-t border-slate-200/80 space-y-3">
@@ -1876,6 +1916,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                 </div>
               )}
             </div>
+            </div>
           </div>
         </form>
 
@@ -1884,6 +1925,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           <InteractivePaperViewer
             paperSize={paperSize}
             onChangePaperSize={onChangePaperSize}
+            isActivePaper={isActiveSlide}
             documentTitle="Pratinjau Kuitansi Resmi"
             interactiveHint="Ketuk teks pada kertas untuk langsung mengedit"
           >
@@ -1902,9 +1944,12 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       </div>
 
       {/* BACKDROP TRANSPARAN & CANVA MOBILE SLIDE-UP BOTTOM SHEET DRAWER (<lg only) */}
-      {isMobileSheetOpen && (
-        <>
-          {/* Layer Backdrop Overlay Lembut di Belakang Bottom Sheet */}
+      {isMobileSheetOpen &&
+        isActiveSlide &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <>
+            {/* Layer Backdrop Overlay Lembut di Belakang Bottom Sheet */}
           <div
             role="presentation"
             aria-hidden="true"
@@ -1936,7 +1981,7 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                         : `Edit Bidang Kustom (${customFields.length})`}
                   </span>
                   <span className="text-[10px] text-slate-500 block">
-                    Tarik ke bawah untuk menutup • Ketuk Simpan untuk menerapkan
+                    Tarik ke bawah untuk menutup • Geser kiri/kanan untuk pindah tab formulir
                   </span>
                 </div>
                 <button
@@ -1951,11 +1996,19 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               </div>
             </div>
 
-            {/* Sub-Tabs Selector INSIDE Mobile Sheet — Uniform Native Segmented Control with Swipe Support */}
-            <div
-              {...kuiSubTabSwipeHandlers}
-              className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10"
-            >
+            {/* 6-Document SPJ Studio Swipe Progress Bar inside Mobile Form Editor Sheet */}
+            <StudioSwipeProgressBar
+              activeStepKey="kuitansi"
+              onSelectStep={(stepKey) => {
+                setIsMobileSheetOpen(false);
+                onNavigateStudioStep?.(stepKey);
+              }}
+              variant="editor-header"
+              className="shrink-0"
+            />
+
+            {/* Sub-Tabs Selector INSIDE Mobile Sheet — Uniform Native Segmented Control */}
+            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
               <div
                 role="tablist"
                 aria-label="Sub-Tab Editor Kuitansi Mobile"
@@ -1974,7 +2027,10 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                       type="button"
                       role="tab"
                       aria-selected={isTabActive}
-                      onClick={() => setFormTab(t.key as any)}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        selectKuiSubTab(t.key as CanvasEditableZone);
+                      }}
                       className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
                         isTabActive
                           ? 'text-sky-950 font-extrabold'
@@ -2000,14 +2056,33 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                   );
                 })}
               </div>
+              <FormSubTabProgressBar
+                tabs={[
+                  { key: 'utama', label: 'Data Pelaksana & SPT' },
+                  { key: 'rincian', label: `Rincian Biaya (${draft.rincian.length})` },
+                  { key: 'kustom', label: `Bidang Kustom (${customFields.length})` },
+                ]}
+                activeKey={formTab}
+                onSelectTab={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+              />
             </div>
 
-            {/* Scrollable Sheet Content (with Swipe Support) */}
+            {/* Scrollable Sheet Content (with Native Horizontal Snap Carousel) */}
             <div
-              {...kuiSubTabSwipeHandlers}
-              className="p-4 overflow-y-auto no-scrollbar overscroll-contain space-y-4 flex-1 min-h-0 bg-white text-slate-900"
+              ref={mobileKuiScrollRef}
+              className="flex-1 min-h-0 overflow-hidden bg-white text-slate-900"
             >
-              {renderFormFieldsContent()}
+              <NativeSnapPager
+                activeTabId={formTab}
+                onTabChange={(next) => selectKuiSubTab(next as CanvasEditableZone)}
+                stopPropagation={true}
+                className="h-full"
+                slideClassName="h-full overflow-y-auto overflow-x-hidden overscroll-y-contain no-scrollbar p-4 space-y-4"
+                tabs={kuiSubTabs.map((tabKey) => ({
+                  id: tabKey,
+                  content: renderFormFieldsContent(tabKey),
+                }))}
+              />
             </div>
 
             {/* Sticky Action Footer Seragam & Konsisten di Semua Tab */}
@@ -2030,15 +2105,19 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               </button>
             </div>
           </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
 
       {/* MOBILE CONTEXTUAL ACTION TOOLBAR (<lg) — Ringkas & Hemat Ruang Kerja */}
-      <div
-        role="toolbar"
-        aria-label="Alat Aksi Kuitansi Mobile"
-        className="no-print lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200/90 px-2.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-1.5 shadow-md"
-      >
+      {isActiveSlide &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            role="toolbar"
+            aria-label="Alat Aksi Kuitansi Mobile"
+            className="no-print lg:hidden fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md text-slate-800 border-t border-slate-200/90 px-2.5 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-1.5 shadow-md"
+          >
         {/* 1. Tombol Aksi Utama: Ubah Data (Buka Form Editor) */}
         <button
           type="button"
@@ -2105,7 +2184,9 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           <Printer className="w-3.5 h-3.5" />
           <span>Cetak</span>
         </button>
-      </div>
+      </div>,
+      document.body
+    )}
     </div>
   );
 };

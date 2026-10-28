@@ -188,7 +188,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
   return (
     <div
       className={`spd-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
-        isPrintMode ? 'pt-0 pb-2 px-0' : 'pt-0 pb-5 px-0 border border-slate-200'
+        isPrintMode ? 'pt-0 pb-2 px-0' : 'pt-0 pb-4 px-0 border border-slate-200'
       }`}
       style={{
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,

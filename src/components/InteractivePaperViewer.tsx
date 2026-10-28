@@ -8,7 +8,15 @@ import {
 } from '../utils/spjCalculations';
 import { triggerHaptic, useMobileFocusMode } from '../utils/nativeMobile';
 
-interface InteractivePaperViewerProps {
+export interface PaperViewerTab {
+  id: string;
+  label: string;
+  badge?: string | number;
+  icon?: React.ComponentType<{ className?: string }>;
+  content?: React.ReactNode;
+}
+
+export interface InteractivePaperViewerProps {
   paperSize: PaperSize;
   onChangePaperSize: (size: PaperSize) => void;
   documentTitle?: string;
@@ -16,25 +24,32 @@ interface InteractivePaperViewerProps {
   transparentSurface?: boolean;
   zeroPageMargin?: boolean;
   extraControls?: React.ReactNode;
-  children: React.ReactNode;
+  tabs?: PaperViewerTab[];
+  activeTabId?: string;
+  onTabChange?: (tabId: string) => void;
+  onSwipePastEnd?: () => void;
+  isActivePaper?: boolean;
+  children?: React.ReactNode;
 }
 
 export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   paperSize,
   onChangePaperSize,
-  documentTitle = 'Pratinjau Cetak',
-  interactiveHint,
-  transparentSurface = false,
   zeroPageMargin = false,
+  transparentSurface = false,
   extraControls,
+  tabs,
+  activeTabId,
+  onTabChange,
+  onSwipePastEnd,
+  isActivePaper = true,
   children,
 }) => {
   const spec = getPaperDimensions(paperSize);
-  const viewportRef = useRef<HTMLDivElement | null>(null);
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const { isFocusMode, toggleFocusMode } = useMobileFocusMode();
 
-  const [fitMode, setFitMode] = useState<'width' | 'page'>('width');
+  const [fitMode] = useState<'width' | 'page'>('width');
   const [baseFitScale, setBaseFitScale] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const availW = Math.max(260, window.innerWidth - 48);
@@ -48,7 +63,84 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   const [isPinching, setIsPinching] = useState<boolean>(false);
   const [isPanning, setIsPanning] = useState<boolean>(false);
 
-  // Refs for smooth 2-finger pinch & 1-finger pan when zoomed (like mobile photo gallery)
+  // requestAnimationFrame-based Scroll Synchronization Refs
+  const tabSnapScrollRef = useRef<HTMLDivElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const programmaticTimerRef = useRef<number | null>(null);
+  const isProgrammaticTabScrollRef = useRef<boolean>(false);
+  const lastSyncedTabIdRef = useRef<string | undefined>(activeTabId);
+  const edgeTouchStartRef = useRef<{ x: number; y: number; atEnd: boolean } | null>(null);
+
+  // Synchronize scrollLeft via requestAnimationFrame at 60-120fps without main-thread drag blocking
+  const handleTabSnapScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (isProgrammaticTabScrollRef.current) return;
+
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+
+    rafIdRef.current = requestAnimationFrame(() => {
+      rafIdRef.current = null;
+      if (!tabs || tabs.length === 0) return;
+      const width = container.clientWidth;
+      if (width <= 0) return;
+
+      const progress = container.scrollLeft / width;
+      const newIndex = Math.min(
+        tabs.length - 1,
+        Math.max(0, Math.round(progress))
+      );
+      const targetTab = tabs[newIndex];
+      if (targetTab && targetTab.id !== lastSyncedTabIdRef.current) {
+        lastSyncedTabIdRef.current = targetTab.id;
+        triggerHaptic('light');
+        onTabChange?.(targetTab.id);
+      }
+    });
+  };
+
+  // Set initial scrollLeft on mount without animation
+  useEffect(() => {
+    if (!tabSnapScrollRef.current || !tabs || !activeTabId) return;
+    const container = tabSnapScrollRef.current;
+    const activeIndex = tabs.findIndex((t) => t.id === activeTabId);
+    if (activeIndex >= 0 && container.clientWidth > 0) {
+      container.scrollLeft = activeIndex * container.clientWidth;
+      lastSyncedTabIdRef.current = activeTabId;
+    }
+    return () => {
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      if (programmaticTimerRef.current !== null) window.clearTimeout(programmaticTimerRef.current);
+    };
+  }, []);
+
+  // Synchronize scrollLeft ONLY when activeTabId is changed externally (e.g., clicking top Studio tab bar)
+  useEffect(() => {
+    if (!tabSnapScrollRef.current || !tabs || !activeTabId) return;
+    if (activeTabId === lastSyncedTabIdRef.current) return;
+
+    const container = tabSnapScrollRef.current;
+    const activeIndex = tabs.findIndex((t) => t.id === activeTabId);
+    if (activeIndex < 0) return;
+
+    lastSyncedTabIdRef.current = activeTabId;
+    const targetLeft = activeIndex * container.clientWidth;
+    if (Math.abs(container.scrollLeft - targetLeft) > 4) {
+      isProgrammaticTabScrollRef.current = true;
+      if (programmaticTimerRef.current !== null) {
+        window.clearTimeout(programmaticTimerRef.current);
+      }
+      requestAnimationFrame(() => {
+        container.scrollTo({ left: targetLeft, behavior: 'smooth' });
+      });
+      programmaticTimerRef.current = window.setTimeout(() => {
+        isProgrammaticTabScrollRef.current = false;
+      }, 420);
+    }
+  }, [activeTabId]);
+
+  // Refs for smooth 2-finger pinch & 1-finger pan when zoomed
   const pinchStateRef = useRef<{
     active: boolean;
     initialDistance: number;
@@ -75,13 +167,14 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     initialPan: { x: 0, y: 0 },
   });
 
-  // Automatically calculate base fit scale so the full A4/F4 width or entire page fits nicely
+  // Automatically calculate base fit scale so the full A4/F4 width fits nicely
   useEffect(() => {
-    const el = viewportRef.current;
+    const el = tabSnapScrollRef.current;
     if (!el) return;
 
     const updateFitScale = () => {
-      const availableWidth = Math.max(260, el.clientWidth - (isFocusMode ? 12 : 24));
+      const horizontalPad = isFocusMode ? 6 : el.clientWidth < 640 ? 8 : 32;
+      const availableWidth = Math.max(260, el.clientWidth - horizontalPad);
       const availableHeight = Math.max(380, window.innerHeight - (isFocusMode ? 130 : 240));
       const widthFit = availableWidth / spec.widthPx;
       const heightFit = availableHeight / spec.minHeightPx;
@@ -99,7 +192,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     return () => observer.disconnect();
   }, [spec.widthPx, spec.minHeightPx, fitMode, isFocusMode]);
 
-  // Keep sheet height strictly synchronized to official paper height
+  // Lock natural sheet height to exact A4 (1123px) or F4 (1247px) paper aspect ratio
   useEffect(() => {
     setSheetNaturalHeight(spec.minHeightPx);
   }, [spec.minHeightPx, paperSize]);
@@ -119,8 +212,24 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     setPanOffset({ x: 0, y: 0 });
   };
 
-  // Two-finger touch pinch-to-zoom & 1-finger pan handler (smooth gallery-like gesture)
+  // Two-finger touch pinch-to-zoom & 1-finger pan handler
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    isProgrammaticTabScrollRef.current = false;
+    if (programmaticTimerRef.current !== null) {
+      window.clearTimeout(programmaticTimerRef.current);
+    }
+
+    if (e.touches.length === 1 && userZoom <= 1.02 && tabs && tabs.length > 0) {
+      const activeIdx = tabs.findIndex((t) => t.id === lastSyncedTabIdRef.current);
+      edgeTouchStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        atEnd: activeIdx === tabs.length - 1,
+      };
+    } else {
+      edgeTouchStartRef.current = null;
+    }
+
     if (e.touches.length === 2) {
       const p1 = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       const p2 = { x: e.touches[1].clientX, y: e.touches[1].clientY };
@@ -192,6 +301,20 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
     if (e.touches.length === 0) {
       panDragRef.current.active = false;
       setIsPanning(false);
+
+      if (
+        edgeTouchStartRef.current &&
+        edgeTouchStartRef.current.atEnd &&
+        onSwipePastEnd &&
+        e.changedTouches.length > 0
+      ) {
+        const dx = e.changedTouches[0].clientX - edgeTouchStartRef.current.x;
+        const dy = e.changedTouches[0].clientY - edgeTouchStartRef.current.y;
+        if (dx < -54 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          onSwipePastEnd();
+        }
+      }
+      edgeTouchStartRef.current = null;
     }
   };
 
@@ -211,7 +334,10 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
   const isGestureActive = isPinching || isPanning;
 
   return (
-    <div className="space-y-2 print-page-sheet min-w-0 max-w-full">
+    <div
+      data-no-swipe={tabs && tabs.length > 0 ? 'true' : undefined}
+      className="space-y-2 print-page-sheet min-w-0 max-w-full"
+    >
       {/* Dynamic @page Print Rule for A4 (210x297mm) vs F4 Folio (215x330mm) */}
       <style>{`
         @media print {
@@ -222,7 +348,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
         }
       `}</style>
 
-      {/* BILAH KONTROL KERTAS, FONT, ZOOM & MODE FOKUS: 1 Baris Tunggal Ultra-Ringkas Bergaya iOS Glass */}
+      {/* BILAH KONTROL KERTAS, FONT, ZOOM & MODE FOKUS (Tanpa duplikasi bar tab SPT/SPD/Visum) */}
       <div className="no-print sticky top-1 z-20 flex justify-center my-1 px-1">
         <div
           data-testid="compact-floating-toolbar"
@@ -333,7 +459,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
             )}
           </div>
 
-          {/* Mobile Full-Focus Workspace Toggle (<lg): Sembunyikan/Tampilkan Header Studio untuk Ruang Kertas Maksimal */}
+          {/* Mobile Full-Focus Workspace Toggle (<lg) */}
           <div className="lg:hidden flex items-center shrink-0">
             <div className="w-px h-3.5 bg-slate-200 mr-1 shrink-0" aria-hidden="true" />
             <button
@@ -370,71 +496,159 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
         </div>
       </div>
 
-      {/* Canva Light Style Artboard Stage: Clean light gray (bg-slate-100) outside the white A4/F4 paper with shadow-lg */}
+      {/* STAGE CONTAINER WITH rAF SCROLL SYNC & STRICT 1-TAB SNAP STOP */}
       <div
-        ref={viewportRef}
+        ref={tabSnapScrollRef}
         data-testid="interactive-paper-viewport"
+        data-snap-carousel={tabs && tabs.length > 0 ? 'true' : undefined}
+        data-no-swipe={tabs && tabs.length > 0 ? 'true' : undefined}
         data-paper-size={paperSize}
         data-user-zoom={userZoom}
+        onScroll={tabs && tabs.length > 0 ? handleTabSnapScroll : undefined}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         onWheel={handleWheel}
         style={{
-          touchAction: isPinching || userZoom > 1.02 ? 'none' : 'pan-y',
+          scrollSnapType:
+            !tabs || tabs.length === 0 || userZoom > 1.02 ? 'none' : 'x mandatory',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          overscrollBehaviorX:
+            tabs && tabs.length > 0 ? 'contain' : 'auto',
+          touchAction: isPinching || userZoom > 1.02 ? 'none' : 'pan-x pan-y',
         }}
-        className="paper-zoom-viewport relative w-full overflow-x-auto overflow-y-hidden rounded-2xl bg-slate-100 border border-slate-200/90 p-1.5 sm:p-6 flex justify-center items-start select-none"
+        className={`paper-zoom-viewport relative w-full ${
+          tabs && tabs.length > 0
+            ? 'overflow-x-auto snap-x snap-mandatory'
+            : 'overflow-x-hidden'
+        } overflow-y-hidden rounded-2xl bg-slate-100 border border-slate-200/90 flex select-none no-scrollbar`}
       >
-        <div
-          className={`paper-zoom-stage relative ${
-            isGestureActive ? 'transition-none' : 'transition-all duration-150 ease-out'
-          }`}
-          style={{
-            width: `${scaledWidth}px`,
-            height: `${scaledHeight}px`,
-          }}
-        >
-          <div
-            ref={sheetRef}
-            data-testid="paper-sheet-surface"
-            style={{
-              width: `${spec.widthPx}px`,
-              height: `${spec.minHeightPx}px`,
-              minHeight: `${spec.minHeightPx}px`,
-              maxHeight: `${spec.minHeightPx}px`,
-              aspectRatio: paperSize === 'F4' ? '215 / 330' : '210 / 297',
-              transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${effectiveScale})`,
-              transformOrigin: 'top left',
-              willChange: isGestureActive ? 'transform' : 'auto',
-              position: 'relative',
-            }}
-            className={`print-only-sheet text-black flex flex-col justify-center items-center ${
-              transparentSurface
-                ? 'bg-transparent border-none shadow-none'
-                : 'bg-white shadow-lg border border-slate-200/90'
-            } ${
-              isGestureActive ? 'transition-none' : 'transition-transform duration-150 ease-out'
-            }`}
-          >
-            {/* F4 Folio Extension Visual Guide Line: Displays the exact A4 cutoff boundary (297 mm) */}
-            {paperSize === 'F4' && (
+        {tabs && tabs.length > 0 ? (
+          tabs.map((tab) => (
+            <div
+              key={tab.id}
+              style={{
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always',
+                minWidth: '100%',
+                width: '100%',
+                contain: 'layout style paint',
+                transform: 'translateZ(0)',
+              }}
+              className="w-full shrink-0 flex justify-center items-start p-1 sm:p-4 snap-start snap-always"
+            >
               <div
-                className="no-print absolute left-0 right-0 border-b-2 border-dashed border-sky-400/90 pointer-events-none z-20 flex items-center justify-between px-3"
-                style={{ top: `${((1123 / 1247) * 100).toFixed(2)}%` }}
+                className={`paper-zoom-stage relative ${
+                  isGestureActive ? 'transition-none' : 'transition-all duration-150 ease-out'
+                }`}
+                style={{
+                  width: `${scaledWidth}px`,
+                  height: `${scaledHeight}px`,
+                }}
               >
-                <span className="bg-sky-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
-                  Batas Panjang Kertas A4 (297 mm)
-                </span>
-                <span className="bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
-                  Zona Ekstra F4 Folio (+33 mm / +11%)
-                </span>
-              </div>
-            )}
+                <div
+                  ref={tab.id === activeTabId ? sheetRef : undefined}
+                  data-testid="paper-sheet-surface"
+                  style={{
+                    width: `${spec.widthPx}px`,
+                    height: `${spec.minHeightPx}px`,
+                    minHeight: `${spec.minHeightPx}px`,
+                    maxHeight: `${spec.minHeightPx}px`,
+                    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${effectiveScale})`,
+                    transformOrigin: 'top left',
+                    willChange: isGestureActive ? 'transform' : 'auto',
+                    position: 'relative',
+                  }}
+                  className={`${
+                    tab.id === activeTabId && isActivePaper ? 'print-only-sheet' : ''
+                  } text-black flex flex-col justify-start items-center ${
+                    transparentSurface
+                      ? 'bg-transparent border-none shadow-none'
+                      : 'bg-white shadow-lg border border-slate-200/90'
+                  } ${
+                    isGestureActive ? 'transition-none' : 'transition-transform duration-150 ease-out'
+                  }`}
+                >
+                  {paperSize === 'F4' && (
+                    <div
+                      className="no-print absolute left-0 right-0 border-b-2 border-dashed border-sky-400/90 pointer-events-none z-20 flex items-center justify-between px-3"
+                      style={{ top: '1123px' }}
+                    >
+                      <span className="bg-sky-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
+                        Batas Panjang Kertas A4 (297 mm)
+                      </span>
+                      <span className="bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
+                        Zona Ekstra F4 Folio (+33 mm / +11%)
+                      </span>
+                    </div>
+                  )}
 
-            {children}
+                  {tab.content}
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div
+            style={{
+              minWidth: '100%',
+              width: '100%',
+            }}
+            className="w-full shrink-0 flex justify-center items-start p-1 sm:p-4"
+          >
+            <div
+              className={`paper-zoom-stage relative ${
+                isGestureActive ? 'transition-none' : 'transition-all duration-150 ease-out'
+              }`}
+              style={{
+                width: `${scaledWidth}px`,
+                height: `${scaledHeight}px`,
+              }}
+            >
+              <div
+                ref={sheetRef}
+                data-testid="paper-sheet-surface"
+                style={{
+                  width: `${spec.widthPx}px`,
+                  height: `${spec.minHeightPx}px`,
+                  minHeight: `${spec.minHeightPx}px`,
+                  maxHeight: `${spec.minHeightPx}px`,
+                  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${effectiveScale})`,
+                  transformOrigin: 'top left',
+                  willChange: isGestureActive ? 'transform' : 'auto',
+                  position: 'relative',
+                }}
+                className={`${
+                  isActivePaper ? 'print-only-sheet' : ''
+                } text-black flex flex-col justify-start items-center ${
+                  transparentSurface
+                    ? 'bg-transparent border-none shadow-none'
+                    : 'bg-white shadow-lg border border-slate-200/90'
+                } ${
+                  isGestureActive ? 'transition-none' : 'transition-transform duration-150 ease-out'
+                }`}
+              >
+                {paperSize === 'F4' && (
+                  <div
+                    className="no-print absolute left-0 right-0 border-b-2 border-dashed border-sky-400/90 pointer-events-none z-20 flex items-center justify-between px-3"
+                    style={{ top: '1123px' }}
+                  >
+                    <span className="bg-sky-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
+                      Batas Panjang Kertas A4 (297 mm)
+                    </span>
+                    <span className="bg-emerald-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-md tracking-wider shadow-xs uppercase">
+                      Zona Ekstra F4 Folio (+33 mm / +11%)
+                    </span>
+                  </div>
+                )}
+
+                {children}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -139,7 +139,7 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
       {/* DOKUMEN FISIK SURAT PERINTAH TUGAS (SPT) */}
       <div
         className={`spt-doc spj-font-calibri mx-auto bg-white text-black shadow-xl print:shadow-none print:border-none print:m-0 print:p-0 print:w-full print:min-h-0 print:h-auto ${
-          isPrintMode ? 'py-3 px-0' : 'py-7 px-0 border border-slate-200'
+          isPrintMode ? 'py-3 px-0' : 'py-6 px-0 border border-slate-200'
         }`}
         style={{
           width: isPrintMode ? '100%' : `${spec.widthPx}px`,

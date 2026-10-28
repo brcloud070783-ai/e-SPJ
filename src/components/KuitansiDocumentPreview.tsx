@@ -68,8 +68,8 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = R
       data-paper-format={paperSize}
       className={`kuitansi-official-font kuitansi-sheet-container bg-white text-black w-full leading-tight select-text ${
         isF4
-          ? 'px-0 pt-6 pb-6 min-h-[1247px] print:px-0 print:pt-2 print:pb-2 print:min-h-0 print:h-auto'
-          : 'px-0 pt-5 pb-5 min-h-[1123px] print:px-0 print:pt-1.5 print:pb-2 print:min-h-0 print:h-auto'
+          ? 'px-0 pt-6 pb-8 min-h-[1247px] print:px-0 print:pt-2 print:pb-2 print:min-h-0 print:h-auto'
+          : 'px-0 pt-5 pb-6 min-h-[1123px] print:px-0 print:pt-1.5 print:pb-2 print:min-h-0 print:h-auto'
       }`}
     >
       {/* Pembatas lebar isi 85% dari lebar kertas */}

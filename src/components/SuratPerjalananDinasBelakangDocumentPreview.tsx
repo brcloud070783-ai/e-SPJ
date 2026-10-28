@@ -192,10 +192,7 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
           max-width: 88%;
           height: 90%;
           max-height: 90%;
-          margin-top: auto;
-          margin-bottom: auto;
-          margin-left: auto;
-          margin-right: auto;
+          margin: auto;
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -290,21 +287,19 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
         }
       `}</style>
 
-      {/* PEMBATAS TOTAL VISUM SPD BELAKANG: 88% LEBAR KERTAS & 90% TINGGI KERTAS (TEPAT DI TENGAH SECARA VERTIKAL & HORIZONTAL) */}
+      {/* PEMBATAS TOTAL VISUM SPD BELAKANG: 88% LEBAR KERTAS */}
       <div
         data-testid="visum-content-area"
         style={{
           width: '88%',
           maxWidth: '88%',
-          height: '90%',
-          maxHeight: '90%',
         }}
-        className="visum-content-area w-[88%] max-w-[88%] h-[90%] max-h-[90%] mx-auto my-auto flex flex-col justify-center items-center"
+        className="visum-content-area w-[88%] max-w-[88%] mx-auto flex flex-col justify-center items-center"
       >
         {/* TABEL PENGESAHAN / VISUM SPD */}
         <table
-          className="visum-table w-full h-full border-collapse border border-black table-fixed text-[9.5pt]"
-          style={{ borderColor: '#000000', height: '100%', width: '100%' }}
+          className="visum-table w-full border-collapse border border-black table-fixed text-[9.5pt]"
+          style={{ borderColor: '#000000', width: '100%' }}
         >
           <colgroup>
             <col style={{ width: '50%' }} />

@@ -17,6 +17,7 @@ import {
   SpdBelakangEditableZone,
   getEffectiveVisumData,
 } from './SuratPerjalananDinasBelakangDocumentPreview';
+import { NativeSnapPager } from './NativeSnapPager';
 
 interface SuratPerjalananDinasBelakangEditorProps {
   spt: SuratPerintahTugas;
@@ -38,6 +39,12 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
   hideInternalTabs = false,
 }) => {
   const data = visumData || getEffectiveVisumData(spt);
+  const visumZones: SpdBelakangEditableZone[] = [
+    'bagian-1',
+    'bagian-transit',
+    'bagian-6',
+    'bagian-catatan',
+  ];
 
   const handleFieldChange = (field: keyof SpdVisumBelakangData, value: any) => {
     onUpdateVisumData({
@@ -155,102 +162,10 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
     });
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Quick Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-sky-50/70 border border-sky-200/80 rounded-xl">
-        <div className="flex items-center gap-1.5 text-xs font-bold text-sky-950">
-          <Stamp className="w-4 h-4 text-sky-700" />
-          <span>Formulir SPD Lembar 2 (Visum)</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleSyncWithSpt}
-            title="Tarik data otomatis dari Surat Perintah Tugas (SPT)"
-            className="min-h-[30px] px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Tarik dari SPT</span>
-          </button>
-        </div>
-      </div>
-
-      {/* TABS SELECTOR (Only shown when standalone; hidden when parent already renders the unified segmented tab bar) */}
-      {!hideInternalTabs && (
-        <div
-          role="tablist"
-          aria-label="Bagian SPD Lembar 2"
-          className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeZone === 'bagian-1'}
-            onClick={() => onSelectZone('bagian-1')}
-            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-              activeZone === 'bagian-1'
-                ? 'bg-sky-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-            title="I. Keberangkatan Awal"
-          >
-            <PlaneTakeoff className="w-3.5 h-3.5 shrink-0" />
-            <span className="leading-none whitespace-nowrap">I. Berangkat</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeZone === 'bagian-transit'}
-            onClick={() => onSelectZone('bagian-transit')}
-            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-              activeZone === 'bagian-transit'
-                ? 'bg-sky-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-            title="II - V. Tempat Persinggahan"
-          >
-            <Route className="w-3.5 h-3.5 shrink-0" />
-            <span className="leading-none whitespace-nowrap">II-V. Transit</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeZone === 'bagian-6'}
-            onClick={() => onSelectZone('bagian-6')}
-            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-              activeZone === 'bagian-6'
-                ? 'bg-sky-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-            title="VI. Tiba Kembali & Pemeriksaan"
-          >
-            <Stamp className="w-3.5 h-3.5 shrink-0" />
-            <span className="leading-none whitespace-nowrap">VI. Tiba</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeZone === 'bagian-catatan'}
-            onClick={() => onSelectZone('bagian-catatan')}
-            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
-              activeZone === 'bagian-catatan'
-                ? 'bg-sky-700 text-white shadow-2xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-            title="VII & VIII. Catatan & Perhatian"
-          >
-            <NotebookPen className="w-3.5 h-3.5 shrink-0" />
-            <span className="leading-none whitespace-nowrap">VII. Catatan</span>
-          </button>
-        </div>
-      )}
-
+  const renderVisumZoneContent = (zoneToRender: SpdBelakangEditableZone) => (
+    <>
       {/* TAB CONTENT 1: BAGIAN I (KEBERANGKATAN AWAL DARI TEMPAT KEDUDUKAN) */}
-      {activeZone === 'bagian-1' && (
+      {zoneToRender === 'bagian-1' && (
         <div className="space-y-3.5 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200">
             <span className="w-5 h-5 rounded-md bg-sky-700 text-white font-bold text-xs flex items-center justify-center">
@@ -420,7 +335,7 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
       )}
 
       {/* TAB CONTENT 2: BAGIAN II - V (TEMPAT PERSINGGAHAN / TRANSIT) */}
-      {activeZone === 'bagian-transit' && (
+      {zoneToRender === 'bagian-transit' && (
         <div className="space-y-3.5 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200">
           <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
             <div className="flex items-center gap-1.5">
@@ -653,7 +568,7 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
       )}
 
       {/* TAB CONTENT 3: BAGIAN VI (TIBA DI TEMPAT KEDUDUKAN & KETERANGAN PEMERIKSA) */}
-      {activeZone === 'bagian-6' && (
+      {zoneToRender === 'bagian-6' && (
         <div className="space-y-3.5 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200">
             <span className="w-5 h-5 rounded-md bg-sky-700 text-white font-bold text-xs flex items-center justify-center">
@@ -824,7 +739,7 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
       )}
 
       {/* TAB CONTENT 4: CATATAN (VII) & PERHATIAN (VIII) */}
-      {activeZone === 'bagian-catatan' && (
+      {zoneToRender === 'bagian-catatan' && (
         <div className="space-y-3.5 bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200">
           <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200">
             <span className="w-5 h-5 rounded-md bg-sky-700 text-white font-bold text-xs flex items-center justify-center">
@@ -886,6 +801,116 @@ export const SuratPerjalananDinasBelakangEditor: React.FC<
             />
           </div>
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Quick Action Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-sky-50/70 border border-sky-200/80 rounded-xl">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-sky-950">
+          <Stamp className="w-4 h-4 text-sky-700" />
+          <span>Formulir SPD Lembar 2 (Visum)</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleSyncWithSpt}
+            title="Tarik data otomatis dari Surat Perintah Tugas (SPT)"
+            className="min-h-[30px] px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-lg inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <span>Tarik dari SPT</span>
+          </button>
+        </div>
+      </div>
+
+      {/* TABS SELECTOR (Only shown when standalone; hidden when parent already renders the unified segmented tab bar) */}
+      {!hideInternalTabs && (
+        <div
+          role="tablist"
+          aria-label="Bagian SPD Lembar 2"
+          className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-1'}
+            onClick={() => onSelectZone('bagian-1')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-1'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="I. Keberangkatan Awal"
+          >
+            <PlaneTakeoff className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">I. Berangkat</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-transit'}
+            onClick={() => onSelectZone('bagian-transit')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-transit'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="II - V. Tempat Persinggahan"
+          >
+            <Route className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">II-V. Transit</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-6'}
+            onClick={() => onSelectZone('bagian-6')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-6'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="VI. Tiba Kembali & Pemeriksaan"
+          >
+            <Stamp className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">VI. Tiba</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeZone === 'bagian-catatan'}
+            onClick={() => onSelectZone('bagian-catatan')}
+            className={`h-11 px-1 rounded-xl text-[10.5px] font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+              activeZone === 'bagian-catatan'
+                ? 'bg-sky-700 text-white shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+            title="VII & VIII. Catatan & Perhatian"
+          >
+            <NotebookPen className="w-3.5 h-3.5 shrink-0" />
+            <span className="leading-none whitespace-nowrap">VII. Catatan</span>
+          </button>
+        </div>
+      )}
+
+      {hideInternalTabs ? (
+        renderVisumZoneContent(activeZone)
+      ) : (
+        <NativeSnapPager
+          activeTabId={activeZone}
+          onTabChange={(next) => onSelectZone(next as SpdBelakangEditableZone)}
+          stopPropagation={true}
+          tabs={visumZones.map((z) => ({
+            id: z,
+            content: renderVisumZoneContent(z),
+          }))}
+        />
       )}
     </div>
   );

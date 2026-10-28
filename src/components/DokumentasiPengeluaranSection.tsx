@@ -67,6 +67,9 @@ import {
   cornerPinsToCropBox,
   warpPerspectiveImageToCanvas,
 } from './CanvasPerspectiveCropper';
+import { NativeSnapPager } from './NativeSnapPager';
+import { StudioSwipeProgressBar } from './StudioSwipeProgressBar';
+import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 
 interface DokumentasiPengeluaranSectionProps {
   items: DokumentasiPengeluaranItem[];
@@ -81,6 +84,8 @@ interface DokumentasiPengeluaranSectionProps {
   onOpenSyncModal: () => void;
   paperSize: PaperSize;
   onChangePaperSize: (size: PaperSize) => void;
+  isActiveSlide?: boolean;
+  onNavigateStudioStep?: (stepKey: SpjSubSectionKey) => void;
 }
 
 type CamScannerToolTab = 'crop' | 'filter' | 'adjust' | 'markup';
@@ -728,6 +733,8 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
   onOpenSyncModal,
   paperSize,
   onChangePaperSize,
+  isActiveSlide = true,
+  onNavigateStudioStep,
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'printSheet'>('list');
   const [showScanStudio, setShowScanStudio] = useState(false);
@@ -745,6 +752,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
   // CamScanner Studio Active Tool Tab & Expandable Bottom Sheet State
   const [activeToolTab, setActiveToolTab] = useState<CamScannerToolTab>('crop');
   const [isToolSheetOpen, setIsToolSheetOpen] = useState<boolean>(false);
+  const expToolTabs: CamScannerToolTab[] = ['crop', 'filter', 'adjust', 'markup'];
   const [showAngleSlider, setShowAngleSlider] = useState<boolean>(false);
 
   // CamScanner Studio Image & Transform State
@@ -1409,12 +1417,13 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
       )}
 
       {/* Header Bar Ringkas Canva Light Style */}
-      <div className="no-print flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 sm:gap-3 bg-white border border-slate-200/90 rounded-2xl p-3 sm:p-4 shadow-xs">
+      <div className="no-print bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5 sm:gap-3 p-3 sm:p-4">
         <LabeledIcon
           size="sm"
           icon={Receipt}
           iconBgClass="bg-amber-600 text-white"
-          label="3. Foto/Scan Bukti Pengeluaran"
+          label="6. Foto/Scan Bukti Pengeluaran"
           tooltipVariant="info"
           tooltipTitle="CamScanner Smart Crop & Perspective Corner-Pin Studio"
           tooltipContent="Dilengkapi Corner-Pin Perspective Cropping (4 titik sudut bebas untuk meluruskan foto nota yang miring/trapesium), Smart Cropping kertas putih, 6 Filter Scan, dan Penghapus Noda."
@@ -1460,6 +1469,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
               <span>+ Scan / Unggah Nota</span>
             </button>
           )}
+        </div>
         </div>
       </div>
 
@@ -1867,359 +1877,371 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
                     </button>
                   </div>
 
-                  {/* SHEET 1: POTONG (Clean Single-Strip Iconography + Optional Straighten Slider) */}
-                  {activeToolTab === 'crop' && (
-                    <div className="space-y-2">
-                      {/* Segmented Mode & Smart Actions Row */}
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCropMode('perspective');
-                            setIsPerspectivePreview(false);
-                          }}
-                          data-testid="crop-mode-perspective-btn"
-                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
-                            cropMode === 'perspective'
-                              ? 'bg-slate-900 text-white border-slate-900'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          <Crop className="w-3.5 h-3.5" />
-                          <span>4 Sudut</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCropMode('rect');
-                            setIsPerspectivePreview(false);
-                            setCropBox(cornerPinsToCropBox(cornerPins));
-                          }}
-                          data-testid="crop-mode-rect-btn"
-                          className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
-                            cropMode === 'rect'
-                              ? 'bg-slate-900 text-white border-slate-900'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          }`}
-                        >
-                          <Maximize2 className="w-3.5 h-3.5" />
-                          <span>Persegi</span>
-                        </button>
-
-                        <div className="w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
-
-                        <button
-                          type="button"
-                          onClick={() => void handleRunSmartCrop('paper_and_deskew')}
-                          data-testid="smart-crop-paper-btn"
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Auto-Fit</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleRotateLeft90}
-                          data-testid="camscanner-rotate-left"
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                          title="Putar Kiri 90°"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Kiri</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleRotateRight90}
-                          data-testid="scan-rotate-btn"
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                          title="Putar Kanan 90°"
-                        >
-                          <RotateCw className="w-3.5 h-3.5" />
-                          <span>Kanan</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setFlipH((prev) => !prev)}
-                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
-                            flipH
-                              ? 'bg-slate-900 text-white border-slate-900'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                          }`}
-                          title="Balik Horizontal"
-                        >
-                          <FlipHorizontal2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setFlipV((prev) => !prev)}
-                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
-                            flipV
-                              ? 'bg-slate-900 text-white border-slate-900'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                          }`}
-                          title="Balik Vertikal"
-                        >
-                          <FlipVertical2 className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setShowAngleSlider((prev) => !prev)}
-                          data-testid="smart-deskew-btn"
-                          className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
-                            showAngleSlider || deskewAngle !== 0
-                              ? 'bg-sky-50 border-sky-300 text-sky-800'
-                              : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                          }`}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                          <span>Sudut</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
-                            setCropBox(fullBox);
-                            setCornerPins(cropBoxToCornerPins(fullBox));
-                            setIsPerspectivePreview(false);
-                            setDeskewAngle(0);
-                          }}
-                          data-testid="scan-crop-full"
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
-                        >
-                          <span>Reset</span>
-                        </button>
-                      </div>
-
-                      {/* On-Demand Straighten Slider (Only shown when 'Sudut' is toggled) */}
-                      {showAngleSlider && (
-                        <div className="flex items-center gap-2.5 pt-1 border-t border-slate-100">
-                          <span className="text-[11px] font-semibold text-slate-600 shrink-0">
-                            Kemiringan
-                          </span>
-                          <input
-                            type="range"
-                            min={-15}
-                            max={15}
-                            step={0.5}
-                            value={deskewAngle}
-                            onChange={(e) => setDeskewAngle(Number(e.target.value))}
-                            aria-label="Slider Pelurus Kemiringan Kertas"
-                            className="w-full accent-slate-900 cursor-pointer"
-                          />
-                          <span className="font-mono text-[11px] font-bold text-slate-800 w-9 text-right shrink-0">
-                            {deskewAngle > 0 ? `+${deskewAngle}°` : `${deskewAngle}°`}
-                          </span>
-                          {deskewAngle !== 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setDeskewAngle(0)}
-                              className="text-[11px] font-semibold text-sky-700 hover:underline shrink-0 cursor-pointer"
-                            >
-                              0°
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* SHEET 2: FILTER WARNA */}
-                  {activeToolTab === 'filter' && (
-                    <div
-                      role="group"
-                      aria-label="Filter Pemindaian CamScanner"
-                      className="grid grid-cols-3 sm:grid-cols-6 gap-2"
-                    >
-                      {CAMSCANNER_FILTERS.map((fOpt) => {
-                        const isSelected = scanFilter === fOpt.id;
-                        return (
-                          <button
-                            key={fOpt.id}
-                            type="button"
-                            onClick={() => setScanFilter(fOpt.id)}
-                            data-testid={`scan-filter-${fOpt.id}`}
-                            className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
-                              isSelected
-                                ? 'border-slate-900 bg-slate-900/5 ring-1 ring-slate-900'
-                                : 'border-slate-200 bg-slate-50 hover:bg-white'
-                            }`}
-                          >
-                            <div className="w-full h-10 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center relative">
-                              <img
-                                src={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
-                                alt={fOpt.shortLabel}
-                                referrerPolicy="no-referrer"
-                                style={{
-                                  filter:
-                                    fOpt.baseCssFilter !== 'none'
-                                      ? fOpt.baseCssFilter
-                                      : undefined,
+                  <NativeSnapPager
+                    activeTabId={activeToolTab}
+                    onTabChange={(next) => setActiveToolTab(next as CamScannerToolTab)}
+                    stopPropagation={true}
+                    tabs={[
+                      {
+                        id: 'crop',
+                        content: (
+                          <div className="space-y-2">
+                            {/* Segmented Mode & Smart Actions Row */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCropMode('perspective');
+                                  setIsPerspectivePreview(false);
                                 }}
-                                className="w-full h-full object-cover"
+                                data-testid="crop-mode-perspective-btn"
+                                className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
+                                  cropMode === 'perspective'
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                <Crop className="w-3.5 h-3.5" />
+                                <span>4 Sudut</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCropMode('rect');
+                                  setIsPerspectivePreview(false);
+                                  setCropBox(cornerPinsToCropBox(cornerPins));
+                                }}
+                                data-testid="crop-mode-rect-btn"
+                                className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 shrink-0 border transition-all cursor-pointer ${
+                                  cropMode === 'rect'
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                              >
+                                <Maximize2 className="w-3.5 h-3.5" />
+                                <span>Persegi</span>
+                              </button>
+
+                              <div className="w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
+
+                              <button
+                                type="button"
+                                onClick={() => void handleRunSmartCrop('paper_and_deskew')}
+                                data-testid="smart-crop-paper-btn"
+                                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                              >
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Auto-Fit</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleRotateLeft90}
+                                data-testid="camscanner-rotate-left"
+                                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                                title="Putar Kiri 90°"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Kiri</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleRotateRight90}
+                                data-testid="scan-rotate-btn"
+                                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                                title="Putar Kanan 90°"
+                              >
+                                <RotateCw className="w-3.5 h-3.5" />
+                                <span>Kanan</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setFlipH((prev) => !prev)}
+                                className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                                  flipH
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                                }`}
+                                title="Balik Horizontal"
+                              >
+                                <FlipHorizontal2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setFlipV((prev) => !prev)}
+                                className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                                  flipV
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                                }`}
+                                title="Balik Vertikal"
+                              >
+                                <FlipVertical2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setShowAngleSlider((prev) => !prev)}
+                                data-testid="smart-deskew-btn"
+                                className={`min-h-[34px] px-2.5 py-1 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer ${
+                                  showAngleSlider || deskewAngle !== 0
+                                    ? 'bg-sky-50 border-sky-300 text-sky-800'
+                                    : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                <SlidersHorizontal className="w-3.5 h-3.5" />
+                                <span>Sudut</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const fullBox = { top: 0, left: 0, right: 0, bottom: 0 };
+                                  setCropBox(fullBox);
+                                  setCornerPins(cropBoxToCornerPins(fullBox));
+                                  setIsPerspectivePreview(false);
+                                  setDeskewAngle(0);
+                                }}
+                                data-testid="scan-crop-full"
+                                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 text-xs font-semibold inline-flex items-center gap-1 shrink-0 cursor-pointer"
+                              >
+                                <span>Reset</span>
+                              </button>
+                            </div>
+
+                            {/* On-Demand Straighten Slider (Only shown when 'Sudut' is toggled) */}
+                            {showAngleSlider && (
+                              <div className="flex items-center gap-2.5 pt-1 border-t border-slate-100">
+                                <span className="text-[11px] font-semibold text-slate-600 shrink-0">
+                                  Kemiringan
+                                </span>
+                                <input
+                                  type="range"
+                                  min={-15}
+                                  max={15}
+                                  step={0.5}
+                                  value={deskewAngle}
+                                  onChange={(e) => setDeskewAngle(Number(e.target.value))}
+                                  aria-label="Slider Pelurus Kemiringan Kertas"
+                                  className="w-full accent-slate-900 cursor-pointer"
+                                />
+                                <span className="font-mono text-[11px] font-bold text-slate-800 w-9 text-right shrink-0">
+                                  {deskewAngle > 0 ? `+${deskewAngle}°` : `${deskewAngle}°`}
+                                </span>
+                                {deskewAngle !== 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeskewAngle(0)}
+                                    className="text-[11px] font-semibold text-sky-700 hover:underline shrink-0 cursor-pointer"
+                                  >
+                                    0°
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'filter',
+                        content: (
+                          <div
+                            role="group"
+                            aria-label="Filter Pemindaian CamScanner"
+                            className="grid grid-cols-3 sm:grid-cols-6 gap-2"
+                          >
+                            {CAMSCANNER_FILTERS.map((fOpt) => {
+                              const isSelected = scanFilter === fOpt.id;
+                              return (
+                                <button
+                                  key={fOpt.id}
+                                  type="button"
+                                  onClick={() => setScanFilter(fOpt.id)}
+                                  data-testid={`scan-filter-${fOpt.id}`}
+                                  className={`p-1.5 rounded-xl border text-center transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                                    isSelected
+                                      ? 'border-slate-900 bg-slate-900/5 ring-1 ring-slate-900'
+                                      : 'border-slate-200 bg-slate-50 hover:bg-white'
+                                  }`}
+                                >
+                                  <div className="w-full h-10 rounded-lg bg-white border border-slate-200 overflow-hidden flex items-center justify-center relative">
+                                    <img
+                                      src={rawFotoDataUrl || SAMPLE_RECEIPT_TRANSPORT}
+                                      alt={fOpt.shortLabel}
+                                      referrerPolicy="no-referrer"
+                                      style={{
+                                        filter:
+                                          fOpt.baseCssFilter !== 'none'
+                                            ? fOpt.baseCssFilter
+                                            : undefined,
+                                      }}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  </div>
+                                  <span
+                                    className={`text-[10.5px] font-semibold leading-tight ${
+                                      isSelected ? 'text-slate-900 font-bold' : 'text-slate-600'
+                                    }`}
+                                  >
+                                    {fOpt.shortLabel}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'adjust',
+                        content: (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700">Cerah</span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  {brightness > 0 ? `+${brightness}` : brightness}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={-50}
+                                max={50}
+                                value={brightness}
+                                onChange={(e) => setBrightness(Number(e.target.value))}
+                                aria-label="Slider Kecerahan"
+                                className="w-full accent-slate-900 cursor-pointer"
                               />
                             </div>
-                            <span
-                              className={`text-[10.5px] font-semibold leading-tight ${
-                                isSelected ? 'text-slate-900 font-bold' : 'text-slate-600'
-                              }`}
-                            >
-                              {fOpt.shortLabel}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
 
-                  {/* SHEET 3: PENYESUAIAN (Kecerahan, Kontras, Ketajaman) */}
-                  {activeToolTab === 'adjust' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-700">Cerah</span>
-                          <span className="font-mono font-bold text-slate-800">
-                            {brightness > 0 ? `+${brightness}` : brightness}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-50}
-                          max={50}
-                          value={brightness}
-                          onChange={(e) => setBrightness(Number(e.target.value))}
-                          aria-label="Slider Kecerahan"
-                          className="w-full accent-slate-900 cursor-pointer"
-                        />
-                      </div>
+                            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700">Kontras</span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  {contrast > 0 ? `+${contrast}` : contrast}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={-50}
+                                max={50}
+                                value={contrast}
+                                onChange={(e) => setContrast(Number(e.target.value))}
+                                aria-label="Slider Kontras"
+                                className="w-full accent-slate-900 cursor-pointer"
+                              />
+                            </div>
 
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-700">Kontras</span>
-                          <span className="font-mono font-bold text-slate-800">
-                            {contrast > 0 ? `+${contrast}` : contrast}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-50}
-                          max={50}
-                          value={contrast}
-                          onChange={(e) => setContrast(Number(e.target.value))}
-                          aria-label="Slider Kontras"
-                          className="w-full accent-slate-900 cursor-pointer"
-                        />
-                      </div>
+                            <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-semibold text-slate-700">Tajam</span>
+                                <span className="font-mono font-bold text-slate-800">
+                                  {clarity > 0 ? `+${clarity}` : clarity}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={-50}
+                                max={50}
+                                value={clarity}
+                                onChange={(e) => setClarity(Number(e.target.value))}
+                                aria-label="Slider Ketajaman Warna"
+                                className="w-full accent-slate-900 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                        ),
+                      },
+                      {
+                        id: 'markup',
+                        content: (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setMarkupTool('whiteout')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                                  markupTool === 'whiteout'
+                                    ? 'bg-slate-900 text-white border-slate-900'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                <Eraser className="w-3.5 h-3.5" />
+                                <span>Hapus Noda</span>
+                              </button>
 
-                      <div className="bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-1.5 space-y-1">
-                        <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-semibold text-slate-700">Tajam</span>
-                          <span className="font-mono font-bold text-slate-800">
-                            {clarity > 0 ? `+${clarity}` : clarity}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={-50}
-                          max={50}
-                          value={clarity}
-                          onChange={(e) => setClarity(Number(e.target.value))}
-                          aria-label="Slider Ketajaman Warna"
-                          className="w-full accent-slate-900 cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  )}
+                              <button
+                                type="button"
+                                onClick={() => setMarkupTool('highlighter')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                                  markupTool === 'highlighter'
+                                    ? 'bg-amber-400 text-slate-950 border-amber-500'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                <Highlighter className="w-3.5 h-3.5" />
+                                <span>Stabilo</span>
+                              </button>
 
-                  {/* SHEET 4: HAPUS & MARKA */}
-                  {activeToolTab === 'markup' && (
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setMarkupTool('whiteout')}
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
-                            markupTool === 'whiteout'
-                              ? 'bg-slate-900 text-white border-slate-900'
-                              : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          <Eraser className="w-3.5 h-3.5" />
-                          <span>Hapus Noda</span>
-                        </button>
+                              <button
+                                type="button"
+                                onClick={() => setMarkupTool('redpen')}
+                                className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
+                                  markupTool === 'redpen'
+                                    ? 'bg-red-600 text-white border-red-600'
+                                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                <PenTool className="w-3.5 h-3.5" />
+                                <span>Pena</span>
+                              </button>
+                            </div>
 
-                        <button
-                          type="button"
-                          onClick={() => setMarkupTool('highlighter')}
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
-                            markupTool === 'highlighter'
-                              ? 'bg-amber-400 text-slate-950 border-amber-500'
-                              : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          <Highlighter className="w-3.5 h-3.5" />
-                          <span>Stabilo</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setMarkupTool('redpen')}
-                          className={`min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 cursor-pointer ${
-                            markupTool === 'redpen'
-                              ? 'bg-red-600 text-white border-red-600'
-                              : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}
-                        >
-                          <PenTool className="w-3.5 h-3.5" />
-                          <span>Pena</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-[11px]">
-                        {[
-                          { size: 8, label: 'S' },
-                          { size: 14, label: 'M' },
-                          { size: 24, label: 'L' },
-                        ].map((b) => (
-                          <button
-                            key={b.size}
-                            type="button"
-                            onClick={() => setBrushSize(b.size)}
-                            className={`w-7 h-7 rounded-lg font-bold border cursor-pointer ${
-                              brushSize === b.size
-                                ? 'bg-slate-900 text-white border-slate-900'
-                                : 'bg-white text-slate-600 border-slate-200'
-                            }`}
-                          >
-                            {b.label}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          disabled={strokes.length === 0}
-                          onClick={() => setStrokes((prev) => prev.slice(0, -1))}
-                          className="h-7 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-semibold inline-flex items-center cursor-pointer"
-                          title="Urungkan"
-                        >
-                          <Undo2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={strokes.length === 0}
-                          onClick={() => setStrokes([])}
-                          className="h-7 px-2 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 font-semibold cursor-pointer"
-                        >
-                          Bersihkan
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                            <div className="flex items-center gap-1 text-[11px]">
+                              {[
+                                { size: 8, label: 'S' },
+                                { size: 14, label: 'M' },
+                                { size: 24, label: 'L' },
+                              ].map((b) => (
+                                <button
+                                  key={b.size}
+                                  type="button"
+                                  onClick={() => setBrushSize(b.size)}
+                                  className={`w-7 h-7 rounded-lg font-bold border cursor-pointer ${
+                                    brushSize === b.size
+                                      ? 'bg-slate-900 text-white border-slate-900'
+                                      : 'bg-white text-slate-600 border-slate-200'
+                                  }`}
+                                >
+                                  {b.label}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                disabled={strokes.length === 0}
+                                onClick={() => setStrokes((prev) => prev.slice(0, -1))}
+                                className="h-7 px-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-semibold inline-flex items-center cursor-pointer"
+                                title="Urungkan"
+                              >
+                                <Undo2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={strokes.length === 0}
+                                onClick={() => setStrokes([])}
+                                className="h-7 px-2 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-40 text-red-700 font-semibold cursor-pointer"
+                              >
+                                Bersihkan
+                              </button>
+                            </div>
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
                 </div>
               )}
             </div>
@@ -2606,6 +2628,7 @@ export const DokumentasiPengeluaranSection: React.FC<DokumentasiPengeluaranSecti
           <InteractivePaperViewer
             paperSize={paperSize}
             onChangePaperSize={onChangePaperSize}
+            isActivePaper={isActiveSlide}
             documentTitle="Lampiran Bukti Pengeluaran"
           >
             <div

@@ -60,6 +60,8 @@ import {
 } from '../utils/spjBackupAndCleanup';
 import { InfoTooltip, UnifiedMediaCard } from './UiPatterns';
 import { SpjStatusBadge, SpjProgressBar } from './SpjStatusBadge';
+import { LongPressContextMenu } from './LongPressContextMenu';
+import { triggerHaptic } from '../utils/nativeMobile';
 
 export type SpjSubSectionKey =
   | 'spt'
@@ -120,6 +122,39 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
   const [isSelectMode, setIsSelectMode] = useState<boolean>(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [expandedCardIds, setExpandedCardIds] = useState<string[]>([]);
+  const [contextMenuItem, setContextMenuItem] = useState<KuitansiPerjalananDinas | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
+  const longPressStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const startCardLongPress = (item: KuitansiPerjalananDinas, clientX: number, clientY: number) => {
+    longPressStartPosRef.current = { x: clientX, y: clientY };
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = window.setTimeout(() => {
+      longPressTimerRef.current = null;
+      triggerHaptic('heavy');
+      setContextMenuItem(item);
+    }, 480);
+  };
+
+  const moveCardLongPress = (clientX: number, clientY: number) => {
+    if (longPressTimerRef.current === null) return;
+    if (
+      Math.abs(clientX - longPressStartPosRef.current.x) > 10 ||
+      Math.abs(clientY - longPressStartPosRef.current.y) > 10
+    ) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const cancelCardLongPress = () => {
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   const toggleExpandCard = (id: string) => {
     setExpandedCardIds((prev) =>
@@ -794,7 +829,24 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
                       return (
                         <div
                           key={item.id}
-                          className={`rounded-2xl border bg-white p-4 sm:p-5 space-y-3.5 transition-all duration-200 ease-out shadow-xs min-w-0 hover:-translate-y-0.5 hover:shadow-md will-change-transform ${
+                          onTouchStart={(e) => {
+                            if (e.touches.length === 1) {
+                              startCardLongPress(item, e.touches[0].clientX, e.touches[0].clientY);
+                            }
+                          }}
+                          onTouchMove={(e) => {
+                            if (e.touches.length === 1) {
+                              moveCardLongPress(e.touches[0].clientX, e.touches[0].clientY);
+                            }
+                          }}
+                          onTouchEnd={cancelCardLongPress}
+                          onTouchCancel={cancelCardLongPress}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            triggerHaptic('heavy');
+                            setContextMenuItem(item);
+                          }}
+                          className={`rounded-2xl border bg-white p-4 sm:p-5 space-y-3.5 transition-all duration-200 ease-out shadow-xs min-w-0 hover:shadow-md ${
                             isChecked
                               ? 'border-sky-400 ring-2 ring-sky-200 shadow-sm'
                               : isActive
@@ -1706,6 +1758,84 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
           </div>
         </div>
       )}
+
+      {/* Menu Tekan Tahan (Long-Press Context Menu) pada Kartu SPJ */}
+      <LongPressContextMenu
+        isOpen={Boolean(contextMenuItem)}
+        onClose={() => setContextMenuItem(null)}
+        title={contextMenuItem?.atasNama || '(Nama Belum Diisi)'}
+        subtitle={
+          contextMenuItem
+            ? `${contextMenuItem.tujuan || '-'} • ${contextMenuItem.noSpt || '-'}`
+            : undefined
+        }
+        options={
+          contextMenuItem
+            ? [
+                {
+                  id: 'open-spt',
+                  label: 'Buka & Edit Surat Tugas (SPT / SPD)',
+                  icon: FileText,
+                  action: () => {
+                    onSelectKuitansi(contextMenuItem.id);
+                    onOpenSubSection('spt');
+                  },
+                },
+                {
+                  id: 'open-kuitansi',
+                  label: 'Buka & Edit Kuitansi Perjalanan',
+                  icon: Wallet,
+                  action: () => {
+                    onSelectKuitansi(contextMenuItem.id);
+                    onOpenSubSection('kuitansi');
+                  },
+                },
+                ...(onDuplicateKuitansi
+                  ? [
+                      {
+                        id: 'duplicate',
+                        label: 'Duplikat Berkas SPJ Ini',
+                        icon: Copy,
+                        action: () => {
+                          onSelectKuitansi(contextMenuItem.id);
+                          onDuplicateKuitansi();
+                        },
+                      },
+                    ]
+                  : []),
+                ...(onArchiveKuitansiBatch
+                  ? [
+                      {
+                        id: 'archive',
+                        label: contextMenuItem.isArchived
+                          ? 'Pulihkan ke Berkas Aktif'
+                          : 'Arsipkan Berkas SPJ',
+                        icon: contextMenuItem.isArchived ? ArchiveRestore : Archive,
+                        action: () => {
+                          onArchiveKuitansiBatch(
+                            [contextMenuItem.id],
+                            !contextMenuItem.isArchived
+                          );
+                        },
+                      },
+                    ]
+                  : []),
+                {
+                  id: 'delete',
+                  label: 'Hapus Berkas SPJ',
+                  icon: Trash2,
+                  isDestructive: true,
+                  action: () => {
+                    openSafetyDeleteModal(
+                      [contextMenuItem.id],
+                      `Berkas SPJ ${contextMenuItem.atasNama || contextMenuItem.noSpt}`
+                    );
+                  },
+                },
+              ]
+            : []
+        }
+      />
     </div>
   );
 };

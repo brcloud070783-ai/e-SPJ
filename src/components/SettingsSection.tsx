@@ -656,7 +656,10 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 pb-10 sm:pb-14">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 pb-10 sm:pb-14"
+    >
       {/* Compact Header & Segmented Sub-Tab Navigation */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

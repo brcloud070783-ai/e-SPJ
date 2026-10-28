@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutGrid, FileText, SlidersHorizontal, ArrowLeft } from 'lucide-react';
+import { LayoutGrid, FileText, SlidersHorizontal, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 import { triggerHaptic } from '../utils/nativeMobile';
@@ -14,6 +14,8 @@ interface FloatingBottomNavProps {
   setSpjView: (view: SpjViewKey) => void;
   kuitansiCount: number;
   activeKuitansiTujuan?: string;
+  isPwaInstallable?: boolean;
+  onOpenPwaInstall?: () => void;
 }
 
 export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
@@ -22,10 +24,13 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
   spjView,
   setSpjView,
   kuitansiCount,
+  isPwaInstallable = false,
+  onOpenPwaInstall,
 }) => {
   const isInsideStudio = mainMenu === 'perjalanan-dinas' && spjView !== 'sub-home';
 
-  // Sembunyikan FloatingBottomNav sepenuhnya saat berada di dalam ruang kerja dokumen SPJ
+  // Sembunyikan sepenuhnya saat berada di dalam ruang kerja dokumen SPJ (1-6)
+  // agar toolbar bawah dokumen ("Ubah Formulir | PDF | Cetak") tidak pernah tertutup.
   if (isInsideStudio) {
     return null;
   }
@@ -48,16 +53,11 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
       icon: FileText,
       iconActiveColor: 'text-amber-300',
       badge: kuitansiCount > 0 ? kuitansiCount : undefined,
-      tooltip: isInsideStudio
-        ? 'SPJ Dinas: Mode Formulir (Ketuk untuk kembali ke Daftar Berkas)'
-        : 'SPJ Dinas: Kelola berkas & dokumen perjalanan dinas',
+      tooltip: 'SPJ Dinas: Kelola berkas & dokumen perjalanan dinas',
       action: () => {
         triggerHaptic('light');
         setMainMenu('perjalanan-dinas');
-        // Jika sudah di menu SPJ dan sedang berada di dalam editor formulir, klik kembali ke daftar berkas
-        if (mainMenu === 'perjalanan-dinas' && spjView !== 'sub-home') {
-          setSpjView('sub-home');
-        }
+        setSpjView('sub-home');
       },
     },
     {
@@ -75,12 +75,10 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
 
   return (
     <aside
-      aria-label="Navigasi Utama Mengambang"
-      className={`no-print fixed bottom-[max(0.875rem,env(safe-area-inset-bottom))] sm:bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-[calc(100vw-24px)] select-none pointer-events-auto transition-all duration-300 ${
-        isInsideStudio ? 'hidden lg:block' : 'block'
-      }`}
+      aria-label="Navigasi Utama"
+      className="no-print fixed inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 z-40 sm:max-w-[calc(100vw-24px)] select-none pointer-events-auto"
     >
-      <nav className="flex items-center gap-1 sm:gap-1.5 p-1.5 bg-white/88 backdrop-blur-xl border border-slate-200/90 shadow-[0_12px_36px_rgba(15,23,42,0.16),0_2px_6px_rgba(15,23,42,0.06)] rounded-3xl ring-1 ring-slate-900/5 transition-all duration-300 ease-out">
+      <nav className="flex items-center justify-around sm:justify-center gap-1 sm:gap-1.5 px-2 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-1.5 bg-white/95 sm:bg-white/90 backdrop-blur-xl border-t sm:border border-slate-200/90 shadow-[0_-4px_20px_rgba(15,23,42,0.08)] sm:shadow-[0_12px_36px_rgba(15,23,42,0.16),0_2px_6px_rgba(15,23,42,0.06)] sm:rounded-3xl sm:ring-1 sm:ring-slate-900/5 transition-all duration-200 ease-out">
         {navItems.map((item) => {
           const isActive = mainMenu === item.id;
           const Icon = item.icon;
@@ -92,7 +90,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
               onClick={item.action}
               aria-current={isActive ? 'page' : undefined}
               title={item.tooltip}
-              className={`group relative flex flex-col items-center justify-center px-4 sm:px-5 py-1.5 rounded-2xl transition-colors duration-200 min-w-[64px] sm:min-w-[72px] min-h-[48px] cursor-pointer ${
+              className={`group relative flex-1 sm:flex-initial flex flex-col items-center justify-center px-3 sm:px-5 py-1.5 rounded-2xl transition-colors duration-200 min-w-[68px] sm:min-w-[76px] min-h-[46px] cursor-pointer ${
                 isActive
                   ? 'text-white'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/90'
@@ -102,7 +100,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
                 <motion.span
                   layoutId="floating-bottom-nav-active-pill"
                   transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-sky-950 via-sky-900 to-sky-950 shadow-md shadow-sky-950/30 z-0"
+                  className="absolute inset-0 rounded-2xl bg-gradient-to-b from-sky-950 via-sky-900 to-sky-950 shadow-md shadow-sky-950/25 z-0"
                 />
               )}
 
@@ -130,7 +128,6 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
                 )}
               </div>
 
-              {/* Nama Ikon persis di bawah ikonnya */}
               <span
                 className={`relative z-10 text-[10.5px] whitespace-nowrap mt-1 leading-none ${
                   isActive
@@ -140,40 +137,27 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
               >
                 {item.label}
               </span>
-
-              {/* Indikator titik aktif kecil */}
-              {isActive ? (
-                <motion.span
-                  layoutId="floating-bottom-nav-active-dot"
-                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  className="relative z-10 w-1 h-1 rounded-full bg-emerald-400 mt-1 shadow-[0_0_5px_rgba(52,211,153,0.9)]"
-                />
-              ) : (
-                <span className="relative z-10 w-1 h-1 rounded-full bg-transparent mt-1" />
-              )}
             </button>
           );
         })}
 
-        {/* Khusus saat berada di dalam Ruang Kerja Dokumen SPJ: Shortcut Cepat Kembali ke Daftar Berkas */}
-        {isInsideStudio && (
-          <>
-            <div className="h-8 w-px bg-slate-200 mx-1 shrink-0" />
-            <button
-              type="button"
-              onClick={() => setSpjView('sub-home')}
-              title="Kembali ke Daftar Berkas SPJ"
-              className="flex flex-col items-center justify-center px-3 py-1.5 rounded-2xl text-sky-900 bg-sky-50 hover:bg-sky-100/90 active:scale-95 border border-sky-200/90 transition-all cursor-pointer min-w-[58px] min-h-[48px]"
-            >
-              <ArrowLeft className="w-4 h-4 text-sky-700 shrink-0 mb-0.5" />
-              <span className="text-[9.5px] font-bold text-sky-800 whitespace-nowrap leading-none">
-                Daftar SPJ
-              </span>
-            </button>
-          </>
+        {isPwaInstallable && onOpenPwaInstall && (
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('medium');
+              onOpenPwaInstall();
+            }}
+            className="flex flex-col items-center justify-center px-3 py-1.5 rounded-2xl text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200/80 min-w-[60px] min-h-[46px] transition-all cursor-pointer"
+            title="Install Aplikasi ke Layar Utama HP"
+          >
+            <Download className="w-4 h-4 text-sky-700 shrink-0" />
+            <span className="text-[10px] mt-1 font-bold leading-none whitespace-nowrap">
+              Install
+            </span>
+          </button>
         )}
       </nav>
     </aside>
   );
 };
-
