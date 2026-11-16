@@ -50,9 +50,10 @@ import { SuratPerjalananDinasBelakangEditor } from './SuratPerjalananDinasBelaka
 import { InteractivePaperViewer } from './InteractivePaperViewer';
 import { NativeSnapPager } from './NativeSnapPager';
 import {
-  StudioSwipeProgressBar,
-  FormSubTabProgressBar,
-} from './StudioSwipeProgressBar';
+  FormStepperHeader,
+  FormStepperFooter,
+  WizardStepItem,
+} from './FormStepperWizard';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 import { InfoTooltip } from './UiPatterns';
 import {
@@ -188,6 +189,132 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
     'bagian-6',
     'bagian-catatan',
   ];
+
+  const sptWizardSteps: WizardStepItem[] = [
+    {
+      key: 'header',
+      stepNumber: 1,
+      shortLabel: 'Data Dasar',
+      title: 'Data Dasar & Dasar SPT',
+      subtitle: 'Kop surat instansi, nomor SPT, dan konsiderans dasar penugasan',
+    },
+    {
+      key: 'pegawai',
+      stepNumber: 2,
+      shortLabel: `Personel (${draft.pegawaiList.length})`,
+      title: `Personel yang Ditugaskan (${draft.pegawaiList.length} Orang)`,
+      subtitle: 'Pilih atau urutkan daftar ASN yang melaksanakan perjalanan dinas',
+    },
+    {
+      key: 'detail',
+      stepNumber: 3,
+      shortLabel: 'Rincian Tugas',
+      title: 'Rincian Maksud, Tujuan & Jadwal',
+      subtitle: 'Uraian tugas, tempat berangkat/tujuan, tanggal, dan pembebanan anggaran',
+    },
+    {
+      key: 'ttd',
+      stepNumber: 4,
+      shortLabel: 'Pratinjau & TTD',
+      title: 'Pratinjau & Pejabat Penandatangan',
+      subtitle: 'Tempat ditetapkan, tanggal SPT, dan pejabat penandatangan naskah',
+    },
+  ];
+
+  const spdWizardSteps: WizardStepItem[] = [
+    {
+      key: 'header',
+      stepNumber: 1,
+      shortLabel: 'Data Dasar',
+      title: 'Data Dasar SPD & PPTK',
+      subtitle: 'Nomor SPD, lembar ke, kode nomor, dan pejabat pengguna anggaran / PPTK',
+    },
+    {
+      key: 'pelaksana',
+      stepNumber: 2,
+      shortLabel: 'Personel',
+      title: 'Identitas Pelaksana SPD',
+      subtitle: 'Pilih pegawai pelaksana, pangkat/golongan, jabatan, dan tingkat biaya',
+    },
+    {
+      key: 'perjalanan',
+      stepNumber: 3,
+      shortLabel: 'Rincian & Biaya',
+      title: 'Rincian Perjalanan & Anggaran',
+      subtitle: 'Maksud perjalanan, alat angkutan, tempat tujuan, jadwal, dan akun anggaran',
+    },
+    {
+      key: 'pengikut',
+      stepNumber: 4,
+      shortLabel: 'Pengikut',
+      title: 'Daftar Pengikut Perjalanan',
+      subtitle: 'Tambahkan pengikut perjalanan dinas beserta tanggal lahir dan keterangan',
+    },
+    {
+      key: 'ttd',
+      stepNumber: 5,
+      shortLabel: 'Pratinjau & TTD',
+      title: 'Pratinjau & Pengesahan SPD',
+      subtitle: 'Tempat dikeluarkan, tanggal SPD, dan pejabat penandatangan lembar depan',
+    },
+  ];
+
+  const visumWizardSteps: WizardStepItem[] = [
+    {
+      key: 'bagian-1',
+      stepNumber: 1,
+      shortLabel: 'I. Berangkat',
+      title: 'Blok I · Keberangkatan Awal',
+      subtitle: 'Tempat kedudukan asal, tanggal berangkat, tujuan, dan pejabat pengesah',
+    },
+    {
+      key: 'bagian-transit',
+      stepNumber: 2,
+      shortLabel: 'II–V. Transit',
+      title: 'Blok II–V · Tiba & Berangkat Transit',
+      subtitle: 'Riwayat tiba dan berangkat pada tempat tujuan atau persinggahan',
+    },
+    {
+      key: 'bagian-6',
+      stepNumber: 3,
+      shortLabel: 'VI. Tiba Kembali',
+      title: 'Blok VI · Tiba Kembali di Kedudukan',
+      subtitle: 'Verifikasi kedatangan kembali dan pemeriksaan pejabat berwenang',
+    },
+    {
+      key: 'bagian-catatan',
+      stepNumber: 4,
+      shortLabel: 'VII. Catatan & TTD',
+      title: 'Blok VII · Catatan Lain-Lain & Perhatian',
+      subtitle: 'Catatan tambahan dan ketentuan pertanggungjawaban perjalanan dinas',
+    },
+  ];
+
+  const activeWizardSteps: WizardStepItem[] =
+    docType === 'spd-belakang'
+      ? visumWizardSteps
+      : docType === 'spd'
+        ? spdWizardSteps
+        : sptWizardSteps;
+
+  const activeWizardStepKey: string =
+    docType === 'spd-belakang'
+      ? spdBelakangTab
+      : docType === 'spd'
+        ? spdTab === 'anggaran'
+          ? 'perjalanan'
+          : spdTab
+        : formTab;
+
+  const handleSelectWizardStep = (stepKey: string) => {
+    if (docType === 'spd-belakang') {
+      selectSpdBelakangSubTab(stepKey as SpdBelakangEditableZone);
+    } else if (docType === 'spd') {
+      selectSpdSubTab(stepKey as SpdEditableZone);
+    } else {
+      selectSptSubTab(stepKey as SuratTugasEditableZone);
+    }
+  };
 
   const [subTabSlideDir, setSubTabSlideDir] = useState<1 | -1>(1);
   const mobileFormScrollRef = React.useRef<HTMLDivElement | null>(null);
@@ -2168,209 +2295,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
           data-no-swipe="true"
           className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs"
         >
-          {/* 6-Document SPJ Studio Swipe Progress Bar at the Top of Form Editor */}
-          <StudioSwipeProgressBar
-            activeStepKey={
-              docType === 'spd-belakang'
-                ? 'visum'
-                : docType === 'spd'
-                  ? 'spd'
-                  : 'spt'
-            }
-            onSelectStep={onNavigateStudioStep}
-            variant="editor-header"
-          />
 
-          {/* Unified Native Segmented Control Sub-Tabs (Desktop Inspector) */}
-          <div className="p-2.5 bg-slate-100/90 border-b border-slate-200/90">
-            {docType === 'spd' ? (
-              <>
-                <div
-                  role="tablist"
-                  aria-label="Bagian Form Surat Perjalanan Dinas"
-                  className="grid grid-cols-5 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
-                >
-                  {[
-                    { key: 'header', label: 'No & PPTK', icon: FileText },
-                    { key: 'pelaksana', label: 'Pelaksana', icon: User },
-                    { key: 'perjalanan', label: 'Rincian', icon: MapPin },
-                    { key: 'pengikut', label: 'Pengikut', icon: Users },
-                    { key: 'ttd', label: 'TTD', icon: PenLine },
-                  ].map((t) => {
-                    const TIcon = t.icon;
-                    const normalizedSpdTab = spdTab === 'anggaran' ? 'perjalanan' : spdTab;
-                    const isTabActive = normalizedSpdTab === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        role="tab"
-                        aria-selected={isTabActive}
-                        onClick={() => {
-                          triggerHaptic('light');
-                          selectSpdSubTab(t.key as SpdEditableZone);
-                        }}
-                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                          isTabActive
-                            ? 'text-white font-bold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
-                        }`}
-                      >
-                        {isTabActive && (
-                          <motion.span
-                            layoutId="desktop-spd-subtab-pill"
-                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                          />
-                        )}
-                        <TIcon
-                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                            isTabActive ? 'text-white' : 'text-slate-500'
-                          }`}
-                        />
-                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                          {t.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <FormSubTabProgressBar
-                  tabs={[
-                    { key: 'header', label: 'No & PPTK' },
-                    { key: 'pelaksana', label: 'Pelaksana' },
-                    { key: 'perjalanan', label: 'Rincian Perjalanan' },
-                    { key: 'pengikut', label: 'Daftar Pengikut' },
-                    { key: 'ttd', label: 'Penandatangan (TTD)' },
-                  ]}
-                  activeKey={spdTab === 'anggaran' ? 'perjalanan' : spdTab}
-                  onSelectTab={(k) => selectSpdSubTab(k as SpdEditableZone)}
-                />
-              </>
-            ) : docType === 'spd-belakang' ? (
-              <>
-                <div
-                  role="tablist"
-                  aria-label="Bagian Form SPD Lembar 2 (Visum Belakang)"
-                  className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
-                >
-                  {[
-                    { key: 'bagian-1', label: 'I. Berangkat', icon: Navigation },
-                    { key: 'bagian-transit', label: 'II-V. Transit', icon: MapPin },
-                    { key: 'bagian-6', label: 'VI. Tiba', icon: BadgeCheck },
-                    { key: 'bagian-catatan', label: 'VII. Catatan', icon: FileText },
-                  ].map((t) => {
-                    const TIcon = t.icon;
-                    const isTabActive = spdBelakangTab === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        role="tab"
-                        aria-selected={isTabActive}
-                        onClick={() => {
-                          triggerHaptic('light');
-                          selectSpdBelakangSubTab(t.key as SpdBelakangEditableZone);
-                        }}
-                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                          isTabActive
-                            ? 'text-white font-bold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
-                        }`}
-                      >
-                        {isTabActive && (
-                          <motion.span
-                            layoutId="desktop-visum-subtab-pill"
-                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                          />
-                        )}
-                        <TIcon
-                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                            isTabActive ? 'text-white' : 'text-slate-500'
-                          }`}
-                        />
-                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                          {t.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <FormSubTabProgressBar
-                  tabs={[
-                    { key: 'bagian-1', label: 'I. Keberangkatan' },
-                    { key: 'bagian-transit', label: 'II-V. Transit Perjalanan' },
-                    { key: 'bagian-6', label: 'VI. Tiba Kembali' },
-                    { key: 'bagian-catatan', label: 'VII. Catatan & Perhatian' },
-                  ]}
-                  activeKey={spdBelakangTab}
-                  onSelectTab={(k) => selectSpdBelakangSubTab(k as SpdBelakangEditableZone)}
-                />
-              </>
-            ) : (
-              <>
-                <div
-                  role="tablist"
-                  aria-label="Bagian Form Surat Perintah Tugas"
-                  className="grid grid-cols-4 bg-slate-200/75 p-1 gap-1 rounded-2xl text-center"
-                >
-                  {[
-                    { key: 'header', label: 'Kop & No', icon: FileText },
-                    { key: 'pegawai', label: `Pegawai (${draft.pegawaiList.length})`, icon: Users },
-                    { key: 'detail', label: 'Detail', icon: MapPin },
-                    { key: 'ttd', label: 'TTD', icon: PenLine },
-                  ].map((t) => {
-                    const TIcon = t.icon;
-                    const isTabActive = formTab === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        role="tab"
-                        aria-selected={isTabActive}
-                        onClick={() => {
-                          triggerHaptic('light');
-                          selectSptSubTab(t.key as SuratTugasEditableZone);
-                        }}
-                        className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                          isTabActive
-                            ? 'text-white font-bold'
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 font-semibold'
-                        }`}
-                      >
-                        {isTabActive && (
-                          <motion.span
-                            layoutId="desktop-spt-subtab-pill"
-                            transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                            className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                          />
-                        )}
-                        <TIcon
-                          className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                            isTabActive ? 'text-white' : 'text-slate-500'
-                          }`}
-                        />
-                        <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                          {t.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <FormSubTabProgressBar
-                  tabs={[
-                    { key: 'header', label: 'Kop Surat & Nomor SPT' },
-                    { key: 'pegawai', label: `Daftar Pegawai (${draft.pegawaiList.length})` },
-                    { key: 'detail', label: 'Detail Penugasan' },
-                    { key: 'ttd', label: 'Penandatangan (TTD)' },
-                  ]}
-                  activeKey={formTab}
-                  onSelectTab={(k) => selectSptSubTab(k as SuratTugasEditableZone)}
-                />
-              </>
-            )}
-          </div>
+
+          {/* Linear Stepper Wizard Header (Replaces Nested Sub-Tabs) */}
+          <FormStepperHeader
+            steps={activeWizardSteps}
+            activeKey={activeWizardStepKey}
+            onSelectStep={handleSelectWizardStep}
+          />
 
           <div
             ref={desktopFormScrollRef}
@@ -2424,30 +2356,63 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
             )}
           </div>
 
-          <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={onCreateNewSpt}
-              className="min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Data Baru</span>
-            </button>
+          {/* Sticky Footer Action Bar (Desktop Inspector) */}
+          <FormStepperFooter
+            steps={activeWizardSteps}
+            activeKey={activeWizardStepKey}
+            onSelectStep={handleSelectWizardStep}
+            onCancel={() => {
+              setDraft(currentSpt);
+              setValidationErrors([]);
+            }}
+            onSave={() => handleExplicitValidateAndSave()}
+            extraDesktopActions={
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isExportingPdf}
+                  onClick={async () => {
+                    setIsExportingPdf(true);
+                    try {
+                      const prefix =
+                        docType === 'spd-belakang'
+                          ? 'SPD_Visum_Belakang'
+                          : docType === 'spd'
+                            ? 'SPD_Depan'
+                            : 'Surat_Perintah_Tugas';
+                      await exportToDirectPdf({
+                        paperSize,
+                        documentTitle: buildCleanPdfTitle({
+                          prefix,
+                          atasNama: activeSpdPelaksana.nama,
+                          noSpt: draft.noSpt,
+                          paperSize,
+                        }),
+                        sheetSelector: '.print-only-sheet',
+                      });
+                    } catch (err: any) {
+                      alert(err?.message || 'Gagal mengekspor PDF');
+                    } finally {
+                      setIsExportingPdf(false);
+                    }
+                  }}
+                  title="Ekspor ke PDF"
+                  className="min-h-[46px] px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-sky-700" />
+                  <span>{isExportingPdf ? '...' : 'PDF'}</span>
+                </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={isExportingPdf}
-                onClick={async () => {
-                  setIsExportingPdf(true);
-                  try {
+                <button
+                  type="button"
+                  onClick={() => {
                     const prefix =
                       docType === 'spd-belakang'
                         ? 'SPD_Visum_Belakang'
                         : docType === 'spd'
-                        ? 'SPD_Depan'
-                        : 'Surat_Perintah_Tugas';
-                    await exportToDirectPdf({
+                          ? 'SPD_Depan'
+                          : 'Surat_Perintah_Tugas';
+                    void triggerIsolatedSpjPrint({
                       paperSize,
                       documentTitle: buildCleanPdfTitle({
                         prefix,
@@ -2456,61 +2421,18 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
                         paperSize,
                       }),
                       sheetSelector: '.print-only-sheet',
+                      zeroPageMargin: docType === 'spd-belakang',
                     });
-                  } catch (err: any) {
-                    alert(err?.message || 'Gagal mengekspor PDF');
-                  } finally {
-                    setIsExportingPdf(false);
-                  }
-                }}
-                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-              >
-                <FileDown className="w-3.5 h-3.5" />
-                <span>{isExportingPdf ? 'Memproses PDF...' : 'Ekspor PDF'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const prefix =
-                    docType === 'spd-belakang'
-                      ? 'SPD_Visum_Belakang'
-                      : docType === 'spd'
-                      ? 'SPD_Depan'
-                      : 'Surat_Perintah_Tugas';
-                  void triggerIsolatedSpjPrint({
-                    paperSize,
-                    documentTitle: buildCleanPdfTitle({
-                      prefix,
-                      atasNama: activeSpdPelaksana.nama,
-                      noSpt: draft.noSpt,
-                      paperSize,
-                    }),
-                    sheetSelector: '.print-only-sheet',
-                    zeroPageMargin: docType === 'spd-belakang',
-                  });
-                }}
-                className="min-h-[42px] px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>
-                  {docType === 'spd-belakang'
-                    ? `Cetak Visum (${paperSize})`
-                    : docType === 'spd'
-                    ? `Cetak SPD (${paperSize})`
-                    : `Cetak SPT (${paperSize})`}
-                </span>
-              </button>
-
-              <button
-                type="submit"
-                className="min-h-[42px] px-4 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
-              >
-                <Save className="w-4 h-4" />
-                <span>Simpan Perubahan</span>
-              </button>
-            </div>
-          </div>
+                  }}
+                  title="Cetak Dokumen"
+                  className="min-h-[46px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak</span>
+                </button>
+              </div>
+            }
+          />
         </form>
 
         {/* RIGHT LIVE PAPER CANVAS: Clean Single InteractivePaperViewer with CSS Snap Carousel */}
@@ -2701,213 +2623,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               </div>
             </div>
 
-            {/* 6-Document SPJ Studio Swipe Progress Bar inside Mobile Form Editor Sheet */}
-            <StudioSwipeProgressBar
-              activeStepKey={
-                docType === 'spd-belakang'
-                  ? 'visum'
-                  : docType === 'spd'
-                    ? 'spd'
-                    : 'spt'
-              }
-              onSelectStep={(stepKey) => {
-                setIsMobileSheetOpen(false);
-                onNavigateStudioStep?.(stepKey);
-              }}
-              variant="editor-header"
-              className="shrink-0"
-            />
 
-            {/* Unified Native Segmented Control Sub-Tab Bar (100% Equal Height & Width) */}
-            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-100/90 shrink-0 relative z-10">
-              {docType === 'spd-belakang' ? (
-                <>
-                  <div
-                    role="tablist"
-                    aria-label="Bagian Form SPD Lembar 2"
-                    className="grid grid-cols-4 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
-                  >
-                    {[
-                      { key: 'bagian-1', label: 'I. Berangkat', icon: Navigation },
-                      { key: 'bagian-transit', label: 'II-V. Transit', icon: MapPin },
-                      { key: 'bagian-6', label: 'VI. Tiba', icon: BadgeCheck },
-                      { key: 'bagian-catatan', label: 'VII. Catatan', icon: FileText },
-                    ].map((t) => {
-                      const TIcon = t.icon;
-                      const isTabActive = spdBelakangTab === t.key;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={isTabActive}
-                          onClick={() => {
-                            triggerHaptic('light');
-                            selectSpdBelakangSubTab(t.key as SpdBelakangEditableZone);
-                          }}
-                          className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                            isTabActive
-                              ? 'text-white font-bold'
-                              : 'text-slate-600 hover:text-slate-900 font-semibold'
-                          }`}
-                        >
-                          {isTabActive && (
-                            <motion.span
-                              layoutId="mobile-visum-subtab-pill"
-                              transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                              className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                            />
-                          )}
-                          <TIcon
-                            className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                              isTabActive ? 'text-white' : 'text-slate-500'
-                            }`}
-                          />
-                          <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                            {t.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <FormSubTabProgressBar
-                    tabs={[
-                      { key: 'bagian-1', label: 'I. Keberangkatan' },
-                      { key: 'bagian-transit', label: 'II-V. Transit Perjalanan' },
-                      { key: 'bagian-6', label: 'VI. Tiba Kembali' },
-                      { key: 'bagian-catatan', label: 'VII. Catatan & Perhatian' },
-                    ]}
-                    activeKey={spdBelakangTab}
-                    onSelectTab={(k) => selectSpdBelakangSubTab(k as SpdBelakangEditableZone)}
-                  />
-                </>
-              ) : docType === 'spd' ? (
-                <>
-                  <div
-                    role="tablist"
-                    aria-label="Bagian Form Surat Perjalanan Dinas"
-                    className="grid grid-cols-5 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
-                  >
-                    {[
-                      { key: 'header', label: 'No & PPTK', icon: FileText },
-                      { key: 'pelaksana', label: 'Pelaksana', icon: User },
-                      { key: 'perjalanan', label: 'Rincian', icon: MapPin },
-                      { key: 'pengikut', label: 'Pengikut', icon: Users },
-                      { key: 'ttd', label: 'TTD', icon: PenLine },
-                    ].map((t) => {
-                      const TIcon = t.icon;
-                      const normalizedSpdTab = spdTab === 'anggaran' ? 'perjalanan' : spdTab;
-                      const isTabActive = normalizedSpdTab === t.key;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={isTabActive}
-                          onClick={() => {
-                            triggerHaptic('light');
-                            selectSpdSubTab(t.key as SpdEditableZone);
-                          }}
-                          className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                            isTabActive
-                              ? 'text-white font-bold'
-                              : 'text-slate-600 hover:text-slate-900 font-semibold'
-                          }`}
-                        >
-                          {isTabActive && (
-                            <motion.span
-                              layoutId="mobile-spd-subtab-pill"
-                              transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                              className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                            />
-                          )}
-                          <TIcon
-                            className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                              isTabActive ? 'text-white' : 'text-slate-500'
-                            }`}
-                          />
-                          <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                            {t.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <FormSubTabProgressBar
-                    tabs={[
-                      { key: 'header', label: 'No & PPTK' },
-                      { key: 'pelaksana', label: 'Pelaksana' },
-                      { key: 'perjalanan', label: 'Rincian Perjalanan' },
-                      { key: 'pengikut', label: 'Daftar Pengikut' },
-                      { key: 'ttd', label: 'Penandatangan (TTD)' },
-                    ]}
-                    activeKey={spdTab === 'anggaran' ? 'perjalanan' : spdTab}
-                    onSelectTab={(k) => selectSpdSubTab(k as SpdEditableZone)}
-                  />
-                </>
-              ) : (
-                <>
-                  <div
-                    role="tablist"
-                    aria-label="Bagian Form Surat Perintah Tugas"
-                    className="grid grid-cols-4 gap-1 p-1 bg-slate-200/75 rounded-2xl text-center"
-                  >
-                    {[
-                      { key: 'header', label: 'Kop & No', icon: FileText },
-                      { key: 'pegawai', label: `Pegawai (${draft.pegawaiList.length})`, icon: Users },
-                      { key: 'detail', label: 'Detail', icon: MapPin },
-                      { key: 'ttd', label: 'TTD', icon: PenLine },
-                    ].map((t) => {
-                      const TIcon = t.icon;
-                      const isTabActive = formTab === t.key;
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={isTabActive}
-                          onClick={() => {
-                            triggerHaptic('light');
-                            selectSptSubTab(t.key as SuratTugasEditableZone);
-                          }}
-                          className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                            isTabActive
-                              ? 'text-white font-bold'
-                              : 'text-slate-600 hover:text-slate-900 font-semibold'
-                          }`}
-                        >
-                          {isTabActive && (
-                            <motion.span
-                              layoutId="mobile-spt-subtab-pill"
-                              transition={{ type: 'spring', stiffness: 450, damping: 34 }}
-                              className="absolute inset-0 rounded-xl bg-sky-700 shadow-xs z-0"
-                            />
-                          )}
-                          <TIcon
-                            className={`relative z-10 w-3.5 h-3.5 shrink-0 ${
-                              isTabActive ? 'text-white' : 'text-slate-500'
-                            }`}
-                          />
-                          <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                            {t.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <FormSubTabProgressBar
-                    tabs={[
-                      { key: 'header', label: 'Kop Surat & Nomor SPT' },
-                      { key: 'pegawai', label: `Daftar Pegawai (${draft.pegawaiList.length})` },
-                      { key: 'detail', label: 'Detail Penugasan' },
-                      { key: 'ttd', label: 'Penandatangan (TTD)' },
-                    ]}
-                    activeKey={formTab}
-                    onSelectTab={(k) => selectSptSubTab(k as SuratTugasEditableZone)}
-                  />
-                </>
-              )}
-            </div>
+
+            {/* Linear Stepper Wizard Header (Replaces Nested Sub-Tab Bar in Mobile Sheet) */}
+            <FormStepperHeader
+              steps={activeWizardSteps}
+              activeKey={activeWizardStepKey}
+              onSelectStep={handleSelectWizardStep}
+            />
 
             {/* Scrollable Sheet Content with Native Horizontal Snap Carousel */}
             <div
@@ -2962,25 +2685,14 @@ export const SuratTugasEditorSection: React.FC<SuratTugasEditorSectionProps> = (
               )}
             </div>
 
-            {/* Consistent Pinned Footer Across All Sub-Tabs */}
-            <div className="px-4 pt-3 pb-[max(0.875rem,env(safe-area-inset-bottom))] bg-slate-50/95 border-t border-slate-200/90 flex items-center justify-between gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={handleCancelAndCloseModal}
-                className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 inline-flex items-center justify-center cursor-pointer shrink-0 transition-colors"
-              >
-                Batal
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExplicitValidateAndSave()}
-                className="flex-1 min-h-[44px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-              >
-                <Save className="w-4 h-4 shrink-0" />
-                <span>Simpan Perubahan</span>
-              </button>
-            </div>
+            {/* Sticky Footer Action Bar in Thumb Zone (Mobile Sheet) */}
+            <FormStepperFooter
+              steps={activeWizardSteps}
+              activeKey={activeWizardStepKey}
+              onSelectStep={handleSelectWizardStep}
+              onCancel={handleCancelAndCloseModal}
+              onSave={() => handleExplicitValidateAndSave()}
+            />
           </div>
           </>,
           document.body

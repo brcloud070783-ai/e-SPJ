@@ -143,11 +143,12 @@ function cleanClonedSheetForPrint(clonedSheet: HTMLElement) {
   clonedSheet.style.border = 'none';
   clonedSheet.style.margin = '0 auto';
   clonedSheet.style.overflow = 'visible';
+  clonedSheet.style.fontFamily = "Tahoma, 'Geneva', 'Verdana', sans-serif";
 
   // 3. Strip fixed pixel widths/heights on inner sheet containers so nothing is ever clipped horizontally or vertically
   clonedSheet
     .querySelectorAll<HTMLElement>(
-      '.print-only-sheet, .spj-dossier-sheet, .kuitansi-sheet-container, .spt-doc, .spd-doc, .documentation-print-area'
+      '.print-only-sheet, .spj-dossier-sheet, .kuitansi-sheet-container, .spt-doc, .spd-doc, .visum-doc, .documentation-print-area'
     )
     .forEach((inner) => {
       inner.style.transform = 'none';
@@ -160,6 +161,7 @@ function cleanClonedSheetForPrint(clonedSheet: HTMLElement) {
       inner.style.boxShadow = 'none';
       inner.style.border = 'none';
       inner.style.overflow = 'visible';
+      inner.style.fontFamily = "Tahoma, 'Geneva', 'Verdana', sans-serif";
     });
 
   // 4. Also sanitize any descendant with large hardcoded pixel widths (> 450px) or heights (> 600px)
@@ -349,6 +351,10 @@ export async function triggerIsolatedSpjPrint(
       @page {
         size: ${pageWidthMm} ${pageHeightMm};
         margin: 0mm;
+      }
+      #${ISOLATED_PORTAL_ID},
+      #${ISOLATED_PORTAL_ID} * {
+        font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
       }
       #${ISOLATED_PORTAL_ID} {
         display: block !important;
@@ -594,11 +600,21 @@ export async function exportToDirectPdf(
       cloned.style.transform = 'none';
       cloned.style.background = '#ffffff';
       cloned.style.color = '#000000';
+      cloned.style.fontFamily = "Tahoma, 'Geneva', 'Verdana', sans-serif";
       cloned.style.boxShadow = 'none';
       cloned.style.border = 'none';
       cloned.style.overflow = 'hidden';
 
+      const pdfFontStyle = document.createElement('style');
+      pdfFontStyle.textContent = `
+        [data-offscreen-render="true"],
+        [data-offscreen-render="true"] * {
+          font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
+        }
+      `;
+
       renderContainer.innerHTML = '';
+      renderContainer.appendChild(pdfFontStyle);
       renderContainer.appendChild(cloned);
 
       await waitForFontsAndImages(renderContainer);

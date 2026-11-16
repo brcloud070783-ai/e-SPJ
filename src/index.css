@@ -194,7 +194,7 @@
 }
 
 .kuitansi-official-font {
-  font-family: Arial, 'Arimo', Calibri, 'Carlito', sans-serif;
+  font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
   font-weight: 400;
   font-feature-settings: normal;
   font-kerning: normal;
@@ -209,7 +209,7 @@
 }
 
 .spj-font-calibri {
-  font-family: Calibri, 'Carlito', 'Arimo', Arial, sans-serif;
+  font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
   font-weight: 400;
   font-feature-settings: normal;
   font-kerning: normal;
@@ -232,18 +232,23 @@
   display: none;
 }
 
-/* Force pure black font across all printable document sheets */
+/* Force pure black color and Tahoma font across all printable document sheets */
 .print-only-sheet,
-.print-only-sheet *:not(.no-print *),
+.print-only-sheet *:not(.no-print):not(.no-print *),
 .spt-doc,
-.spt-doc *:not(.no-print *),
+.spt-doc *:not(.no-print):not(.no-print *),
 .spd-doc,
-.spd-doc *:not(.no-print *),
+.spd-doc *:not(.no-print):not(.no-print *),
 .visum-doc,
-.visum-doc *:not(.no-print *),
+.visum-doc *:not(.no-print):not(.no-print *),
 .kuitansi-sheet-container,
-.kuitansi-sheet-container *:not(.no-print *) {
+.kuitansi-sheet-container *:not(.no-print):not(.no-print *),
+.documentation-print-area,
+.documentation-print-area *:not(.no-print):not(.no-print *),
+#spj-isolated-print-root,
+#spj-isolated-print-root * {
   color: #000000 !important;
+  font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
 }
 
 #spj-isolated-print-root {

@@ -1186,19 +1186,19 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
         )}
       </div>
 
-      {/* 2. DOKUMEN SPJ AKTIF (1-6) - TAMPILAN MINIMALIS DENGAN MICROCOPY */}
+      {/* 2. DOKUMEN SPJ AKTIF DIKELOMPOKKAN KE DALAM 2 TAHAP PENGERJAAN */}
       {!isEmptyAll && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3 min-w-0 max-w-full overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-3.5 min-w-0 max-w-full overflow-hidden">
           {/* Header Bar Berkas Aktif */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2.5 border-b border-slate-100 min-w-0">
             <div className="min-w-0 space-y-1.5 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-sky-700 truncate">
-                  Editor 6 Dokumen SPJ Aktif
+                  Tahapan Pengerjaan Berkas SPJ
                 </span>
                 <SpjStatusBadge
                   tone={activeProgressPercent >= 100 ? 'green' : 'yellow'}
-                  label={activeProgressPercent >= 100 ? 'Siap Cetak' : 'Belum Lengkap'}
+                  label={activeProgressPercent >= 100 ? 'Siap Cetak 100%' : 'Belum Lengkap'}
                   size="xs"
                 />
                 <SpjStatusBadge tone="blue" label="Tersinkron" size="xs" />
@@ -1223,49 +1223,121 @@ export const SpjPerjalananSubHome: React.FC<SpjPerjalananSubHomeProps> = ({
               className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap self-start sm:self-auto shrink-0"
             >
               <Pencil className="w-3.5 h-3.5 shrink-0" />
-              <span>Buka Formulir (1–6)</span>
+              <span>Buka Ruang Kerja (1–6)</span>
             </button>
           </div>
 
-          {/* 6 Bagian Dokumen dalam Grid Micro-Card Ringkas */}
-          <div
-            role="region"
-            aria-label="6 Bagian Dokumen SPJ"
-            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 min-w-0 max-w-full"
-          >
-            {subModules.map((mod) => (
-              <button
-                key={mod.key}
-                type="button"
-                onClick={() => onOpenSubSection(mod.key)}
-                className="flex flex-col justify-between p-2.5 rounded-xl border border-slate-200/90 bg-slate-50/60 hover:bg-white hover:border-sky-300 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md will-change-transform text-left cursor-pointer group shadow-2xs min-h-[84px]"
-              >
-                <div className="flex items-center justify-between gap-1 w-full">
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    #{mod.step}
+          {/* DUA KELOMPOK BERDAMINGAN / BERURUTAN */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* KELOMPOK 1: SEBELUM BERANGKAT */}
+            <div className="rounded-2xl border border-sky-200/90 bg-sky-50/40 p-3.5 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 border-b border-sky-200/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-sky-700 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    1
                   </span>
-                  <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border truncate max-w-[85px] ${mod.badgeClass}`}
-                  >
-                    {mod.statusText}
-                  </span>
-                </div>
-
-                <div className="mt-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${mod.iconColor}`}>
-                      <mod.icon className="w-3 h-3" />
-                    </div>
-                    <span className="text-xs font-extrabold text-slate-900 truncate group-hover:text-sky-800">
-                      {mod.title}
-                    </span>
+                  <div>
+                    <h3 className="text-xs font-extrabold text-sky-950">
+                      Sebelum Berangkat
+                    </h3>
+                    <p className="text-[10.5px] text-sky-800">
+                      Dikerjakan sebelum melaksanakan perjalanan dinas
+                    </p>
                   </div>
-                  <p className="text-[10px] text-slate-500 truncate mt-0.5">
-                    {mod.microcopy}
-                  </p>
                 </div>
-              </button>
-            ))}
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-sky-800 border border-sky-200">
+                  SPT · SPD · Visum
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {subModules.slice(0, 3).map((mod) => (
+                  <button
+                    key={mod.key}
+                    type="button"
+                    onClick={() => onOpenSubSection(mod.key)}
+                    className="flex flex-col justify-between p-2.5 rounded-xl border border-sky-200/80 bg-white hover:border-sky-400 transition-all text-left cursor-pointer group shadow-2xs min-h-[76px]"
+                  >
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">
+                        #{mod.step}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border truncate max-w-[75px] ${mod.badgeClass}`}
+                      >
+                        {mod.statusText}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${mod.iconColor}`}>
+                          <mod.icon className="w-2.5 h-2.5" />
+                        </div>
+                        <span className="text-xs font-extrabold text-slate-900 truncate group-hover:text-sky-800">
+                          {mod.title}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* KELOMPOK 2: SETELAH PULANG */}
+            <div className="rounded-2xl border border-emerald-200/90 bg-emerald-50/40 p-3.5 space-y-2.5 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-emerald-700 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    2
+                  </span>
+                  <div>
+                    <h3 className="text-xs font-extrabold text-emerald-950">
+                      Setelah Pulang
+                    </h3>
+                    <p className="text-[10.5px] text-emerald-800">
+                      Dikerjakan setelah kembali dari perjalanan dinas
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-emerald-900 border border-emerald-200">
+                  Kuitansi · Dokumentasi · Bukti
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {subModules.slice(3, 6).map((mod) => (
+                  <button
+                    key={mod.key}
+                    type="button"
+                    onClick={() => onOpenSubSection(mod.key)}
+                    className="flex flex-col justify-between p-2.5 rounded-xl border border-emerald-200/80 bg-white hover:border-emerald-400 transition-all text-left cursor-pointer group shadow-2xs min-h-[76px]"
+                  >
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">
+                        #{mod.step}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border truncate max-w-[75px] ${mod.badgeClass}`}
+                      >
+                        {mod.statusText}
+                      </span>
+                    </div>
+
+                    <div className="mt-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${mod.iconColor}`}>
+                          <mod.icon className="w-2.5 h-2.5" />
+                        </div>
+                        <span className="text-xs font-extrabold text-slate-900 truncate group-hover:text-emerald-800">
+                          {mod.title}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

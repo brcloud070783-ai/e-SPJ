@@ -53,9 +53,10 @@ import {
 import { InteractivePaperViewer } from './InteractivePaperViewer';
 import { NativeSnapPager } from './NativeSnapPager';
 import {
-  StudioSwipeProgressBar,
-  FormSubTabProgressBar,
-} from './StudioSwipeProgressBar';
+  FormStepperHeader,
+  FormStepperFooter,
+  WizardStepItem,
+} from './FormStepperWizard';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 import { LabeledIcon, InfoTooltip, EmptyStateCard } from './UiPatterns';
 import {
@@ -190,6 +191,30 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
       if (desktopKuiScrollRef.current) desktopKuiScrollRef.current.scrollTop = 0;
     }
   };
+
+  const kuitansiWizardSteps: WizardStepItem[] = [
+    {
+      key: 'utama',
+      stepNumber: 1,
+      shortLabel: 'Data Dasar',
+      title: 'Data Dasar Pelaksana & SPT',
+      subtitle: 'Pilih pegawai penerima, nomor SPT, tujuan perjalanan, dan sub kegiatan',
+    },
+    {
+      key: 'rincian',
+      stepNumber: 2,
+      shortLabel: `Rincian Biaya (${draft.rincian.length})`,
+      title: `Rincian Biaya Perjalanan (${draft.rincian.length} Item)`,
+      subtitle: 'Uang harian, uang saku, transportasi, penginapan, dan pengeluaran riil',
+    },
+    {
+      key: 'kustom',
+      stepNumber: 3,
+      shortLabel: 'Pratinjau & TTD',
+      title: 'Pratinjau, Kolom Tambahan & Pengesahan',
+      subtitle: `Verifikasi total kuitansi serta kolom kustom (${customFields.length} bidang)`,
+    },
+  ];
 
   React.useEffect(() => {
     if (!isPelaksanaDropdownOpen) return;
@@ -1745,72 +1770,14 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
           data-no-swipe="true"
           className="no-print hidden lg:block lg:col-span-5 min-w-0 bg-white border border-slate-200 rounded-2xl overflow-hidden"
         >
-          {/* 6-Document SPJ Studio Swipe Progress Bar at the Top of Form Editor */}
-          <StudioSwipeProgressBar
-            activeStepKey="kuitansi"
-            onSelectStep={onNavigateStudioStep}
-            variant="editor-header"
-          />
 
-          {/* Step / Category Navigation Tabs Inside Form — Uniform Native Segmented Control */}
-          <div className="p-2 border-b border-slate-200 bg-slate-50/90">
-            <div
-              role="tablist"
-              aria-label="Bagian Formulir Kuitansi"
-              className="grid grid-cols-3 bg-slate-200/75 p-1 rounded-2xl gap-1"
-            >
-              {[
-                { key: 'utama', label: 'Data & SPT', icon: User },
-                { key: 'rincian', label: `Rincian (${draft.rincian.length})`, icon: Wallet },
-                { key: 'kustom', label: `Kustom (${customFields.length})`, icon: SlidersHorizontal },
-              ].map((t) => {
-                const TIcon = t.icon;
-                const isTabActive = formTab === t.key;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={isTabActive}
-                    onClick={() => {
-                      triggerHaptic('light');
-                      selectKuiSubTab(t.key as CanvasEditableZone);
-                    }}
-                    className={`relative h-12 px-2 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                      isTabActive
-                        ? 'text-sky-950 font-extrabold'
-                        : 'text-slate-600 hover:text-slate-900 font-semibold'
-                    }`}
-                  >
-                    {isTabActive && (
-                      <motion.div
-                        layoutId="desktop-kuitansi-subtab-pill"
-                        transition={{ type: 'spring', stiffness: 460, damping: 34 }}
-                        className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
-                      />
-                    )}
-                    <TIcon
-                      className={`relative z-10 w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${
-                        isTabActive ? 'text-sky-700 scale-105' : 'text-slate-500'
-                      }`}
-                    />
-                    <span className="relative z-10 text-[11px] leading-none tracking-tight whitespace-nowrap">
-                      {t.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <FormSubTabProgressBar
-              tabs={[
-                { key: 'utama', label: 'Data Pelaksana & SPT' },
-                { key: 'rincian', label: `Rincian Biaya (${draft.rincian.length})` },
-                { key: 'kustom', label: `Bidang Kustom (${customFields.length})` },
-              ]}
-              activeKey={formTab}
-              onSelectTab={(k) => selectKuiSubTab(k as CanvasEditableZone)}
-            />
-          </div>
+
+          {/* Linear Stepper Wizard Header (Replaces Nested Sub-Tab Bar) */}
+          <FormStepperHeader
+            steps={kuitansiWizardSteps}
+            activeKey={formTab}
+            onSelectStep={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+          />
 
           <div className="flex flex-col">
             <div
@@ -1830,37 +1797,63 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               />
             </div>
 
-            <div className="px-4 sm:px-5 pb-4 sm:pb-5">
-
-            {/* Persistent Total & Terbilang Summary Footer */}
-            <div className="pt-3 border-t border-slate-200/80 space-y-3">
-              <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200/90 space-y-0.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-emerald-950">Total Kuitansi:</span>
-                  <span className="font-extrabold font-mono text-sm text-emerald-900 tabular-nums">
-                    {formatRupiah(totalKuitansi)}
-                  </span>
+            {/* Sticky Footer Action Bar (Desktop Inspector) */}
+            <FormStepperFooter
+              steps={kuitansiWizardSteps}
+              activeKey={formTab}
+              onSelectStep={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+              onCancel={() => {
+                setDraft(currentKuitansi);
+                setValidationErrors([]);
+              }}
+              onSave={() => handleExplicitValidateAndSave()}
+              summaryBanner={
+                <div className="p-2.5 rounded-xl bg-emerald-50/90 border border-emerald-200/90 space-y-0.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-emerald-950">Total Kuitansi:</span>
+                    <span className="font-extrabold font-mono text-sm text-emerald-900 tabular-nums">
+                      {formatRupiah(totalKuitansi)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] italic text-emerald-900 truncate">
+                    Terbilang: &ldquo;{terbilangText}&rdquo;
+                  </p>
                 </div>
-                <p className="text-[11px] italic text-emerald-900">
-                  Terbilang: &ldquo;{terbilangText}&rdquo;
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="submit"
-                  className="min-h-[42px] rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Simpan</span>
-                </button>
-                <button
-                  type="button"
-                  disabled={isExportingPdf}
-                  onClick={async () => {
-                    setIsExportingPdf(true);
-                    try {
-                      await exportToDirectPdf({
+              }
+              extraDesktopActions={
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={isExportingPdf}
+                    onClick={async () => {
+                      setIsExportingPdf(true);
+                      try {
+                        await exportToDirectPdf({
+                          paperSize,
+                          documentTitle: buildCleanPdfTitle({
+                            prefix: 'Kuitansi_Perjalanan_Dinas',
+                            atasNama: draft.atasNama,
+                            noSpt: draft.noSpt,
+                            paperSize,
+                          }),
+                          sheetSelector: '.print-only-sheet',
+                        });
+                      } catch (err: any) {
+                        alert(err?.message || 'Gagal mengekspor PDF');
+                      } finally {
+                        setIsExportingPdf(false);
+                      }
+                    }}
+                    title="Ekspor ke PDF"
+                    className="min-h-[46px] px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-50 text-slate-700 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <FileDown className="w-3.5 h-3.5 text-sky-700" />
+                    <span>{isExportingPdf ? '...' : 'PDF'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void triggerIsolatedSpjPrint({
                         paperSize,
                         documentTitle: buildCleanPdfTitle({
                           prefix: 'Kuitansi_Perjalanan_Dinas',
@@ -1870,53 +1863,16 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
                         }),
                         sheetSelector: '.print-only-sheet',
                       });
-                    } catch (err: any) {
-                      alert(err?.message || 'Gagal mengekspor PDF');
-                    } finally {
-                      setIsExportingPdf(false);
-                    }
-                  }}
-                  className="min-h-[42px] rounded-xl bg-sky-800 hover:bg-sky-900 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  <FileDown className="w-3.5 h-3.5" />
-                  <span>{isExportingPdf ? '...' : 'PDF'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void triggerIsolatedSpjPrint({
-                      paperSize,
-                      documentTitle: buildCleanPdfTitle({
-                        prefix: 'Kuitansi_Perjalanan_Dinas',
-                        atasNama: draft.atasNama,
-                        noSpt: draft.noSpt,
-                        paperSize,
-                      }),
-                      sheetSelector: '.print-only-sheet',
-                    });
-                  }}
-                  className="min-h-[42px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak</span>
-                </button>
-              </div>
-
-              {onDeleteKuitansi && (
-                <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                  <button
-                    type="button"
-                    onClick={onDeleteKuitansi}
-                    title="Hapus berkas SPJ yang sedang aktif ini"
-                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-xl border border-red-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer font-semibold"
+                    }}
+                    title="Cetak Kuitansi"
+                    className="min-h-[46px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus Berkas SPJ</span>
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak</span>
                   </button>
                 </div>
-              )}
-            </div>
-            </div>
+              }
+            />
           </div>
         </form>
 
@@ -1996,76 +1952,14 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               </div>
             </div>
 
-            {/* 6-Document SPJ Studio Swipe Progress Bar inside Mobile Form Editor Sheet */}
-            <StudioSwipeProgressBar
-              activeStepKey="kuitansi"
-              onSelectStep={(stepKey) => {
-                setIsMobileSheetOpen(false);
-                onNavigateStudioStep?.(stepKey);
-              }}
-              variant="editor-header"
-              className="shrink-0"
-            />
 
-            {/* Sub-Tabs Selector INSIDE Mobile Sheet — Uniform Native Segmented Control */}
-            <div className="px-3 py-2 border-b border-slate-200/80 bg-slate-50 shrink-0 relative z-10">
-              <div
-                role="tablist"
-                aria-label="Sub-Tab Editor Kuitansi Mobile"
-                className="grid grid-cols-3 bg-slate-200/75 p-1 rounded-2xl gap-1"
-              >
-                {[
-                  { key: 'utama', label: 'Data & SPT', icon: User },
-                  { key: 'rincian', label: `Rincian (${draft.rincian.length})`, icon: Wallet },
-                  { key: 'kustom', label: `Kustom (${customFields.length})`, icon: SlidersHorizontal },
-                ].map((t) => {
-                  const TIcon = t.icon;
-                  const isTabActive = formTab === t.key;
-                  return (
-                    <button
-                      key={t.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={isTabActive}
-                      onClick={() => {
-                        triggerHaptic('light');
-                        selectKuiSubTab(t.key as CanvasEditableZone);
-                      }}
-                      className={`relative h-12 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer select-none overflow-hidden ${
-                        isTabActive
-                          ? 'text-sky-950 font-extrabold'
-                          : 'text-slate-600 hover:text-slate-900 font-semibold'
-                      }`}
-                    >
-                      {isTabActive && (
-                        <motion.div
-                          layoutId="mobile-kuitansi-subtab-pill"
-                          transition={{ type: 'spring', stiffness: 460, damping: 34 }}
-                          className="absolute inset-0 bg-white rounded-xl shadow-xs border border-slate-200/80"
-                        />
-                      )}
-                      <TIcon
-                        className={`relative z-10 w-3.5 h-3.5 shrink-0 transition-transform duration-150 ${
-                          isTabActive ? 'text-sky-700 scale-105' : 'text-slate-500'
-                        }`}
-                      />
-                      <span className="relative z-10 text-[10.5px] leading-none tracking-tight whitespace-nowrap">
-                        {t.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <FormSubTabProgressBar
-                tabs={[
-                  { key: 'utama', label: 'Data Pelaksana & SPT' },
-                  { key: 'rincian', label: `Rincian Biaya (${draft.rincian.length})` },
-                  { key: 'kustom', label: `Bidang Kustom (${customFields.length})` },
-                ]}
-                activeKey={formTab}
-                onSelectTab={(k) => selectKuiSubTab(k as CanvasEditableZone)}
-              />
-            </div>
+
+            {/* Linear Stepper Wizard Header (Replaces Nested Sub-Tab Bar in Mobile Sheet) */}
+            <FormStepperHeader
+              steps={kuitansiWizardSteps}
+              activeKey={formTab}
+              onSelectStep={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+            />
 
             {/* Scrollable Sheet Content (with Native Horizontal Snap Carousel) */}
             <div
@@ -2085,25 +1979,22 @@ export const KuitansiEditorSection: React.FC<KuitansiEditorSectionProps> = ({
               />
             </div>
 
-            {/* Sticky Action Footer Seragam & Konsisten di Semua Tab */}
-            <div className="px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={handleCancelAndCloseModal}
-                className="min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-100 text-xs font-bold text-slate-700 cursor-pointer inline-flex items-center justify-center gap-1.5 shrink-0 transition-colors"
-              >
-                <span>Batal</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExplicitValidateAndSave()}
-                className="flex-1 min-h-[42px] px-5 py-2 rounded-xl bg-sky-700 hover:bg-sky-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-              >
-                <Save className="w-4 h-4 shrink-0" />
-                <span>Simpan Perubahan</span>
-              </button>
-            </div>
+            {/* Sticky Footer Action Bar in Thumb Zone (Mobile Sheet) */}
+            <FormStepperFooter
+              steps={kuitansiWizardSteps}
+              activeKey={formTab}
+              onSelectStep={(k) => selectKuiSubTab(k as CanvasEditableZone)}
+              onCancel={handleCancelAndCloseModal}
+              onSave={() => handleExplicitValidateAndSave()}
+              summaryBanner={
+                <div className="px-3 py-2 rounded-xl bg-emerald-50/90 border border-emerald-200/90 flex items-center justify-between gap-2 text-xs">
+                  <span className="font-semibold text-emerald-950">Total Kuitansi:</span>
+                  <span className="font-extrabold font-mono text-sm text-emerald-900 tabular-nums">
+                    {formatRupiah(totalKuitansi)}
+                  </span>
+                </div>
+              }
+            />
           </div>
           </>,
           document.body

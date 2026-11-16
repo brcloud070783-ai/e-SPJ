@@ -66,6 +66,9 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = R
     <div
       data-testid="kuitansi-official-sheet"
       data-paper-format={paperSize}
+      style={{
+        fontFamily: "Tahoma, 'Geneva', 'Verdana', sans-serif",
+      }}
       className={`kuitansi-official-font kuitansi-sheet-container bg-white text-black w-full leading-tight select-text ${
         isF4
           ? 'px-0 pt-6 pb-8 min-h-[1247px] print:px-0 print:pt-2 print:pb-2 print:min-h-0 print:h-auto'
@@ -124,9 +127,9 @@ export const KuitansiDocumentPreview: React.FC<KuitansiDocumentPreviewProps> = R
             <div className="grid grid-cols-[130px_12px_1fr] items-start">
               <span>No. Kuitansi</span>
               <span>:</span>
-              <span className="font-mono">
+              <span>
                 {kuitansi.noKuitansi || (
-                  <span className="no-print text-slate-400 italic font-sans font-normal">
+                  <span className="no-print text-slate-400 italic font-normal">
                     [Diisi manual oleh Bendahara]
                   </span>
                 )}

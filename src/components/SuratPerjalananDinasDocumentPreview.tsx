@@ -194,7 +194,7 @@ export const SuratPerjalananDinasDocumentPreview: React.FC<SuratPerjalananDinasD
         width: isPrintMode ? '100%' : `${spec.widthPx}px`,
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
         boxSizing: 'border-box',
-        fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Helvetica, sans-serif",
+        fontFamily: "Tahoma, 'Geneva', 'Verdana', sans-serif",
         lineHeight: 1.14,
       }}
     >

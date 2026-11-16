@@ -537,7 +537,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
                 contain: 'layout style paint',
                 transform: 'translateZ(0)',
               }}
-              className="w-full shrink-0 flex justify-center items-start p-1 sm:p-4 snap-start snap-always"
+              className="w-full shrink-0 flex justify-center items-start p-0.5 sm:p-1 snap-start snap-always"
             >
               <div
                 className={`paper-zoom-stage relative ${
@@ -596,7 +596,7 @@ export const InteractivePaperViewer: React.FC<InteractivePaperViewerProps> = ({
               minWidth: '100%',
               width: '100%',
             }}
-            className="w-full shrink-0 flex justify-center items-start p-1 sm:p-4"
+            className="w-full shrink-0 flex justify-center items-start p-0.5 sm:p-1"
           >
             <div
               className={`paper-zoom-stage relative ${

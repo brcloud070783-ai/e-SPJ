@@ -77,7 +77,6 @@ import { NativeBottomSheet } from './components/NativeBottomSheet';
 import { PWAInstallBanner } from './components/PWAInstallBanner';
 import { PullToRefreshIndicator } from './components/PullToRefreshWrapper';
 import { NativeSnapPager } from './components/NativeSnapPager';
-import { StudioSwipeProgressBar } from './components/StudioSwipeProgressBar';
 import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { usePWAInstall } from './hooks/usePWAInstall';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1965,7 +1964,7 @@ export default function App() {
                 {
                   id: 'home',
                   content: (
-                    <div className="w-full max-w-7xl mx-auto px-2 sm:px-8 py-1.5 sm:py-4 pb-22 sm:pb-8 min-w-0">
+                    <div className="w-full max-w-7xl mx-auto px-3.5 sm:px-8 py-2.5 sm:py-5 pb-24 sm:pb-10 min-w-0">
                       <MainHomeSection
                         settings={appSettings}
                         kuitansiList={kuitansiList}

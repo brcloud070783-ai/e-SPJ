@@ -145,11 +145,15 @@ export const SuratTugasDocumentPreview: React.FC<SuratTugasDocumentPreviewProps>
           width: isPrintMode ? '100%' : `${spec.widthPx}px`,
           minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
           boxSizing: 'border-box',
-          fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Helvetica, sans-serif",
+          fontFamily: "Tahoma, 'Geneva', 'Verdana', sans-serif",
           lineHeight: effectiveFontSizePt <= 10.0 ? 1.15 : 1.18,
         }}
       >
         <style>{`
+          .spt-doc,
+          .spt-doc *:not(.no-print):not(.no-print *) {
+            font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
+          }
           .spt-doc .spt-content-area {
             width: 86%;
             max-width: 86%;

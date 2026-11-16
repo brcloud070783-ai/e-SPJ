@@ -169,7 +169,7 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
         height: isPrintMode ? '100%' : `${spec.minHeightPx}px`,
         minHeight: isPrintMode ? 'auto' : `${spec.minHeightPx}px`,
         maxHeight: isPrintMode ? 'none' : `${spec.minHeightPx}px`,
-        fontFamily: "Calibri, 'Carlito', 'Arimo', Arial, Liberation Sans, sans-serif",
+        fontFamily: "Tahoma, 'Geneva', 'Verdana', sans-serif",
         boxSizing: 'border-box',
       }}
       className={`visum-doc spj-font-calibri mx-auto bg-white text-black leading-tight box-border text-[9.5pt] flex flex-col justify-center items-center print:border-none print:shadow-none print:p-0 print:m-0 select-text ${
@@ -185,7 +185,7 @@ export const SuratPerjalananDinasBelakangDocumentPreview: React.FC<
         .visum-doc p,
         .visum-doc span,
         .visum-doc div {
-          font-family: Calibri, 'Carlito', 'Arimo', Arial, Liberation Sans, sans-serif;
+          font-family: Tahoma, 'Geneva', 'Verdana', sans-serif !important;
         }
         .visum-doc .visum-content-area {
           width: 88%;

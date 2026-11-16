@@ -72,7 +72,6 @@ import {
   warpPerspectiveImageToCanvas,
 } from './CanvasPerspectiveCropper';
 import { NativeSnapPager } from './NativeSnapPager';
-import { StudioSwipeProgressBar } from './StudioSwipeProgressBar';
 import { SpjSubSectionKey } from './SpjPerjalananSubHome';
 
 interface StagedDocFile {
